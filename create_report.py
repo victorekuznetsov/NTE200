@@ -13,7 +13,7 @@ from docx.oxml import OxmlElement
 
 BASE = "/home/user/NTE200/"
 
-def page_to_image(pdf_path, page_num, dpi=150):
+def page_to_image(pdf_path, page_num, dpi=100):
     """Рендерит страницу PDF в bytes (PNG)."""
     doc = fitz.open(pdf_path)
     page = doc[page_num]
@@ -60,7 +60,7 @@ def add_para(doc, text, bold=False, italic=False, size=10, color=None, indent=Fa
     return p
 
 def add_image_from_pdf(doc, pdf_path, page_num, caption, width=Inches(6)):
-    img_stream = page_to_image(pdf_path, page_num, dpi=150)
+    img_stream = page_to_image(pdf_path, page_num, dpi=100)
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run()
