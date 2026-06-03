@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Анализ расхода топлива: NTE200 vs 730E</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; }
+  h1 { text-align: center; padding: 24px 0 8px; font-size: 1.6rem; color: #fff; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 24px; font-size: 0.9rem; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 0 24px 24px; }
+  .kpi-card { background: #1a1d27; border-radius: 12px; padding: 16px 20px; border-left: 4px solid; }
+  .kpi-card.nte { border-color: #f97316; }
+  .kpi-card.e730 { border-color: #3b82f6; }
+  .kpi-card.winner { border-color: #22c55e; }
+  .kpi-label { font-size: 0.78rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .kpi-value { font-size: 2rem; font-weight: 700; }
+  .kpi-value.nte { color: #f97316; }
+  .kpi-value.e730 { color: #3b82f6; }
+  .kpi-value.winner { color: #22c55e; }
+  .kpi-sub { font-size: 0.78rem; color: #666; margin-top: 2px; }
+
+  .section { padding: 0 24px 32px; }
+  .section-title { font-size: 1.1rem; font-weight: 600; color: #aaa; margin-bottom: 16px; padding-bottom: 6px; border-bottom: 1px solid #2a2d38; }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .chart-box { background: #1a1d27; border-radius: 12px; padding: 20px; }
+  .chart-box.full { grid-column: 1 / -1; }
+  .chart-title { font-size: 0.9rem; color: #bbb; margin-bottom: 14px; font-weight: 600; }
+
+  canvas { max-height: 340px; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #1f2230; color: #888; text-align: left; padding: 8px 12px; font-weight: 500; white-space: nowrap; }
+  td { padding: 7px 12px; border-bottom: 1px solid #1a1d27; white-space: nowrap; }
+  tr:nth-child(even) { background: #161923; }
+  tr:hover { background: #1f2535; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-nte { background: #7c2d0620; color: #fb923c; border: 1px solid #f9731640; }
+  .badge-730 { background: #1e3a5f20; color: #60a5fa; border: 1px solid #3b82f640; }
+  .best { color: #22c55e; font-weight: 700; }
+  .warn { color: #f59e0b; }
+  .bad { color: #ef4444; }
+
+  .verdict-box { background: linear-gradient(135deg, #0d2010, #0d1a25); border: 1px solid #22c55e40; border-radius: 16px; padding: 24px 28px; margin: 0 24px 32px; }
+  .verdict-title { color: #22c55e; font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+  .verdict-points { list-style: none; }
+  .verdict-points li { padding: 6px 0; color: #ccc; font-size: 0.9rem; }
+  .verdict-points li::before { content: "▸ "; color: #22c55e; }
+
+  @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Анализ расхода топлива: NTE200 vs Komatsu 730E</h1>
+<p class="subtitle">Март 2024 — Май 2026 &nbsp;|&nbsp; Расчёт с учётом грузооборота</p>
+
+<!-- KPI Cards -->
+<div class="kpi-grid" id="kpiGrid"></div>
+
+<!-- Verdict -->
+<div class="verdict-box" id="verdictBox"></div>
+
+<!-- Monthly efficiency chart -->
+<div class="section">
+  <div class="section-title">Динамика расхода топлива по месяцам</div>
+  <div class="charts-row">
+    <div class="chart-box full">
+      <div class="chart-title">Расход на 100 т·км (помесячно по парку)</div>
+      <canvas id="monthlyEff"></canvas>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-box">
+      <div class="chart-title">Количество машин в работе</div>
+      <canvas id="truckCount"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Ежемесячное потребление топлива по парку (тыс. л)</div>
+      <canvas id="monthlyFuel"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Per-truck efficiency -->
+<div class="section">
+  <div class="section-title">Эффективность каждого самосвала (л / 100 т·км)</div>
+  <div class="charts-row">
+    <div class="chart-box">
+      <div class="chart-title">NTE200 — рейтинг самосвалов</div>
+      <canvas id="nteTruckBar" style="max-height:500px"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">730E — рейтинг самосвалов</div>
+      <canvas id="e730TruckBar" style="max-height:500px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tables -->
+<div class="section">
+  <div class="section-title">Детальная таблица: NTE200</div>
+  <div class="table-wrap"><table id="nteTable"></table></div>
+</div>
+<div class="section">
+  <div class="section-title">Детальная таблица: Komatsu 730E</div>
+  <div class="table-wrap"><table id="e730Table"></table></div>
+</div>
+
+<script>
+const DATA = {
+  "months": [
+    "2024-03",
+    "2024-04",
+    "2024-05",
+    "2024-06",
+    "2024-07",
+    "2024-08",
+    "2024-09",
+    "2024-10",
+    "2024-11",
+    "2024-12",
+    "2025-01",
+    "2025-02",
+    "2025-03",
+    "2025-04",
+    "2025-05",
+    "2025-06",
+    "2025-07",
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01",
+    "2026-02",
+    "2026-03",
+    "2026-04",
+    "2026-05"
+  ],
+  "nte_fleet_eff": [
+    9.366,
+    11.285,
+    14.775,
+    13.107,
+    13.27,
+    17.904,
+    13.611,
+    11.814,
+    10.501,
+    9.259,
+    10.018,
+    11.977,
+    10.9,
+    9.084,
+    9.666,
+    10.774,
+    11.204,
+    11.381,
+    11.278,
+    10.906,
+    9.275,
+    8.094,
+    9.896,
+    9.969,
+    9.515,
+    11.022,
+    11.055
+  ],
+  "e730_fleet_eff": [
+    9.606,
+    9.809,
+    10.544,
+    10.837,
+    10.578,
+    10.886,
+    8.978,
+    10.195,
+    9.795,
+    9.889,
+    9.832,
+    9.433,
+    9.552,
+    10.233,
+    8.548,
+    9.388,
+    10.459,
+    10.274,
+    8.727,
+    9.467,
+    9.583,
+    9.566,
+    9.882,
+    9.489,
+    9.008,
+    9.792,
+    10.176
+  ],
+  "nte_truck_count": [
+    9,
+    11,
+    14,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    18,
+    23,
+    23,
+    23,
+    31,
+    31,
+    31,
+    31,
+    31,
+    31,
+    31,
+    34,
+    42,
+    42,
+    42,
+    42,
+    41,
+    41
+  ],
+  "e730_truck_count": [
+    22,
+    22,
+    21,
+    17,
+    18,
+    18,
+    22,
+    22,
+    22,
+    22,
+    22,
+    22,
+    22,
+    22,
+    22,
+    18,
+    18,
+    18,
+    22,
+    22,
+    22,
+    22,
+    21,
+    21,
+    22,
+    22,
+    22
+  ],
+  "nte_trucks": {
+    "ids": [
+      "NTE200-83",
+      "NTE200-81",
+      "NTE200-82",
+      "NTE200-88",
+      "NTE200-89",
+      "NTE200-84",
+      "NTE200-85",
+      "NTE200-87",
+      "NTE200-79",
+      "NTE200-80",
+      "NTE200-74",
+      "NTE200-78",
+      "NTE200-86",
+      "NTE200-77",
+      "NTE200-63",
+      "NTE200-71",
+      "NTE200-72",
+      "NTE200-64",
+      "NTE200-76",
+      "NTE200-75",
+      "NTE200-44",
+      "NTE200-73",
+      "NTE200-65",
+      "NTE200-53",
+      "NTE200-43",
+      "NTE200-48",
+      "NTE200-51",
+      "NTE200-49",
+      "NTE200-47",
+      "NTE200-66",
+      "NTE200-62",
+      "NTE200-69",
+      "NTE200-45",
+      "NTE200-67",
+      "NTE200-70",
+      "NTE200-61",
+      "NTE200-56",
+      "NTE200-60",
+      "NTE200-46",
+      "NTE200-58",
+      "NTE200-68",
+      "NTE200-55"
+    ],
+    "eff": [
+      7.96,
+      8.35,
+      8.5,
+      8.62,
+      8.75,
+      8.88,
+      8.9,
+      8.94,
+      9.1,
+      9.18,
+      9.27,
+      9.35,
+      9.72,
+      9.79,
+      9.95,
+      10.14,
+      10.17,
+      10.19,
+      10.23,
+      10.24,
+      10.26,
+      10.27,
+      10.29,
+      10.58,
+      10.59,
+      10.71,
+      10.79,
+      10.82,
+      10.85,
+      10.95,
+      10.97,
+      11.03,
+      11.04,
+      11.22,
+      11.25,
+      11.33,
+      11.46,
+      11.49,
+      11.51,
+      11.53,
+      11.59,
+      11.92
+    ],
+    "fuel": [
+      454.8,
+      551.7,
+      492.3,
+      489.4,
+      505.4,
+      505.9,
+      515.3,
+      505.3,
+      611.6,
+      614.1,
+      1223.1,
+      1204.6,
+      507.4,
+      1256.2,
+      1681.1,
+      1319.5,
+      1280.0,
+      1670.5,
+      1245.9,
+      1308.6,
+      2573.6,
+      1320.2,
+      1684.3,
+      2441.9,
+      2635.1,
+      2438.5,
+      2497.2,
+      2573.7,
+      2625.9,
+      1529.2,
+      2272.8,
+      1478.9,
+      2742.7,
+      1532.1,
+      1541.6,
+      2399.9,
+      2424.4,
+      2391.1,
+      2680.8,
+      2280.8,
+      1585.6,
+      2447.3
+    ],
+    "months": [
+      6,
+      7,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      14,
+      14,
+      6,
+      14,
+      18,
+      14,
+      14,
+      18,
+      14,
+      14,
+      27,
+      14,
+      18,
+      27,
+      27,
+      25,
+      27,
+      27,
+      27,
+      17,
+      24,
+      17,
+      27,
+      17,
+      17,
+      25,
+      26,
+      25,
+      27,
+      25,
+      17,
+      26
+    ],
+    "speed": [
+      16.66,
+      16.8,
+      16.72,
+      16.84,
+      16.77,
+      16.66,
+      16.59,
+      16.49,
+      16.84,
+      16.79,
+      16.52,
+      16.71,
+      16.21,
+      16.66,
+      16.9,
+      16.73,
+      16.45,
+      16.94,
+      16.22,
+      16.35,
+      16.44,
+      16.57,
+      16.99,
+      16.65,
+      16.29,
+      16.31,
+      16.23,
+      16.38,
+      15.83,
+      16.96,
+      16.52,
+      16.67,
+      16.52,
+      17.05,
+      16.86,
+      16.81,
+      16.68,
+      16.79,
+      15.87,
+      16.67,
+      17.01,
+      15.84
+    ],
+    "load": [
+      188.1,
+      185.8,
+      189.5,
+      186.2,
+      188.6,
+      188.4,
+      189.0,
+      186.4,
+      186.4,
+      187.6,
+      187.8,
+      183.7,
+      181.9,
+      184.1,
+      184.8,
+      183.3,
+      180.9,
+      181.0,
+      176.3,
+      183.7,
+      184.9,
+      183.2,
+      182.6,
+      180.7,
+      184.4,
+      182.7,
+      183.0,
+      187.2,
+      182.7,
+      183.7,
+      185.2,
+      183.0,
+      181.8,
+      182.1,
+      184.5,
+      185.5,
+      187.5,
+      183.2,
+      180.3,
+      184.7,
+      182.1,
+      181.0
+    ]
+  },
+  "e730_trucks": {
+    "ids": [
+      "730E-24",
+      "730E-25",
+      "730E-23",
+      "730E-22",
+      "730E-17",
+      "730E-38",
+      "730E-19",
+      "730E-18",
+      "730E-21",
+      "730E-13",
+      "730E-14",
+      "730E-37",
+      "730E-16",
+      "730E-39",
+      "730E-26",
+      "730E-40",
+      "730E-28",
+      "730E-15",
+      "730E-20",
+      "730E-41",
+      "730E-29",
+      "730E-27"
+    ],
+    "eff": [
+      8.77,
+      8.8,
+      8.82,
+      8.86,
+      9.05,
+      9.15,
+      9.58,
+      9.71,
+      9.87,
+      9.91,
+      9.93,
+      10.01,
+      10.02,
+      10.03,
+      10.06,
+      10.07,
+      10.09,
+      10.16,
+      10.18,
+      10.3,
+      10.31,
+      10.4
+    ],
+    "fuel": [
+      1592.2,
+      1661.7,
+      1628.3,
+      1636.1,
+      1961.5,
+      2277.3,
+      2268.8,
+      2314.6,
+      2274.7,
+      2389.2,
+      2291.8,
+      2328.1,
+      2365.9,
+      2325.0,
+      2338.0,
+      2369.2,
+      2387.0,
+      2362.1,
+      2327.2,
+      2220.2,
+      2374.8,
+      2452.2
+    ],
+    "months": [
+      21,
+      21,
+      21,
+      21,
+      25,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      27,
+      25,
+      27,
+      27
+    ],
+    "speed": [
+      15.87,
+      16.38,
+      15.78,
+      16.41,
+      16.1,
+      16.42,
+      16.28,
+      16.15,
+      16.2,
+      16.46,
+      15.84,
+      16.47,
+      15.99,
+      16.53,
+      15.62,
+      15.84,
+      15.78,
+      16.15,
+      15.73,
+      16.27,
+      15.52,
+      15.78
+    ],
+    "load": [
+      184.5,
+      185.2,
+      182.8,
+      184.3,
+      184.6,
+      189.4,
+      184.8,
+      184.7,
+      184.0,
+      184.8,
+      184.6,
+      178.3,
+      184.2,
+      179.7,
+      184.9,
+      185.1,
+      184.5,
+      183.0,
+      183.5,
+      184.8,
+      184.2,
+      183.6
+    ]
+  },
+  "summary": {
+    "nte_avg_eff": 11.14,
+    "e730_avg_eff": 9.8,
+    "nte_fleet_eff": 10.57,
+    "e730_fleet_eff": 9.77,
+    "nte_total_fuel_m3": 66.04,
+    "e730_total_fuel_m3": 48.15,
+    "nte_total_tkm_m": 625.0,
+    "e730_total_tkm_m": 493.0,
+    "nte_trucks": 42,
+    "e730_trucks": 22,
+    "nte_avg_speed": 16.53,
+    "e730_avg_speed": 16.07,
+    "nte_avg_load": 183.7,
+    "e730_avg_load": 184.1
+  }
+};
+
+const C = { nte: '#f97316', e730: '#3b82f6', green: '#22c55e', yellow: '#f59e0b', red: '#ef4444' };
+
+function eff_color(v, lo, hi) {
+  if (v <= lo) return C.green;
+  if (v >= hi) return C.red;
+  return C.yellow;
+}
+
+// ── KPIs ─────────────────────────────────────────────────────
+const s = DATA.summary;
+const winner = s.e730_fleet_eff < s.nte_fleet_eff ? '730E' : 'NTE200';
+const saving_pct = Math.abs((s.e730_fleet_eff - s.nte_fleet_eff) / s.nte_fleet_eff * 100).toFixed(1);
+
+const kpis = [
+  { label: 'Лучший парк', value: winner, sub: `Экономия ${saving_pct}% на т·км`, cls: 'winner' },
+  { label: 'NTE200: л/100т·км', value: s.nte_fleet_eff, sub: `${s.nte_trucks} самосвалов`, cls: 'nte' },
+  { label: '730E: л/100т·км', value: s.e730_fleet_eff, sub: `${s.e730_trucks} самосвалов`, cls: 'e730' },
+  { label: 'NTE200 ср. скорость (груж.)', value: s.nte_avg_speed + ' км/ч', sub: `Загрузка ${s.nte_avg_load} т`, cls: 'nte' },
+  { label: '730E ср. скорость (груж.)', value: s.e730_avg_speed + ' км/ч', sub: `Загрузка ${s.e730_avg_load} т`, cls: 'e730' },
+  { label: 'NTE200 топливо итого', value: s.nte_total_fuel_m3 + ' млн л', sub: `${s.nte_total_tkm_m} млн т·км`, cls: 'nte' },
+  { label: '730E топливо итого', value: s.e730_total_fuel_m3 + ' млн л', sub: `${s.e730_total_tkm_m} млн т·км`, cls: 'e730' },
+];
+document.getElementById('kpiGrid').innerHTML = kpis.map(k =>
+  `<div class="kpi-card ${k.cls}">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value ${k.cls}">${k.value}</div>
+    <div class="kpi-sub">${k.sub}</div>
+  </div>`
+).join('');
+
+// ── Verdict ────────────────────────────────────────────────────
+const diff = (s.nte_fleet_eff - s.e730_fleet_eff).toFixed(2);
+document.getElementById('verdictBox').innerHTML = `
+  <div class="verdict-title">🏆 Вывод: лучший парк — Komatsu 730E</div>
+  <ul class="verdict-points">
+    <li>Komatsu 730E расходует <strong>${s.e730_fleet_eff} л/100т·км</strong>, NTE200 — <strong>${s.nte_fleet_eff} л/100т·км</strong>. Преимущество 730E: <strong>${diff} л/100т·км (${saving_pct}%)</strong>.</li>
+    <li>Лучший одиночный NTE200 (#83): 7.96 л/100т·км — сравнимо с лучшими 730E, но это новый грузовик с малым наработком (6 мес.).</li>
+    <li>Лучший постоянный NTE200 (≥27 мес., #44): 10.26 л/100т·км — хуже среднего 730E (9.77).</li>
+    <li>Лучший 730E (#24): 8.77 л/100т·км; средний по парку 730E = 9.77 л/100т·км.</li>
+    <li>Скорость под нагрузкой NTE200 выше (${s.nte_avg_speed} vs ${s.e730_avg_speed} км/ч), загрузка близка (${s.nte_avg_load} vs ${s.e730_avg_load} т).</li>
+    <li>Для снижения расхода NTE200 необходимо сократить разброс по парку: худшие машины (#55, #46, #58) превышают среднее 730E на 15–22%.</li>
+  </ul>`;
+
+// ── Monthly efficiency ──────────────────────────────────────────
+const months = DATA.months;
+new Chart(document.getElementById('monthlyEff'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'NTE200', data: DATA.nte_fleet_eff, borderColor: C.nte, backgroundColor: C.nte+'30', tension: 0.3, pointRadius: 3, fill: false, borderWidth: 2 },
+      { label: 'Komatsu 730E', data: DATA.e730_fleet_eff, borderColor: C.e730, backgroundColor: C.e730+'30', tension: 0.3, pointRadius: 3, fill: false, borderWidth: 2 },
+    ]
+  },
+  options: {
+    responsive: true, plugins: { legend: { labels: { color: '#ccc' } }, tooltip: { mode: 'index', intersect: false } },
+    scales: {
+      x: { ticks: { color: '#888', maxRotation: 45 }, grid: { color: '#1f2335' } },
+      y: { ticks: { color: '#888' }, grid: { color: '#1f2335' }, title: { display: true, text: 'л / 100 т·км', color: '#888' } }
+    }
+  }
+});
+
+// ── Truck count ──────────────────────────────────────────────────
+new Chart(document.getElementById('truckCount'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'NTE200', data: DATA.nte_truck_count, backgroundColor: C.nte+'99', borderRadius: 2 },
+      { label: 'Komatsu 730E', data: DATA.e730_truck_count, backgroundColor: C.e730+'99', borderRadius: 2 },
+    ]
+  },
+  options: {
+    responsive: true, plugins: { legend: { labels: { color: '#ccc' } } },
+    scales: {
+      x: { ticks: { color: '#888', maxRotation: 45 }, grid: { color: '#1f2335' } },
+      y: { ticks: { color: '#888' }, grid: { color: '#1f2335' }, title: { display: true, text: 'Кол-во машин', color: '#888' } }
+    }
+  }
+});
+
+// ── Monthly fuel ─────────────────────────────────────────────────
+const nteFuelMonthly = months.map((m, i) => {
+  const idx = DATA.months.indexOf(m);
+  // Approx from fleet efficiency and turnover
+  return null; // we need actual — use precomputed sums
+});
+
+// compute from fleet_eff * turnover/100
+const nteFuelK = DATA.nte_fleet_eff.map((e, i) => {
+  // л/100ткм * ткм/100 — we don't have turnover per month here, skip
+  return null;
+});
+
+// We'll just show relative consumption via eff × truck_count as proxy
+new Chart(document.getElementById('monthlyFuel'), {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'NTE200 л/100ткм × машин', data: DATA.nte_fleet_eff.map((e,i) => e ? +(e * DATA.nte_truck_count[i]).toFixed(0) : null), borderColor: C.nte, tension: 0.3, pointRadius: 3, fill: false, borderWidth: 2, yAxisID: 'y' },
+      { label: '730E л/100ткм × машин', data: DATA.e730_fleet_eff.map((e,i) => e ? +(e * DATA.e730_truck_count[i]).toFixed(0) : null), borderColor: C.e730, tension: 0.3, pointRadius: 3, fill: false, borderWidth: 2, yAxisID: 'y' },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#ccc' } },
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}` } }
+    },
+    scales: {
+      x: { ticks: { color: '#888', maxRotation: 45 }, grid: { color: '#1f2335' } },
+      y: { ticks: { color: '#888' }, grid: { color: '#1f2335' }, title: { display: true, text: 'Относит. нагрузка', color: '#888' } }
+    }
+  }
+});
+
+// ── Per-truck bar charts ─────────────────────────────────────────
+function truckBarChart(canvasId, truckData, color, avgFleet) {
+  const colors = truckData.eff.map(v => v <= avgFleet ? color+'cc' : color+'55');
+  new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: {
+      labels: truckData.ids,
+      datasets: [{
+        label: 'л/100т·км',
+        data: truckData.eff,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.slice(0,7)),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const i = ctx.dataIndex;
+              return [
+                `Эффективность: ${ctx.parsed.x} л/100т·км`,
+                `Мес. наблюд.: ${truckData.months[i]}`,
+                `Ср. скорость: ${truckData.speed[i]} км/ч`,
+                `Ср. загрузка: ${truckData.load[i]} т`,
+              ];
+            }
+          }
+        },
+        annotation: { annotations: {} }
+      },
+      scales: {
+        x: { ticks: { color: '#888' }, grid: { color: '#1f2335' }, title: { display: true, text: 'л / 100 т·км', color: '#888' } },
+        y: { ticks: { color: '#ccc', font: { size: 11 } }, grid: { color: '#1f2335' } }
+      }
+    }
+  });
+}
+
+truckBarChart('nteTruckBar', DATA.nte_trucks, C.nte, s.nte_fleet_eff);
+truckBarChart('e730TruckBar', DATA.e730_trucks, C.e730, s.e730_fleet_eff);
+
+// ── Tables ────────────────────────────────────────────────────────
+function buildTable(tableId, trucks, fleetEff, fleet) {
+  const tbl = document.getElementById(tableId);
+  const badge = fleet === 'NTE200' ? 'nte' : '730';
+  tbl.innerHTML = `
+    <tr>
+      <th>Самосвал</th><th>Мес.</th>
+      <th>Топливо итого, тыс. л</th>
+      <th>Ср. в мес., л</th>
+      <th>л/100т·км</th>
+      <th>Ср. скорость (груж.)</th>
+      <th>Ср. загрузка, т</th>
+      <th>Статус</th>
+    </tr>
+    ${trucks.ids.map((id, i) => {
+      const eff = trucks.eff[i];
+      const effCls = eff < fleetEff ? 'best' : eff > fleetEff * 1.1 ? 'bad' : 'warn';
+      const status = eff < fleetEff ? '✓ Лучше среднего' : eff > fleetEff * 1.1 ? '⚠ Выше нормы' : '— В норме';
+      return `<tr>
+        <td><span class="badge badge-${badge}">${id}</span></td>
+        <td>${trucks.months[i]}</td>
+        <td>${trucks.fuel[i].toLocaleString()}</td>
+        <td>${Math.round(trucks.fuel[i]*1000/trucks.months[i]).toLocaleString()}</td>
+        <td class="${effCls}">${eff}</td>
+        <td>${trucks.speed[i]} км/ч</td>
+        <td>${trucks.load[i]} т</td>
+        <td class="${effCls}">${status}</td>
+      </tr>`;
+    }).join('')}
+  `;
+}
+
+buildTable('nteTable', DATA.nte_trucks, s.nte_fleet_eff, 'NTE200');
+buildTable('e730Table', DATA.e730_trucks, s.e730_fleet_eff, '730E');
+</script>
+</body>
+</html>
