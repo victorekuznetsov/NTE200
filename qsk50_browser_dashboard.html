@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>QSK50 Analytics — NTE200 / KOMATSU 730E</title>
+<!-- CDN libraries: Plotly, PapaParse (CSV), SheetJS (Excel) -->
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#141c24;--bg2:#1c2630;--bg3:#242f39;
+  --card:#2a3138;--brd:rgba(255,255,255,0.08);--brd2:rgba(255,255,255,0.14);
+  --tx:#e8edf6;--tx2:#b3bddc;--tx3:#80868b;
+  --acc:#3ef0af;--red:#e84855;--amb:#f5a623;--grn:#22c55e;--blu:#7e83fa;--pur:#b668e4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(62,240,175,.018)1px,transparent 1px),linear-gradient(90deg,rgba(62,240,175,.018)1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── TOP BAR ── */
+.tb{display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;
+  border-bottom:1px solid var(--brd);background:rgba(10,13,18,.95);
+  backdrop-filter:blur(12px);position:sticky;top:0;z-index:200;flex-shrink:0}
+.logo{font-size:14px;font-weight:800;color:var(--acc);line-height:1.1}
+.logo small{color:var(--tx3);font-weight:400;font-size:9px;display:block;letter-spacing:.4px}
+.sep{width:1px;height:26px;background:var(--brd2);flex-shrink:0}
+.kpis{display:flex;gap:22px;margin-left:auto}
+.kpi .v{font-size:15px;font-weight:700;color:var(--acc);font-family:monospace}
+.kpi .l{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── LOAD PANEL ── */
+.load-panel{border-bottom:1px solid var(--brd);background:var(--bg2);padding:12px 18px;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;position:sticky;top:50px;z-index:190}
+.load-title{font-size:11px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.6px;padding-top:4px;white-space:nowrap}
+.file-zones{display:flex;gap:10px;flex-wrap:wrap;flex:1}
+.fz{display:flex;flex-direction:column;gap:4px;align-items:center;
+  padding:8px 12px;border:1px dashed var(--brd2);border-radius:8px;
+  cursor:pointer;transition:all .15s;min-width:120px;text-align:center;position:relative}
+.fz:hover,.fz.drag{border-color:var(--acc);background:rgba(62,240,175,.06)}
+.fz.loaded{border-color:var(--grn);border-style:solid;background:rgba(34,197,94,.06)}
+.fz .icon{font-size:18px}
+.fz .lbl{font-size:10px;color:var(--tx3);line-height:1.3}
+.fz .count{font-size:9px;color:var(--grn);font-weight:700;margin-top:2px}
+.fz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.fz input[multiple]{cursor:pointer}
+.load-btn{padding:8px 16px;background:var(--acc);color:#000;border:none;border-radius:7px;
+  font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;align-self:flex-start;margin-top:0}
+.load-btn:hover{background:#5ff7c0}
+.load-btn:disabled{background:var(--brd2);color:var(--tx3);cursor:not-allowed}
+.status-bar{font-size:10px;color:var(--tx3);margin-top:2px}
+
+/* ── TABS ── */
+.tabs{display:flex;border-bottom:1px solid var(--brd);background:var(--bg2);
+  overflow-x:auto;position:sticky;top:130px;z-index:180;flex-shrink:0}
+.tabs::-webkit-scrollbar{height:3px}
+.tabs::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+.tb2{padding:10px 15px;border:none;border-bottom:2px solid transparent;
+  background:none;color:var(--tx3);cursor:pointer;font-size:11px;white-space:nowrap;
+  transition:all .15s;font-weight:500}
+.tb2:hover{color:var(--tx);background:rgba(255,255,255,0.04)}
+.tb2.act{color:var(--acc);border-bottom-color:var(--acc);background:rgba(62,240,175,.06)}
+
+/* ── CONTENT ── */
+.panel{display:none;padding:16px}
+.panel.show{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.g1{margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:12px;overflow:hidden}
+
+/* ── TRUCK SELECTOR ── */
+.tsrow{display:flex;align-items:center;gap:10px;padding-bottom:14px;flex-wrap:wrap}
+.tsrow label{font-size:11px;color:var(--tx3)}
+.tsel{background:var(--bg3);border:1px solid var(--brd2);border-radius:7px;
+  padding:7px 12px;color:var(--tx);font-size:12px;outline:none;cursor:pointer;min-width:200px}
+.tsel:focus{border-color:var(--acc)}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:300px;gap:12px;color:var(--tx3)}
+.empty .big{font-size:48px;opacity:.4}
+.empty p{font-size:13px;text-align:center;line-height:1.6;max-width:380px}
+
+/* ── THRESHOLDS LEGEND ── */
+.thresh{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.th-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx3)}
+.th-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── SPINNER ── */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--brd);
+  border-top-color:var(--acc);border-radius:50%;animation:sp .5s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="tb">
+  <div class="logo">⚙ QSK50 Analytics<small>NTE200 / KOMATSU 730E — Cummins MCRS</small></div>
+  <div class="sep"></div>
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kpi-t">0</div><div class="l">Самосвалов</div></div>
+    <div class="kpi"><div class="v" id="kpi-r">0</div><div class="l">Записей ДВС</div></div>
+    <div class="kpi"><div class="v" id="kpi-f">0</div><div class="l">Кодов ЭБУ</div></div>
+    <div class="kpi"><div class="v" id="kpi-m">0</div><div class="l">Ремонтов</div></div>
+    <div class="kpi"><div class="v" id="kpi-h" style="color:var(--grn)">–</div><div class="l">Health ДВС</div></div>
+  </div>
+</div>
+
+<!-- FILE LOAD PANEL -->
+<div class="load-panel">
+  <div class="load-title">📂 Данные</div>
+  <div class="file-zones">
+
+    <div class="fz" id="fz-insite" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'insite',this)">
+      <span class="icon">📊</span>
+      <span class="lbl">INSITE CSV<br><span style="color:var(--tx3);font-size:9px">NTE200A*.csv / DML-*.csv<br>730E*.csv</span></span>
+      <span class="count" id="cnt-insite"></span>
+      <input type="file" accept=".csv" multiple onchange="loadFiles('insite',this.files)">
+    </div>
+
+    <div class="fz" id="fz-ecm" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'ecm',this)">
+      <span class="icon">⚠️</span>
+      <span class="lbl">ECM XLSX<br><span style="color:var(--tx3);font-size:9px">{N}_ECM0_{дата}.xlsx</span></span>
+      <span class="count" id="cnt-ecm"></span>
+      <input type="file" accept=".xlsx,.xls" multiple onchange="loadFiles('ecm',this.files)">
+    </div>
+
+    <div class="fz" id="fz-maint" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'maint',this)">
+      <span class="icon">🔧</span>
+      <span class="lbl">Отчёт ТО<br><span style="color:var(--tx3);font-size:9px">ОТЧЕТ Полюс Магадан.xlsx</span></span>
+      <span class="count" id="cnt-maint"></span>
+      <input type="file" accept=".xlsx,.xls" onchange="loadFiles('maint',this.files)">
+    </div>
+
+    <div class="fz" id="fz-gbc" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'gbc',this)">
+      <span class="icon">🔩</span>
+      <span class="lbl">ГБЦ ремонты<br><span style="color:var(--tx3);font-size:9px">ГБЦ ремонты.xlsx</span></span>
+      <span class="count" id="cnt-gbc"></span>
+      <input type="file" accept=".xlsx,.xls" onchange="loadFiles('gbc',this.files)">
+    </div>
+
+    <div class="fz" id="fz-oil" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'oil',this)">
+      <span class="icon">🛢️</span>
+      <span class="lbl">Доливки масла<br><span style="color:var(--tx3);font-size:9px">Доливки Горная Евразия.xlsx</span></span>
+      <span class="count" id="cnt-oil"></span>
+      <input type="file" accept=".xlsx,.xls" onchange="loadFiles('oil',this.files)">
+    </div>
+
+    <div class="fz" id="fz-payload" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'payload',this)">
+      <span class="icon">⚖️</span>
+      <span class="lbl">Payload XLSX<br><span style="color:var(--tx3);font-size:9px">Весовая_{N}_{дата}.xlsx</span></span>
+      <span class="count" id="cnt-payload"></span>
+      <input type="file" accept=".xlsx,.xls" multiple onchange="loadFiles('payload',this.files)">
+    </div>
+
+    <div class="fz" id="fz-ge" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'ge',this)">
+      <span class="icon">⚡</span>
+      <span class="lbl">GE Events XLSX<br><span style="color:var(--tx3);font-size:9px">GE_{N}_{дата}.xlsx</span></span>
+      <span class="count" id="cnt-ge"></span>
+      <input type="file" accept=".xlsx,.xls" multiple onchange="loadFiles('ge',this.files)">
+    </div>
+
+    <div class="fz" id="fz-prod" ondragover="dzDrag(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'prod',this)">
+      <span class="icon">📈</span>
+      <span class="lbl">Производит. CSV<br><span style="color:var(--tx3);font-size:9px">speed and production.csv</span></span>
+      <span class="count" id="cnt-prod"></span>
+      <input type="file" accept=".csv" onchange="loadFiles('prod',this.files)">
+    </div>
+
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;align-self:stretch;justify-content:flex-end">
+    <div class="status-bar" id="status">Загрузите файлы данных</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tb2 act" onclick="showTab('fleet',this)">📊 Обзор парка</button>
+  <button class="tb2" onclick="showTab('engine',this)">🔩 Параметры ДВС</button>
+  <button class="tb2" onclick="showTab('predict',this)">🔮 Предиктивный</button>
+  <button class="tb2" onclick="showTab('ecm',this)">⚠ Коды ЭБУ</button>
+  <button class="tb2" onclick="showTab('maint',this)">🔧 История ТО</button>
+  <button class="tb2" onclick="showTab('payload',this)">⚖ Нагрузка</button>
+  <button class="tb2" onclick="showTab('ge',this)">⚡ GE Привод</button>
+  <button class="tb2" onclick="showTab('prod',this)">📈 Производит.</button>
+  <button class="tb2" onclick="showTab('oil',this)">🛢 Масло</button>
+</div>
+
+<!-- TAB 1: Fleet -->
+<div id="tab-fleet" class="panel show">
+  <div class="g3">
+    <div class="card"><div id="ch-kpi-gauge"></div></div>
+    <div class="card" style="grid-column:span 2"><div id="ch-health-matrix"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-dt-heatmap"></div></div>
+    <div class="card"><div id="ch-pareto"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-mtbf"></div></div>
+    <div class="card"><div id="ch-dt-bar"></div></div>
+  </div>
+</div>
+
+<!-- TAB 2: Engine -->
+<div id="tab-engine" class="panel">
+  <div class="tsrow">
+    <label>Самосвал:</label>
+    <select class="tsel" id="eng-sel" onchange="renderEngineTab()"></select>
+  </div>
+  <div class="thresh">
+    <div class="th-item"><div class="th-dot" style="background:var(--grn)"></div>Норма</div>
+    <div class="th-item"><div class="th-dot" style="background:var(--amb)"></div>Внимание</div>
+    <div class="th-item"><div class="th-dot" style="background:var(--red)"></div>Критично</div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-rpm"></div></div>
+    <div class="card"><div id="ch-tcool"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-oil-tp"></div></div>
+    <div class="card"><div id="ch-fuel"></div></div>
+  </div>
+  <div class="g1 card"><div id="ch-exh-hm"></div></div>
+  <div class="g2">
+    <div class="card"><div id="ch-cyl-bal"></div></div>
+    <div class="card"><div id="ch-boost"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-crank"></div></div>
+    <div class="card"><div id="ch-load"></div></div>
+  </div>
+  <div class="g1 card"><div id="ch-stats"></div></div>
+</div>
+
+<!-- TAB 3: Predictive -->
+<div id="tab-predict" class="panel">
+  <div class="tsrow">
+    <label>Самосвал:</label>
+    <select class="tsel" id="pred-sel" onchange="renderPredictTab()"></select>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-health-gauge"></div></div>
+    <div class="card"><div id="ch-risk-table"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-anomaly"></div></div>
+    <div class="card"><div id="ch-forecast"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-ewma-cool"></div></div>
+    <div class="card"><div id="ch-crank-trend"></div></div>
+  </div>
+</div>
+
+<!-- TAB 4: ECM -->
+<div id="tab-ecm" class="panel">
+  <div class="g2">
+    <div class="card"><div id="ch-ecm-pareto"></div></div>
+    <div class="card"><div id="ch-ecm-lamp"></div></div>
+  </div>
+  <div class="g1 card"><div id="ch-ecm-heatmap"></div></div>
+  <div class="g1 card"><div id="ch-ecm-active"></div></div>
+</div>
+
+<!-- TAB 5: Maintenance -->
+<div id="tab-maint" class="panel">
+  <div class="g1 card"><div id="ch-maint-timeline"></div></div>
+  <div class="g2">
+    <div class="card"><div id="ch-gbc-hm"></div></div>
+    <div class="card"><div id="ch-mtbf2"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-work-cat"></div></div>
+    <div class="card"><div id="ch-dt-hist"></div></div>
+  </div>
+</div>
+
+<!-- TAB 6: Payload -->
+<div id="tab-payload" class="panel">
+  <div class="g2">
+    <div class="card"><div id="ch-payload-dist"></div></div>
+    <div class="card"><div id="ch-tkph"></div></div>
+  </div>
+  <div class="g1 card"><div id="ch-payload-truck"></div></div>
+</div>
+
+<!-- TAB 7: GE -->
+<div id="tab-ge" class="panel">
+  <div class="g2">
+    <div class="card"><div id="ch-ge-types"></div></div>
+    <div class="card"><div id="ch-ge-restrict"></div></div>
+  </div>
+  <div class="g1 card"><div id="ch-ge-timeline"></div></div>
+</div>
+
+<!-- TAB 8: Production -->
+<div id="tab-prod" class="panel">
+  <div class="g2">
+    <div class="card"><div id="ch-prod-ton"></div></div>
+    <div class="card"><div id="ch-prod-speed"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div id="ch-prod-load"></div></div>
+    <div class="card"><div id="ch-prod-scatter"></div></div>
+  </div>
+</div>
+
+<!-- TAB 9: Oil -->
+<div id="tab-oil" class="panel">
+  <div class="g1 card"><div id="ch-oil-bar"></div></div>
+  <div class="g2">
+    <div class="card"><div id="ch-oil-trend"></div></div>
+    <div class="card"><div id="ch-oil-hm"></div></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════════════════════
+// GLOBAL DATA STORE
+// ════════════════════════════════════════════════════════════
+const DB = {
+  insite: {},   // key="{model}_{truck}" → {rows:[], meta:{}}
+  ecm: [],
+  maint: [],
+  gbc: [],
+  oil: [],
+  payload: [],
+  ge: [],
+  prod: [],
+};
+
+// ── THEME ──────────────────────────────────────────────────
+const C = {
+  bg:'#141c24', bg2:'#1c2630', card:'#2a3138',
+  acc:'#3ef0af', red:'#e84855', amb:'#f5a623',
+  grn:'#22c55e', blu:'#7e83fa', pur:'#b668e4',
+  tx:'#e8edf6', tx3:'#80868b',
+};
+const PLY = {
+  paper_bgcolor: C.bg2, plot_bgcolor: C.card,
+  font: {color: C.tx, family:'Segoe UI,sans-serif'},
+  margin: {l:45,r:15,t:40,b:40},
+  xaxis: {gridcolor:'rgba(255,255,255,0.05)', zerolinecolor:'rgba(255,255,255,0.08)'},
+  yaxis: {gridcolor:'rgba(255,255,255,0.05)', zerolinecolor:'rgba(255,255,255,0.08)'},
+  legend: {bgcolor:'rgba(0,0,0,0)', borderwidth:0},
+};
+const PLY_CFG = {responsive:true, displaylogo:false,
+  modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d']};
+
+function pl(divId, data, layout={}, config={}) {
+  const L = Object.assign({}, PLY, layout);
+  if (layout.xaxis) L.xaxis = Object.assign({}, PLY.xaxis, layout.xaxis);
+  if (layout.yaxis) L.yaxis = Object.assign({}, PLY.yaxis, layout.yaxis);
+  Plotly.react(divId, data, L, Object.assign({}, PLY_CFG, config));
+}
+
+// ── COLUMN ALIASES ─────────────────────────────────────────
+const ALIASES = {
+  rpm:     ['Engine Speed (RPM)', 'Частота вращения двигателя'],
+  tcool:   ['Engine Coolant Temperature', 'Температура охлаждающей жидкости двигателя'],
+  toil:    ['Engine Oil Temperature', 'Температура масла (°C)'],
+  poil:    ['Engine Oil Pressure (kPa)', 'Давление масла (кПа)'],
+  texh:    ['Average Exhaust Temperature', 'Средняя температура отработавших газов'],
+  fuel:    ['Instantaneous Fuel Rate', 'Мгновенный расход топлива'],
+  crank:   ['Crankcase Pressure', 'Давление картерных газов'],
+  boost:   ['Intake Manifold Pressure (kPa)', 'Давление во впускном коллекторе (кПа)'],
+  load:    ['Percent Load', 'Относительная нагрузка'],
+  batt:    ['Battery Voltage', 'Напряжение аккумуляторной батареи'],
+  frail_m: ['Fuel Rail Pressure Measured', 'Измеренное давление в общем топливопроводе'],
+  frail_c: ['Fuel Rail Pressure Commanded', 'Заданное давление в общем топливопроводе'],
+};
+
+function resolveCol(row0keys, alias) {
+  const terms = ALIASES[alias] || [];
+  for (const t of terms)
+    for (const k of row0keys)
+      if (k.includes(t)) return k;
+  return null;
+}
+
+function vals(rows, col) {
+  if (!col) return [];
+  return rows.map(r => {
+    let v = r[col];
+    if (typeof v === 'string') v = parseFloat(v.replace(',','.'));
+    return isNaN(v) ? null : v;
+  });
+}
+
+function nonNull(arr) { return arr.filter(v => v !== null && v !== undefined && !isNaN(v)); }
+function mean(arr)    { const a=nonNull(arr); return a.length ? a.reduce((s,v)=>s+v,0)/a.length : 0; }
+function stddev(arr)  { const a=nonNull(arr), m=mean(a); return Math.sqrt(a.map(v=>(v-m)**2).reduce((s,v)=>s+v,0)/(a.length||1)); }
+function ewma(arr, alpha=0.1) {
+  const out=[];
+  let prev=nonNull(arr)[0]||0;
+  for(const v of arr){ prev=v!==null ? alpha*v+(1-alpha)*prev : prev; out.push(+prev.toFixed(2)); }
+  return out;
+}
+function linreg(xs, ys) {
+  const n=xs.length, mx=mean(xs), my=mean(ys);
+  let num=0, den=0;
+  for(let i=0;i<n;i++){num+=(xs[i]-mx)*(ys[i]-my); den+=(xs[i]-mx)**2;}
+  const slope=den?num/den:0, intercept=my-slope*mx;
+  return {slope, intercept};
+}
+function rollingMean(arr, w=30) {
+  return arr.map((_,i) => {
+    const sl=arr.slice(Math.max(0,i-w+1),i+1).filter(v=>v!==null);
+    return sl.length ? mean(sl) : null;
+  });
+}
+
+// ── STATUS ─────────────────────────────────────────────────
+function setStatus(msg, color='var(--tx3)') {
+  const el = document.getElementById('status');
+  el.style.color = color;
+  el.textContent = msg;
+}
+
+function updateKPIs() {
+  const trucks = Object.keys(DB.insite).length;
+  let totalRows = 0;
+  for(const k in DB.insite) totalRows += DB.insite[k].rows.length;
+  document.getElementById('kpi-t').textContent = trucks;
+  document.getElementById('kpi-r').textContent = totalRows > 1000 ? (totalRows/1000).toFixed(0)+'K' : totalRows;
+  document.getElementById('kpi-f').textContent = DB.ecm.length;
+  document.getElementById('kpi-m').textContent = DB.maint.length;
+  // avg health
+  if (trucks > 0) {
+    const scores = Object.values(DB.insite).map(d => calcHealth(d.rows, d.cols));
+    const avg = mean(scores);
+    const el = document.getElementById('kpi-h');
+    el.textContent = avg.toFixed(0) + '%';
+    el.style.color = avg >= 70 ? C.grn : avg >= 40 ? C.amb : C.red;
+  }
+}
+
+// ── DRAG/DROP ──────────────────────────────────────────────
+function dzDrag(e, el) { e.preventDefault(); el.classList.add('drag'); }
+function dzLeave(el)   { el.classList.remove('drag'); }
+function dzDrop(e, type, el) {
+  e.preventDefault(); el.classList.remove('drag');
+  loadFiles(type, e.dataTransfer.files);
+}
+
+// ════════════════════════════════════════════════════════════
+// FILE LOADERS
+// ════════════════════════════════════════════════════════════
+function loadFiles(type, files) {
+  if (!files || files.length === 0) return;
+  const arr = Array.from(files);
+  setStatus(`Загрузка ${arr.length} файл(ов)…`, C.acc);
+  const tasks = arr.map(f => loadOneFile(type, f));
+  Promise.all(tasks).then(() => {
+    setStatus(`Загружено: ${arr.length} файл(ов)`, C.grn);
+    updateKPIs();
+    refreshCurrentTab();
+    updateTruckSelectors();
+  }).catch(e => setStatus('Ошибка: '+e.message, C.red));
+}
+
+function loadOneFile(type, file) {
+  return new Promise((resolve, reject) => {
+    if (type === 'insite' || type === 'prod') {
+      parseCSV(file, type, resolve, reject);
+    } else {
+      parseXLSX(file, type, resolve, reject);
+    }
+  });
+}
+
+// ── CSV PARSER (INSITE + production) ──────────────────────
+function parseCSV(file, type, resolve, reject) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    let text = e.target.result;
+    // detect encoding issues: if many replacement chars, re-read won't help, just use as-is
+    if (type === 'prod') {
+      parseProdCSV(text, file.name);
+      resolve();
+      return;
+    }
+    // INSITE: find header row (Date/Дата)
+    const lines = text.split(/\r?\n/);
+    let hdrIdx = -1;
+    for (let i=0; i<lines.length; i++) {
+      const l = lines[i].trim();
+      if (l.startsWith('"Date"') || l.startsWith('Date,') ||
+          l.startsWith('"Дата"') || l.startsWith('Дата,')) {
+        hdrIdx = i; break;
+      }
+    }
+    if (hdrIdx < 0) { resolve(); return; }
+    const dataLines = lines.slice(hdrIdx).filter(l=>l.trim()).join('\n');
+    Papa.parse(dataLines, {
+      header: true,
+      dynamicTyping: false,
+      skipEmptyLines: true,
+      complete: result => {
+        if (!result.data || result.data.length < 2) { resolve(); return; }
+        // convert numerics (Russian comma decimal)
+        const rows = result.data.map(row => {
+          const out = {};
+          for (const k in row) {
+            const v = row[k];
+            if (typeof v === 'string') {
+              const n = parseFloat(v.replace(',','.'));
+              out[k] = isNaN(n) ? v : n;
+            } else out[k] = v;
+          }
+          // parse datetime
+          const dc = out['Дата'] !== undefined ? 'Дата' : 'Date';
+          const tc = out['Время'] !== undefined ? 'Время' : 'Time';
+          if (out[dc] && out[tc]) {
+            out._dt = new Date(String(out[dc]).replace(/(\d{2})\.(\d{2})\.(\d{4})/,'$3-$2-$1')
+              + 'T' + String(out[tc]).substring(0,8));
+          }
+          return out;
+        }).filter(r => r._dt && !isNaN(r._dt));
+
+        const truckNum = extractTruckNum(file.name);
+        const model = file.name.includes('NTE') || file.name.includes('DML') ? 'NTE200' : '730E';
+        const key = model + '_' + truckNum;
+        const cols = Object.keys(rows[0]);
+
+        if (!DB.insite[key]) DB.insite[key] = {rows:[], cols, model, truck:truckNum};
+        DB.insite[key].rows.push(...rows);
+        DB.insite[key].cols = cols;
+
+        const el = document.getElementById('fz-insite');
+        el.classList.add('loaded');
+        document.getElementById('cnt-insite').textContent =
+          Object.keys(DB.insite).length + ' самосвала';
+        resolve();
+      },
+      error: reject,
+    });
+  };
+  reader.onerror = reject;
+  reader.readAsText(file, 'windows-1251');
+}
+
+function parseProdCSV(text, fname) {
+  Papa.parse(text, {
+    header: true, dynamicTyping: true, skipEmptyLines: true,
+    complete: result => {
+      DB.prod = result.data;
+      document.getElementById('fz-prod').classList.add('loaded');
+      document.getElementById('cnt-prod').textContent = result.data.length + ' строк';
+    }
+  });
+}
+
+// ── XLSX PARSER ────────────────────────────────────────────
+function parseXLSX(file, type, resolve, reject) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      if (type === 'ecm') {
+        parseECM(wb, file.name);
+      } else if (type === 'maint') {
+        parseMaint(wb);
+      } else if (type === 'gbc') {
+        parseGBC(wb);
+      } else if (type === 'oil') {
+        parseOil(wb);
+      } else if (type === 'payload') {
+        parsePayload(wb, file.name);
+      } else if (type === 'ge') {
+        parseGE(wb, file.name);
+      }
+      resolve();
+    } catch(ex) { reject(ex); }
+  };
+  reader.onerror = reject;
+  reader.readAsArrayBuffer(file);
+}
+
+function sheetToArr(sheet) {
+  return XLSX.utils.sheet_to_json(sheet, {header:1, defval:null, raw:false});
+}
+
+function parseECM(wb, fname) {
+  const truckNum = extractTruckNum(fname);
+  const sheet = wb.Sheets['Fault Codes'] || wb.Sheets[wb.SheetNames[0]];
+  const rows = sheetToArr(sheet);
+  // find header row with 'Fault Codes' or 'Status'
+  let hdr = -1;
+  for (let i=0; i<rows.length; i++) {
+    if (rows[i] && rows[i].some(c => String(c).includes('Fault') || String(c).includes('Status'))) {
+      hdr = i; break;
+    }
+  }
+  if (hdr < 0) return;
+  const headers = rows[hdr];
+  for (let i = hdr+1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every(v => v === null)) continue;
+    const obj = {};
+    headers.forEach((h,j) => { if(h) obj[String(h).trim()] = row[j]; });
+    obj.truck = truckNum;
+    if (obj['Fault Codes'] && !isNaN(parseInt(obj['Fault Codes']))) {
+      DB.ecm.push(obj);
+    }
+  }
+  document.getElementById('fz-ecm').classList.add('loaded');
+  document.getElementById('cnt-ecm').textContent = DB.ecm.length + ' кодов';
+}
+
+function parseMaint(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, {defval:null, raw:false});
+  DB.maint.push(...rows);
+  document.getElementById('fz-maint').classList.add('loaded');
+  document.getElementById('cnt-maint').textContent = DB.maint.length + ' записей';
+}
+
+function parseGBC(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = sheetToArr(sheet);
+  if (rows.length < 2) return;
+  const headers = rows[1]; // header on row 1
+  const data = rows.slice(2).map(r => {
+    const obj = {};
+    headers.forEach((h,j) => { if(h) obj[String(h).trim()] = r[j]; });
+    return obj;
+  });
+  DB.gbc = data;
+  document.getElementById('fz-gbc').classList.add('loaded');
+  document.getElementById('cnt-gbc').textContent = data.length + ' записей';
+}
+
+function parseOil(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = sheetToArr(sheet);
+  // find header row with 'Дата'
+  let hdr = -1;
+  for (let i=0; i<rows.length; i++) {
+    if (rows[i] && rows[i].some(c => String(c).includes('Дата'))) { hdr=i; break; }
+  }
+  if (hdr < 0) return;
+  const headers = rows[hdr];
+  const data = rows.slice(hdr+1).map(r => {
+    const obj = {};
+    headers.forEach((h,j) => { if(h) obj[String(h).trim()] = r[j]; });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== null));
+  DB.oil.push(...data);
+  document.getElementById('fz-oil').classList.add('loaded');
+  document.getElementById('cnt-oil').textContent = DB.oil.length + ' строк';
+}
+
+function parsePayload(wb, fname) {
+  const truckNum = extractTruckNum(fname);
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = sheetToArr(sheet);
+  // header in first row, actual cols in second row
+  if (rows.length < 2) return;
+  const headers = rows[0];
+  const data = rows.slice(1).map(r => {
+    const obj = {};
+    headers.forEach((h,j) => { if(h) obj[String(h).trim()] = r[j]; });
+    obj.truck = truckNum;
+    return obj;
+  }).filter(r => r.truck);
+  DB.payload.push(...data);
+  document.getElementById('fz-payload').classList.add('loaded');
+  document.getElementById('cnt-payload').textContent = DB.payload.length + ' рейсов';
+}
+
+function parseGE(wb, fname) {
+  const truckNum = extractTruckNum(fname);
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = sheetToArr(sheet);
+  // header on row index 7 (0-based)
+  let hdr = 7;
+  // try to find row with 'Event' or 'Тип'
+  for (let i=0; i<Math.min(12,rows.length); i++) {
+    if (rows[i] && rows[i].some(c => String(c).toLowerCase().includes('event') || String(c).includes('Тип'))) {
+      hdr = i; break;
+    }
+  }
+  const headers = rows[hdr];
+  const data = rows.slice(hdr+1).map(r => {
+    const obj = {};
+    headers.forEach((h,j) => { if(h) obj[String(h).trim()] = r[j]; });
+    obj.truck = truckNum;
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== null && String(v).trim()));
+  DB.ge.push(...data);
+  document.getElementById('fz-ge').classList.add('loaded');
+  document.getElementById('cnt-ge').textContent = DB.ge.length + ' событий';
+}
+
+// ── UTILS ──────────────────────────────────────────────────
+function extractTruckNum(fname) {
+  // DML-YYYYMMDD-HHMMSS 82 …
+  let m = fname.match(/DML-\d+-\d+\s+(\d+)/);
+  if (m) return parseInt(m[1]);
+  // №43, N43, _43_, (43)
+  for (const pat of [/№(\d+)/, /N(\d+)/, /_(\d+)[_.]/, /\((\d+)\)/, /\s(\d{2,3})\s/]) {
+    m = fname.match(pat);
+    if (m) return parseInt(m[1]);
+  }
+  return 0;
+}
+
+function dtArr(rows) { return rows.map(r => r._dt ? r._dt.toISOString() : null); }
+
+// ── HEALTH SCORE ───────────────────────────────────────────
+function scoreParam(val, okLo, okHi, warnHi, higherBad=true) {
+  if (val === null || isNaN(val)) return 70;
+  if (higherBad) {
+    if (val <= okHi)   return 100;
+    if (val <= warnHi) return 60;
+    return 20;
+  } else {
+    if (val >= okLo)  return 100;
+    if (val >= warnHi) return 60;
+    return 20;
+  }
+}
+
+function calcHealth(rows, cols) {
+  const get = (alias) => {
+    const c = resolveCol(cols, alias);
+    if (!c) return null;
+    const arr = nonNull(vals(rows, c));
+    return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : null;
+  };
+  const scores = [
+    scoreParam(get('tcool'), 82, 95, 105, true),
+    scoreParam(get('poil'), 300, 350, 700, false),
+    scoreParam(get('toil'), 85, 105, 115, true),
+    scoreParam(get('texh'), 380, 520, 560, true),
+    scoreParam(get('crank'), 0, 3, 7, true),
+  ].filter(s => s !== null);
+  return scores.length ? mean(scores) : 70;
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB MANAGEMENT
+// ════════════════════════════════════════════════════════════
+let currentTab = 'fleet';
+
+function showTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.tb2').forEach(b => b.classList.remove('act'));
+  document.getElementById('tab-' + name).classList.add('show');
+  btn.classList.add('act');
+  currentTab = name;
+  renderTab(name);
+}
+
+function refreshCurrentTab() { renderTab(currentTab); }
+
+function renderTab(name) {
+  if (name === 'fleet')   renderFleetTab();
+  else if (name === 'engine')  renderEngineTab();
+  else if (name === 'predict') renderPredictTab();
+  else if (name === 'ecm')     renderECMTab();
+  else if (name === 'maint')   renderMaintTab();
+  else if (name === 'payload') renderPayloadTab();
+  else if (name === 'ge')      renderGETab();
+  else if (name === 'prod')    renderProdTab();
+  else if (name === 'oil')     renderOilTab();
+}
+
+function updateTruckSelectors() {
+  const keys = Object.keys(DB.insite).sort();
+  for (const selId of ['eng-sel','pred-sel']) {
+    const sel = document.getElementById(selId);
+    const prev = sel.value;
+    sel.innerHTML = '';
+    keys.forEach(k => {
+      const d = DB.insite[k];
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = d.model + ' №' + d.truck;
+      sel.appendChild(opt);
+    });
+    if (prev && DB.insite[prev]) sel.value = prev;
+  }
+}
+
+function emptyFig(divId, msg='Нет данных — загрузите файлы') {
+  pl(divId, [{type:'scatter',x:[],y:[]}],
+    {title:{text:msg,font:{color:C.tx3,size:12}},height:200});
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 1: FLEET OVERVIEW
+// ════════════════════════════════════════════════════════════
+function renderFleetTab() {
+  renderKPIGauge();
+  renderHealthMatrix();
+  renderDowntimeHeatmap();
+  renderParetoFailures();
+  renderMTBF('ch-mtbf');
+  renderDowntimeBar();
+}
+
+function renderKPIGauge() {
+  const trucks = Object.keys(DB.insite);
+  if (!trucks.length) { emptyFig('ch-kpi-gauge','Загрузите INSITE CSV'); return; }
+  const scores = trucks.map(k => calcHealth(DB.insite[k].rows, DB.insite[k].cols));
+  const avg = mean(scores);
+  pl('ch-kpi-gauge',[{
+    type:'indicator', mode:'gauge+number',
+    value: +avg.toFixed(1),
+    title:{text:'Ср. Health ДВС', font:{size:12}},
+    number:{font:{color: avg>=70?C.grn:avg>=40?C.amb:C.red, size:32}},
+    gauge:{
+      axis:{range:[0,100], tickcolor:C.tx3},
+      bar:{color: avg>=70?C.grn:avg>=40?C.amb:C.red},
+      steps:[{range:[0,40],color:C.red},{range:[40,70],color:C.amb},{range:[70,100],color:C.grn}],
+      threshold:{line:{color:'white',width:3},value:70},
+    }
+  }],{height:230,margin:{l:20,r:20,t:40,b:20}});
+}
+
+function renderHealthMatrix() {
+  const keys = Object.keys(DB.insite).sort();
+  if (!keys.length) { emptyFig('ch-health-matrix','Загрузите INSITE CSV'); return; }
+  const params = [
+    {alias:'tcool', label:'T охл.'},
+    {alias:'poil',  label:'P масла'},
+    {alias:'toil',  label:'T масла'},
+    {alias:'texh',  label:'T выхл.'},
+    {alias:'crank', label:'P картера'},
+    {alias:'fuel',  label:'Топливо'},
+  ];
+  const zRaw = [], zNorm = [], yLabels = [];
+  for (const k of keys) {
+    const d = DB.insite[k];
+    const row = [], rowN = [];
+    for (const p of params) {
+      const c = resolveCol(d.cols, p.alias);
+      const arr = nonNull(vals(d.rows, c));
+      const v = arr.length ? mean(arr) : null;
+      row.push(v !== null ? +v.toFixed(1) : null);
+      rowN.push(v);
+    }
+    zRaw.push(row);
+    zNorm.push(rowN);
+    yLabels.push(d.model + ' №' + d.truck);
+  }
+  // normalise per column 0-100
+  const paramCount = params.length;
+  const zViz = zNorm.map(r => r.map((_,c) => {
+    const col = zNorm.map(r2=>r2[c]).filter(v=>v!==null);
+    if (!col.length) return 50;
+    const lo=Math.min(...col), hi=Math.max(...col);
+    return hi>lo ? (zNorm[zNorm.indexOf(r)][c]-lo)/(hi-lo)*100 : 50;
+  }));
+  const text = zRaw.map(r => r.map(v => v!==null?String(v):'–'));
+  pl('ch-health-matrix',[{
+    type:'heatmap', z:zViz, x:params.map(p=>p.label), y:yLabels,
+    colorscale:[[0,C.red],[0.5,C.amb],[1,C.grn]],
+    text, texttemplate:'%{text}', textfont:{size:10},
+    showscale:true, colorbar:{title:{text:'Норм.'},tickfont:{color:C.tx3}},
+  }],{title:'Матрица здоровья парка', height:Math.max(260, keys.length*32+80)});
+}
+
+function renderDowntimeHeatmap() {
+  if (!DB.maint.length) { emptyFig('ch-dt-heatmap','Загрузите ОТЧЕТ ТО'); return; }
+  const truckKey = findMaintCol('гараж');
+  const dtKey = findMaintCol('простоя', 'полное');
+  const dateKey = findMaintCol('Дата', 'запуска');
+  if (!truckKey || !dateKey) { emptyFig('ch-dt-heatmap','Нет колонок'); return; }
+  const map = {}; // truck → week → hours
+  for (const r of DB.maint) {
+    const truck = parseInt(r[truckKey]);
+    if (isNaN(truck)) continue;
+    const dt = new Date(r[dateKey]);
+    if (isNaN(dt)) continue;
+    const week = dt.getFullYear() + '-W' + String(getWeek(dt)).padStart(2,'0');
+    const h = parseDowntime(r[dtKey]);
+    if (!map[truck]) map[truck] = {};
+    map[truck][week] = (map[truck][week]||0) + h;
+  }
+  const trucks = Object.keys(map).sort((a,b)=>+a-+b);
+  const weeks = [...new Set(Object.values(map).flatMap(w=>Object.keys(w)))].sort();
+  const z = trucks.map(t => weeks.map(w => map[t][w]||0));
+  pl('ch-dt-heatmap',[{
+    type:'heatmap', z, x:weeks, y:trucks.map(t=>'№'+t),
+    colorscale:[[0,C.bg2],[0.5,C.amb],[1,C.red]],
+    colorbar:{title:{text:'Часы'},tickfont:{color:C.tx3}},
+  }],{title:'Простои по неделям (ч)', height:Math.max(260, trucks.length*24+80)});
+}
+
+function renderParetoFailures() {
+  if (!DB.maint.length) { emptyFig('ch-pareto','Загрузите ОТЧЕТ ТО'); return; }
+  const workKey = findMaintCol('задание') || findMaintCol('работ');
+  if (!workKey) { emptyFig('ch-pareto','Нет колонки работ'); return; }
+  const cnt = {};
+  for (const r of DB.maint) {
+    const v = String(r[workKey]||'').trim().substring(0,60);
+    if (v) cnt[v] = (cnt[v]||0)+1;
+  }
+  const sorted = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  pl('ch-pareto',[{
+    type:'bar', orientation:'h',
+    x:sorted.map(s=>s[1]), y:sorted.map(s=>s[0]),
+    marker:{color:C.acc}, text:sorted.map(s=>s[1]), textposition:'auto',
+  }],{title:'Парето отказов (топ-20)', height:480,
+    yaxis:{autorange:'reversed'}, margin:{l:280,r:15,t:40,b:40}});
+}
+
+function renderMTBF(divId) {
+  if (!DB.maint.length) { emptyFig(divId,'Загрузите ОТЧЕТ ТО'); return; }
+  const truckKey = findMaintCol('гараж');
+  const mhKey = findMaintCol('мото') || findMaintCol('МОТО');
+  if (!truckKey) { emptyFig(divId,'Нет данных'); return; }
+  const truckEvents = {}, truckMH = {};
+  for (const r of DB.maint) {
+    const t = parseInt(r[truckKey]);
+    if (isNaN(t)) continue;
+    truckEvents[t] = (truckEvents[t]||0)+1;
+    if (mhKey) {
+      const mh = parseFloat(r[mhKey]);
+      if (!isNaN(mh)) truckMH[t] = Math.max(truckMH[t]||0, mh);
+    }
+  }
+  const trucks = Object.keys(truckEvents).sort((a,b)=>+a-+b);
+  const mtbf = trucks.map(t => {
+    const mh = truckMH[t] || truckEvents[t]*50;
+    return +(mh / truckEvents[t]).toFixed(0);
+  });
+  const avgM = mean(mtbf);
+  const colors = mtbf.map(v => v >= avgM ? C.grn : v >= avgM*0.7 ? C.amb : C.red);
+  pl(divId,[
+    {type:'bar', x:trucks.map(t=>'№'+t), y:mtbf, marker:{color:colors},
+     text:mtbf, textposition:'auto', name:'MTBF'},
+    {type:'scatter', x:trucks.map(t=>'№'+t), y:trucks.map(()=>avgM),
+     mode:'lines', line:{color:C.red,dash:'dash',width:1.5},
+     name:`Ср. ${avgM.toFixed(0)} м/ч`},
+  ],{title:'MTBF по самосвалам (м/ч)', height:320});
+}
+
+function renderDowntimeBar() {
+  if (!DB.maint.length) { emptyFig('ch-dt-bar','Загрузите ОТЧЕТ ТО'); return; }
+  const truckKey = findMaintCol('гараж');
+  const dtKey = findMaintCol('простоя', 'полное');
+  if (!truckKey) { emptyFig('ch-dt-bar','Нет данных'); return; }
+  const totals = {};
+  for (const r of DB.maint) {
+    const t = parseInt(r[truckKey]);
+    if (isNaN(t)) continue;
+    const h = parseDowntime(r[dtKey]);
+    totals[t] = (totals[t]||0)+h;
+  }
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  const avg = mean(sorted.map(s=>s[1]));
+  const colors = sorted.map(s=>s[1]>=avg*1.5?C.red:s[1]>=avg?C.amb:C.grn);
+  pl('ch-dt-bar',[{
+    type:'bar', x:sorted.map(s=>'№'+s[0]), y:sorted.map(s=>+s[1].toFixed(1)),
+    marker:{color:colors}, text:sorted.map(s=>s[1].toFixed(0)+'ч'), textposition:'auto',
+  }],{title:'Суммарный простой по самосвалу (ч)', height:320});
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 2: ENGINE PARAMETERS
+// ════════════════════════════════════════════════════════════
+function renderEngineTab() {
+  const key = document.getElementById('eng-sel').value;
+  if (!key || !DB.insite[key]) {
+    ['rpm','tcool','oil-tp','fuel','exh-hm','cyl-bal','boost','crank','load','stats']
+      .forEach(id => emptyFig('ch-'+id,'Загрузите INSITE CSV'));
+    return;
+  }
+  const d = DB.insite[key];
+  const rows = d.rows.slice(0, 3000);
+  const label = d.model + ' №' + d.truck;
+  const cols = d.cols;
+  const dt = dtArr(rows);
+
+  // RPM
+  renderTSChart('ch-rpm', dt, vals(rows, resolveCol(cols,'rpm')), 'RPM', C.blu, 'RPM', label,
+    null, null, [{y:1800, label:'Ном. 1800', color:C.amb}]);
+
+  // Coolant temp
+  const tcoolVals = vals(rows, resolveCol(cols,'tcool'));
+  renderTSChart('ch-tcool', dt, tcoolVals, 'T охл. (°C)', C.acc, '°C', label,
+    null, null,
+    [{y:95,label:'⚠ 95°C',color:C.amb},{y:105,label:'🔴 105°C',color:C.red}]);
+
+  // Oil T+P dual axis
+  const toilVals = vals(rows, resolveCol(cols,'toil'));
+  const poilVals = vals(rows, resolveCol(cols,'poil'));
+  pl('ch-oil-tp',[
+    {type:'scatter', x:dt, y:toilVals, name:'T масла °C', line:{color:C.amb,width:1.5}, yaxis:'y'},
+    {type:'scatter', x:dt, y:poilVals, name:'P масла кПа', line:{color:C.blu,width:1.5}, yaxis:'y2'},
+  ], {title:'T и P масла — '+label, height:280,
+    yaxis:{title:'°C',gridcolor:'rgba(255,255,255,0.05)'},
+    yaxis2:{title:'кПа',overlaying:'y',side:'right',showgrid:false}});
+
+  // Fuel rate
+  const fuelVals = vals(rows, resolveCol(cols,'fuel'));
+  const fuelRoll = rollingMean(fuelVals, 60);
+  pl('ch-fuel',[
+    {type:'scatter',x:dt,y:fuelVals,name:'Мгн.', line:{color:C.pur,width:1},opacity:0.5},
+    {type:'scatter',x:dt,y:fuelRoll,name:'Ср. 60с',line:{color:C.acc,width:2}},
+  ],{title:'Расход топлива — '+label, height:280, yaxis:{title:'л/час'}});
+
+  // Exhaust heatmap
+  renderExhaustHeatmap('ch-exh-hm', rows, cols, label);
+
+  // Cylinder balance
+  renderCylBalance('ch-cyl-bal', rows, cols, label);
+
+  // Boost
+  renderTSChart('ch-boost', dt, vals(rows, resolveCol(cols,'boost')), 'P наддува (кПа)', C.grn, 'кПа', label,
+    null, null, [{y:180, label:'Мин 180', color:C.red}]);
+
+  // Crankcase
+  renderTSChart('ch-crank', dt, vals(rows, resolveCol(cols,'crank')), 'P картера (кПа)', C.red, 'кПа', label,
+    null, null, [{y:3,label:'⚠ 3',color:C.amb},{y:7,label:'🔴 7',color:C.red}]);
+
+  // Load
+  renderTSChart('ch-load', dt, vals(rows, resolveCol(cols,'load')), 'Нагрузка %', C.grn, '%', label, true);
+
+  // Stats table
+  renderStatsTable('ch-stats', rows, cols, label);
+}
+
+function renderTSChart(divId, dt, yArr, name, color, yTitle, label, fill=false, alpha=0.1, hlines=[]) {
+  const ew = ewma(yArr, alpha||0.1);
+  const traces = [
+    {type:'scatter',x:dt,y:yArr,name,line:{color,width:1},opacity:0.6,fill:fill?'tozeroy':undefined, fillcolor:fill?color.replace(')',',0.12)').replace('rgb','rgba'):undefined},
+    {type:'scatter',x:dt,y:ew,name:'EWMA',line:{color:'white',width:1.5}},
+  ];
+  const shapes = hlines.map(h => ({
+    type:'line', x0:dt[0], x1:dt[dt.length-1], y0:h.y, y1:h.y,
+    line:{color:h.color, dash:'dot', width:1.5}
+  }));
+  const annotations = hlines.map(h => ({
+    x:dt[Math.floor(dt.length*0.05)], y:h.y, text:h.label,
+    showarrow:false, font:{color:h.color, size:9}, xanchor:'left'
+  }));
+  pl(divId, traces, {title:name+' — '+label, height:280, yaxis:{title:yTitle}, shapes, annotations});
+}
+
+function renderExhaustHeatmap(divId, rows, cols, label) {
+  const cylCols = [];
+  const pat = /[Цц]ил\w*\.?\s*(\d+)|[Cc]yl\w*\s*(\d+)|(\d+)[LR]\b|cyl(\d+)/i;
+  for (const c of cols) {
+    if (!c.toLowerCase().includes('exhaust') && !c.toLowerCase().includes('выхлоп') &&
+        !c.toLowerCase().includes('temp') && !c.toLowerCase().includes('темп')) continue;
+    const m = c.match(pat);
+    if (m) {
+      const n = parseInt(m[1]||m[2]||m[3]||m[4]);
+      if (n >= 1 && n <= 16) cylCols.push({n, col:c});
+    }
+  }
+  if (!cylCols.length) { emptyFig(divId,'Нет данных цилиндров'); return; }
+  const sorted = [...new Map(cylCols.map(x=>[x.n,x])).values()].sort((a,b)=>a.n-b.n);
+  const sample = rows.slice(0, 500);
+  const z = sorted.map(({col}) => vals(sample, col).map(v=>v||0));
+  pl(divId,[{
+    type:'heatmap', z, x:Array.from({length:sample.length},(_,i)=>i),
+    y:sorted.map(({n})=>'Цил.'+n),
+    colorscale:[[0,C.blu],[0.5,C.amb],[1,C.red]],
+    colorbar:{title:{text:'°C'},tickfont:{color:C.tx3}},
+  }],{title:'Тепловая карта цилиндров — '+label, height:380});
+}
+
+function renderCylBalance(divId, rows, cols, label) {
+  const cylCols = [];
+  for (const c of cols) {
+    const m = c.match(/[Цц]ил\w*\.?\s*(\d+)|[Cc]yl\w*\s*(\d+)|(\d+)[LR]\b/i);
+    if (m && (c.toLowerCase().includes('exhaust') || c.toLowerCase().includes('выхлоп') || c.toLowerCase().includes('темп'))) {
+      const n = parseInt(m[1]||m[2]||m[3]);
+      if (n>=1 && n<=16) cylCols.push({n, col:c});
+    }
+  }
+  if (!cylCols.length) { emptyFig(divId,'Нет данных'); return; }
+  const sorted = [...new Map(cylCols.map(x=>[x.n,x])).values()].sort((a,b)=>a.n-b.n);
+  const avgs = sorted.map(({n,col}) => ({n, avg:mean(nonNull(vals(rows,col)))}));
+  const globalMean = mean(avgs.map(a=>a.avg));
+  const devs = avgs.map(a => +( (a.avg - globalMean).toFixed(1) ));
+  const colors = devs.map(d => Math.abs(d)>60?C.red : Math.abs(d)>30?C.amb : C.grn);
+  pl(divId,[{
+    type:'bar', x:avgs.map(a=>'Цил.'+a.n), y:devs,
+    marker:{color:colors}, text:devs.map(d=>(d>0?'+':'')+d), textposition:'auto',
+  }],{
+    title:'Баланс цилиндров ∆°C — '+label, height:280, yaxis:{title:'∆°C'},
+    shapes:[
+      {type:'line',x0:-0.5,x1:avgs.length-0.5,y0:30,y1:30,line:{color:C.amb,dash:'dot',width:1}},
+      {type:'line',x0:-0.5,x1:avgs.length-0.5,y0:-30,y1:-30,line:{color:C.amb,dash:'dot',width:1}},
+      {type:'line',x0:-0.5,x1:avgs.length-0.5,y0:60,y1:60,line:{color:C.red,dash:'dot',width:1}},
+      {type:'line',x0:-0.5,x1:avgs.length-0.5,y0:-60,y1:-60,line:{color:C.red,dash:'dot',width:1}},
+    ]
+  });
+}
+
+function renderStatsTable(divId, rows, cols, label) {
+  const params = [
+    {alias:'rpm',label:'RPM'},{alias:'tcool',label:'T охл. °C'},
+    {alias:'toil',label:'T масла °C'},{alias:'poil',label:'P масла кПа'},
+    {alias:'texh',label:'T выхл. °C'},{alias:'fuel',label:'Топл. л/час'},
+    {alias:'crank',label:'P картера кПа'},{alias:'boost',label:'P наддув кПа'},
+    {alias:'load',label:'Нагрузка %'},{alias:'batt',label:'АКБ В'},
+  ];
+  const rows2 = [], colNames = ['Параметр','Min','Max','Среднее','Std','Медиана'];
+  for (const p of params) {
+    const c = resolveCol(cols, p.alias);
+    if (!c) continue;
+    const arr = nonNull(vals(rows, c));
+    if (!arr.length) continue;
+    arr.sort((a,b)=>a-b);
+    const med = arr[Math.floor(arr.length/2)];
+    rows2.push([p.label,
+      arr[0].toFixed(1), arr[arr.length-1].toFixed(1),
+      mean(arr).toFixed(1), stddev(arr).toFixed(1), med.toFixed(1)]);
+  }
+  pl(divId,[{
+    type:'table',
+    header:{values:colNames,fill:{color:C.card},font:{color:C.acc},align:'left'},
+    cells:{values:colNames.map((_,ci)=>rows2.map(r=>r[ci])),
+      fill:{color:C.bg2},font:{color:C.tx},align:'left'},
+  }],{title:'Статистика параметров — '+label, height:320});
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 3: PREDICTIVE
+// ════════════════════════════════════════════════════════════
+function renderPredictTab() {
+  const key = document.getElementById('pred-sel').value;
+  if (!key || !DB.insite[key]) {
+    ['health-gauge','risk-table','anomaly','forecast','ewma-cool','crank-trend']
+      .forEach(id => emptyFig('ch-'+id,'Загрузите INSITE CSV'));
+    return;
+  }
+  const d = DB.insite[key];
+  const rows = d.rows.slice(0, 3000);
+  const label = d.model + ' №' + d.truck;
+  const cols = d.cols;
+
+  // Health gauge
+  const score = calcHealth(rows, cols);
+  const scoreColor = score>=70?C.grn:score>=40?C.amb:C.red;
+  pl('ch-health-gauge',[{
+    type:'indicator', mode:'gauge+number+delta',
+    value:+score.toFixed(1),
+    delta:{reference:70, increasing:{color:C.grn}, decreasing:{color:C.red}},
+    title:{text:'Индекс здоровья ДВС — '+label, font:{size:11}},
+    number:{font:{color:scoreColor, size:36}},
+    gauge:{
+      axis:{range:[0,100],tickcolor:C.tx3},
+      bar:{color:scoreColor},
+      steps:[{range:[0,40],color:C.red},{range:[40,70],color:C.amb},{range:[70,100],color:C.grn}],
+      threshold:{line:{color:'white',width:3},value:70},
+    }
+  }],{height:280,margin:{l:25,r:25,t:45,b:20}});
+
+  // Risk table
+  renderRiskTable('ch-risk-table', rows, cols, label);
+
+  // Anomaly detection (coolant)
+  const tcoolCol = resolveCol(cols,'tcool');
+  if (tcoolCol) {
+    const dt = dtArr(rows);
+    const yArr = vals(rows, tcoolCol);
+    const rollM = rollingMean(yArr, 60);
+    const rollS = rollingStd(yArr, 60);
+    const zScores = yArr.map((v,i) => v!==null && rollS[i]>0 ? Math.abs((v-rollM[i])/rollS[i]) : 0);
+    const normal_x=[], normal_y=[], anom_x=[], anom_y=[];
+    dt.forEach((t,i) => {
+      if (zScores[i] > 3) { anom_x.push(t); anom_y.push(yArr[i]); }
+      else { normal_x.push(t); normal_y.push(yArr[i]); }
+    });
+    pl('ch-anomaly',[
+      {type:'scatter',x:normal_x,y:normal_y,mode:'markers',name:'Норма',
+       marker:{color:C.grn,size:2,opacity:0.5}},
+      {type:'scatter',x:anom_x,y:anom_y,mode:'markers',name:'Аномалии (|Z|>3)',
+       marker:{color:C.red,size:8,symbol:'x'}},
+    ],{title:'Аномалии T охл. (Z-score) — '+label, height:280, yaxis:{title:'°C'}});
+  } else emptyFig('ch-anomaly','Нет данных T охл.');
+
+  // Forecast: oil pressure
+  const poilCol = resolveCol(cols,'poil');
+  if (poilCol) {
+    renderForecast('ch-forecast', rows, cols, poilCol, 'P масла кПа', label, 300, C.blu);
+  } else emptyFig('ch-forecast','Нет данных P масла');
+
+  // EWMA coolant trend
+  const tcool2 = resolveCol(cols,'tcool');
+  if (tcool2) {
+    const dt = dtArr(rows);
+    const raw = vals(rows, tcool2);
+    const ew = ewma(raw, 0.05);
+    pl('ch-ewma-cool',[
+      {type:'scatter',x:dt,y:raw,name:'T охл.',line:{color:C.acc,width:1},opacity:0.4},
+      {type:'scatter',x:dt,y:ew,name:'EWMA α=0.05',line:{color:'white',width:2}},
+    ],{title:'EWMA тренд T охл. — '+label, height:280,
+      shapes:[
+        {type:'rect',x0:dt[0],x1:dt[dt.length-1],y0:82,y1:95,fillcolor:'rgba(34,197,94,0.07)',line:{width:0}},
+        {type:'rect',x0:dt[0],x1:dt[dt.length-1],y0:95,y1:105,fillcolor:'rgba(245,166,35,0.07)',line:{width:0}},
+      ]});
+  } else emptyFig('ch-ewma-cool','Нет данных');
+
+  // Crankcase trend
+  const crankCol = resolveCol(cols,'crank');
+  if (crankCol) {
+    renderForecast('ch-crank-trend', rows, cols, crankCol, 'P картера кПа', label, 7, C.red);
+  } else emptyFig('ch-crank-trend','Нет данных P картера');
+}
+
+function rollingStd(arr, w=30) {
+  return arr.map((_,i) => {
+    const sl = arr.slice(Math.max(0,i-w+1),i+1).filter(v=>v!==null);
+    return sl.length > 1 ? stddev(sl) : 0;
+  });
+}
+
+function renderRiskTable(divId, rows, cols, label) {
+  const checks = [
+    {alias:'tcool', lbl:'T охл. °C',      ok_lo:82,  ok_hi:95,   w_hi:105, bad:true},
+    {alias:'poil',  lbl:'P масла кПа',     ok_lo:300, ok_hi:350,  w_hi:null,bad:false},
+    {alias:'toil',  lbl:'T масла °C',      ok_lo:85,  ok_hi:105,  w_hi:115, bad:true},
+    {alias:'texh',  lbl:'T выхл. °C',      ok_lo:380, ok_hi:520,  w_hi:560, bad:true},
+    {alias:'crank', lbl:'P картера кПа',   ok_lo:0,   ok_hi:3,    w_hi:7,   bad:true},
+    {alias:'boost', lbl:'P наддув кПа',    ok_lo:180, ok_hi:220,  w_hi:null,bad:false},
+    {alias:'fuel',  lbl:'Топл. л/час',     ok_lo:0,   ok_hi:150,  w_hi:180, bad:true},
+  ];
+  const labels=[], currVals=[], trends=[], risks=[], riskColors=[];
+  for (const c of checks) {
+    const col = resolveCol(cols, c.alias);
+    if (!col) continue;
+    const arr = nonNull(vals(rows, col));
+    if (!arr.length) continue;
+    const cur = mean(arr.slice(-60));
+    const prev = mean(arr.slice(-300,-240));
+    const tArrow = cur > prev*1.02 ? '↑' : cur < prev*0.98 ? '↓' : '→';
+    let risk = 'Н', rc = C.grn;
+    if (c.bad) {
+      if (c.w_hi && cur > c.w_hi) { risk='В'; rc=C.red; }
+      else if (cur > c.ok_hi)     { risk='С'; rc=C.amb; }
+    } else {
+      if (cur < c.ok_lo)          { risk='В'; rc=C.red; }
+      else if (cur < c.ok_hi)     { risk='С'; rc=C.amb; }
+    }
+    labels.push(c.lbl); currVals.push(cur.toFixed(1));
+    trends.push(tArrow); risks.push(risk); riskColors.push(rc);
+  }
+  pl(divId,[{
+    type:'table',
+    header:{values:['Параметр','Текущее','Тренд','Риск'],
+      fill:{color:C.card}, font:{color:C.acc}, align:'center'},
+    cells:{values:[labels, currVals, trends, risks],
+      fill:{color:[labels.map(()=>C.bg2), labels.map(()=>C.bg2), labels.map(()=>C.bg2), riskColors]},
+      font:{color:C.tx}, align:'center'},
+  }],{title:'Таблица рисков — '+label, height:280});
+}
+
+function renderForecast(divId, rows, cols, col, name, label, critLine, color) {
+  const raw = vals(rows, col);
+  const dt = dtArr(rows);
+  // resample to reduce points
+  const step = Math.max(1, Math.floor(raw.length/200));
+  const xs=[], ys=[], dts=[];
+  for(let i=0;i<raw.length;i+=step){
+    if(raw[i]!==null){xs.push(i);ys.push(raw[i]);dts.push(dt[i]);}
+  }
+  if (xs.length < 5) { emptyFig(divId,'Мало данных'); return; }
+  const {slope, intercept} = linreg(xs, ys);
+  const n = xs.length;
+  const se = Math.sqrt(ys.map((y,i)=>(y-(slope*xs[i]+intercept))**2).reduce((s,v)=>s+v,0)/(n-2)||1);
+  const futureN = 30;
+  const lastX = xs[xs.length-1];
+  const futureXs = Array.from({length:futureN},(_,i)=>lastX+(i+1)*step);
+  const forecast = futureXs.map(x=>slope*x+intercept);
+  const ci = futureXs.map((x,i)=>1.96*se*Math.sqrt(1+1/n+(x-mean(xs))**2/(xs.map(xi=>(xi-mean(xs))**2).reduce((s,v)=>s+v,0)||1)));
+  // fake future timestamps
+  const lastDt = new Date(dts[dts.length-1]);
+  const futureDts = futureXs.map((_,i)=>new Date(lastDt.getTime()+(i+1)*60000).toISOString());
+  pl(divId,[
+    {type:'scatter',x:dts,y:ys,name,line:{color,width:2}},
+    {type:'scatter',x:futureDts,y:forecast,name:'Прогноз',line:{color:C.acc,width:2,dash:'dot'}},
+    {type:'scatter',x:[...futureDts,...futureDts.slice().reverse()],
+     y:[...forecast.map((v,i)=>v+ci[i]),...forecast.map((v,i)=>v-ci[i]).reverse()],
+     fill:'toself',fillcolor:'rgba(62,240,175,0.1)',line:{color:'rgba(0,0,0,0)'},name:'95% ДИ'},
+  ],{
+    title:name+' + прогноз — '+label, height:280,
+    shapes: critLine ? [{type:'line',x0:dts[0],x1:futureDts[futureDts.length-1],
+      y0:critLine,y1:critLine,line:{color:C.red,dash:'dash',width:1.5}}] : [],
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 4: ECM
+// ════════════════════════════════════════════════════════════
+function renderECMTab() {
+  if (!DB.ecm.length) {
+    ['ecm-pareto','ecm-lamp','ecm-heatmap','ecm-active'].forEach(id=>emptyFig('ch-'+id,'Загрузите ECM XLSX'));
+    return;
+  }
+  // Pareto
+  const cntByCode = {};
+  for (const r of DB.ecm) {
+    const code = parseInt(r['Fault Codes']);
+    if (isNaN(code)) continue;
+    cntByCode[code] = (cntByCode[code]||0) + (+r['Counts']||1);
+  }
+  const topCodes = Object.entries(cntByCode).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const descs = {};
+  for (const r of DB.ecm) { descs[parseInt(r['Fault Codes'])] = String(r['Description']||'').substring(0,50); }
+  pl('ch-ecm-pareto',[{
+    type:'bar', orientation:'h',
+    x:topCodes.map(s=>s[1]),
+    y:topCodes.map(s=>s[0]+': '+descs[parseInt(s[0])]),
+    marker:{color:C.red}, text:topCodes.map(s=>s[1]), textposition:'auto',
+  }],{title:'Топ-15 кодов ЭБУ по частоте', height:400,
+    yaxis:{autorange:'reversed'}, margin:{l:280,r:15,t:40,b:40}});
+
+  // Lamp donut
+  const lampCnt = {};
+  for(const r of DB.ecm){const l=r['Lamp']||'Без лампы';lampCnt[l]=(lampCnt[l]||0)+1;}
+  const lColors={'Red':C.red,'Amber':C.amb,'Maintenance':C.blu,'Без лампы':C.tx3};
+  pl('ch-ecm-lamp',[{
+    type:'pie', hole:0.5,
+    labels:Object.keys(lampCnt), values:Object.values(lampCnt),
+    marker:{colors:Object.keys(lampCnt).map(l=>lColors[l]||C.grn)},
+  }],{title:'По типу лампы', height:280});
+
+  // Heatmap
+  const trucks = [...new Set(DB.ecm.map(r=>r.truck))].filter(t=>t).sort((a,b)=>+a-+b);
+  const top20 = Object.keys(cntByCode).sort((a,b)=>cntByCode[b]-cntByCode[a]).slice(0,20).map(Number);
+  const z = trucks.map(t => top20.map(code => {
+    const recs = DB.ecm.filter(r=>r.truck===t && parseInt(r['Fault Codes'])===code);
+    return recs.reduce((s,r)=>s+(+r['Counts']||1),0);
+  }));
+  pl('ch-ecm-heatmap',[{
+    type:'heatmap',z, x:top20.map(String), y:trucks.map(t=>'№'+t),
+    colorscale:[[0,C.bg2],[0.5,C.amb],[1,C.red]],
+    text:z.map(r=>r.map(v=>v||'')), texttemplate:'%{text}',
+    colorbar:{title:{text:'Кол-во'},tickfont:{color:C.tx3}},
+  }],{title:'Тепловая карта ЭБУ (самосвал × код)', height:Math.max(260,trucks.length*28+80)});
+
+  // Active faults table
+  const active = DB.ecm.filter(r => String(r['Status']).toLowerCase().includes('activ') ||
+    String(r['Status']).toLowerCase().includes('актив'));
+  if (active.length) {
+    pl('ch-ecm-active',[{
+      type:'table',
+      header:{values:['Самосвал','Код','Лампа','Описание'],
+        fill:{color:C.red},font:{color:'white'},align:'left'},
+      cells:{values:[
+        active.map(r=>'№'+r.truck),
+        active.map(r=>r['Fault Codes']),
+        active.map(r=>r['Lamp']||'–'),
+        active.map(r=>String(r['Description']||'').substring(0,70)),
+      ],fill:{color:C.bg2},font:{color:C.tx},align:'left'},
+    }],{title:`Активные неисправности (${active.length})`, height:Math.max(200,active.length*30+80)});
+  } else {
+    pl('ch-ecm-active',[{type:'scatter',x:[],y:[]}],
+      {title:'Активных неисправностей не найдено ✓',
+       annotations:[{text:'Статус ACTIVE не обнаружен',showarrow:false,font:{color:C.grn,size:14}}],
+       height:150});
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 5: MAINTENANCE
+// ════════════════════════════════════════════════════════════
+function renderMaintTab() {
+  if (!DB.maint.length && !DB.gbc.length) {
+    ['maint-timeline','gbc-hm','mtbf2','work-cat','dt-hist'].forEach(id=>emptyFig('ch-'+id,'Загрузите файлы ТО'));
+    return;
+  }
+  renderMaintTimeline();
+  renderGBCHeatmap();
+  renderMTBF('ch-mtbf2');
+  renderWorkCategories();
+  renderDowntimeHistogram();
+}
+
+function renderMaintTimeline() {
+  if (!DB.maint.length) { emptyFig('ch-maint-timeline','Нет данных'); return; }
+  const truckKey = findMaintCol('гараж');
+  const dateKey = findMaintCol('Дата', 'запуска');
+  const dtKey = findMaintCol('простоя', 'полное');
+  if (!truckKey || !dateKey) { emptyFig('ch-maint-timeline','Нет колонок'); return; }
+  const xs=[], ys=[], sizes=[], texts=[];
+  for (const r of DB.maint.slice(0,500)) {
+    const truck = parseInt(r[truckKey]);
+    if (isNaN(truck)) continue;
+    const dt = new Date(r[dateKey]);
+    if (isNaN(dt)) continue;
+    const h = parseDowntime(r[dtKey]);
+    xs.push(dt.toISOString()); ys.push('№'+truck);
+    sizes.push(Math.min(Math.max(h*2, 4), 40));
+    texts.push(`№${truck}: ${h.toFixed(1)}ч`);
+  }
+  pl('ch-maint-timeline',[{
+    type:'scatter',x:xs,y:ys,mode:'markers',text:texts,
+    marker:{size:sizes, color:sizes, colorscale:[[0,C.grn],[0.5,C.amb],[1,C.red]],
+      showscale:true, colorbar:{title:{text:'Ч'},tickfont:{color:C.tx3}}},
+  }],{title:'Временная шкала событий ТО', height:Math.max(320, new Set(ys).size*24+80)});
+}
+
+function renderGBCHeatmap() {
+  if (!DB.gbc.length) { emptyFig('ch-gbc-hm','Загрузите ГБЦ ремонты.xlsx'); return; }
+  const cylKeys = Object.keys(DB.gbc[0]||{}).filter(k => /\d+[LR]/.test(k) || /[LR]\//.test(k));
+  if (!cylKeys.length) { emptyFig('ch-gbc-hm','Нет данных по цилиндрам'); return; }
+  const truckKey = Object.keys(DB.gbc[0])[0];
+  const truckMap = {};
+  let lastTruck = null;
+  for (const r of DB.gbc) {
+    const t = parseInt(r[truckKey]);
+    if (!isNaN(t)) lastTruck = t;
+    if (!lastTruck) continue;
+    if (!truckMap[lastTruck]) truckMap[lastTruck] = {};
+    for (const c of cylKeys) {
+      if (r[c] && String(r[c]).trim()) truckMap[lastTruck][c] = (truckMap[lastTruck][c]||0)+1;
+    }
+  }
+  const trucks = Object.keys(truckMap).sort((a,b)=>+a-+b);
+  const z = trucks.map(t => cylKeys.map(c => truckMap[t][c]||0));
+  pl('ch-gbc-hm',[{
+    type:'heatmap', z, x:cylKeys, y:trucks.map(t=>'№'+t),
+    colorscale:[[0,C.bg2],[0.5,C.amb],[1,C.red]],
+    text:z.map(r=>r.map(v=>v||'')), texttemplate:'%{text}',
+    colorbar:{title:{text:'Рем-в'},tickfont:{color:C.tx3}},
+  }],{title:'Ремонты ГБЦ по цилиндрам', height:Math.max(250,trucks.length*28+80)});
+}
+
+function renderWorkCategories() {
+  if (!DB.maint.length) { emptyFig('ch-work-cat','Нет данных'); return; }
+  const workKey = findMaintCol('задание') || findMaintCol('работ');
+  if (!workKey) { emptyFig('ch-work-cat','Нет колонки'); return; }
+  const categories = {
+    'ТО-1':'ТО-1', 'ТО-2':'ТО-2', 'ТО-3':'ТО-3', 'ТО-4':'ТО-4', 'ТО-6':'ТО-6',
+    'ТО-12':'ТО-12', 'ГБЦ':'ГБЦ', 'форсунк':'Форсунки', 'Ошибка':'Ошибки ЭБУ',
+    'замена':'Замена', 'ремонт':'Ремонт',
+  };
+  const cnt = {};
+  for (const r of DB.maint) {
+    const v = String(r[workKey]||'');
+    let cat = 'Прочее';
+    for (const [kw, lbl] of Object.entries(categories)) {
+      if (v.toLowerCase().includes(kw.toLowerCase())) { cat = lbl; break; }
+    }
+    cnt[cat] = (cnt[cat]||0)+1;
+  }
+  const sorted = Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  pl('ch-work-cat',[{
+    type:'pie', labels:sorted.map(s=>s[0]), values:sorted.map(s=>s[1]),
+    hole:0.4, textinfo:'label+percent',
+    marker:{colors:[C.acc,C.blu,C.grn,C.amb,C.red,C.pur,'#80868b','#3ef0af88']},
+  }],{title:'Виды работ по категориям', height:320});
+}
+
+function renderDowntimeHistogram() {
+  if (!DB.maint.length) { emptyFig('ch-dt-hist','Нет данных'); return; }
+  const dtKey = findMaintCol('простоя', 'полное');
+  if (!dtKey) { emptyFig('ch-dt-hist','Нет колонки'); return; }
+  const hours = DB.maint.map(r=>parseDowntime(r[dtKey])).filter(h=>h>0 && h<48);
+  pl('ch-dt-hist',[{
+    type:'histogram', x:hours, nbinsx:40,
+    marker:{color:C.pur, opacity:0.8},
+    name:'Простои',
+  }],{title:'Распределение простоев (ч)', height:280, xaxis:{title:'часы'}, yaxis:{title:'кол-во'}});
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 6: PAYLOAD
+// ════════════════════════════════════════════════════════════
+function renderPayloadTab() {
+  if (!DB.payload.length) {
+    ['payload-dist','tkph','payload-truck'].forEach(id=>emptyFig('ch-'+id,'Загрузите Весовая*.xlsx'));
+    return;
+  }
+  const rows = DB.payload;
+  const cols = Object.keys(rows[0]||{});
+  const lpCol = cols.find(c=>String(c).trim().toLowerCase().includes('loadperc'));
+  const fpCol = cols.find(c=>String(c).trim().toLowerCase().includes('finalpayload'));
+  const tkphCols = cols.filter(c=>String(c).trim().toLowerCase().includes('tkph'));
+
+  // Distribution
+  if (lpCol) {
+    const vals2 = rows.map(r=>parseFloat(r[lpCol])).filter(v=>!isNaN(v)&&v>0&&v<200);
+    pl('ch-payload-dist',[{
+      type:'histogram', x:vals2, nbinsx:40, marker:{color:C.blu,opacity:0.8},
+    }],{
+      title:'Распределение нагрузки (%)', height:300, xaxis:{title:'%'},
+      shapes:[
+        {type:'line',x0:100,x1:100,y0:0,y1:1,yref:'paper',line:{color:C.grn,dash:'dash'}},
+        {type:'line',x0:110,x1:110,y0:0,y1:1,yref:'paper',line:{color:C.red,dash:'dash'}},
+      ],
+    });
+  } else emptyFig('ch-payload-dist','Нет колонки LoadPercentage');
+
+  // TKPH
+  if (tkphCols.length) {
+    const traces = tkphCols.slice(0,4).map(c => ({
+      type:'box', y:rows.map(r=>parseFloat(r[c])).filter(v=>!isNaN(v)&&v>0&&v<2000),
+      name:String(c).trim(), boxpoints:false,
+    }));
+    pl('ch-tkph', traces, {title:'TKPH по осям', height:320});
+  } else emptyFig('ch-tkph','Нет колонок TKPH');
+
+  // Payload by truck
+  if (fpCol) {
+    const truckMap = {};
+    for (const r of rows) {
+      const t = r.truck || 0;
+      const v = parseFloat(r[fpCol]);
+      if (!isNaN(v) && v > 0) {
+        if (!truckMap[t]) truckMap[t] = [];
+        truckMap[t].push(v);
+      }
+    }
+    const trucks = Object.keys(truckMap).sort((a,b)=>+a-+b);
+    const traces = trucks.map(t => ({
+      type:'box', y:truckMap[t], name:'№'+t, boxpoints:false,
+    }));
+    pl('ch-payload-truck', traces, {title:'FinalPayload по самосвалам (т)', height:350,
+      shapes:[{type:'line',x0:0,x1:trucks.length,y0:1500,y1:1500,
+        line:{color:C.amb,dash:'dash'},xref:'paper'}]});
+  } else emptyFig('ch-payload-truck','Нет колонки FinalPayload');
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 7: GE DRIVE
+// ════════════════════════════════════════════════════════════
+function renderGETab() {
+  if (!DB.ge.length) {
+    ['ge-types','ge-restrict','ge-timeline'].forEach(id=>emptyFig('ch-'+id,'Загрузите GE*.xlsx'));
+    return;
+  }
+  const rows = DB.ge;
+  const cols = Object.keys(rows[0]||{});
+  const evCol = cols.find(c=>String(c).includes('Event') || String(c).includes('#') || String(c).includes('Событие'));
+  const nameCol = cols.find(c=>String(c).includes('Name') || String(c).includes('Наименование'));
+  const restCol = cols.find(c=>String(c).toLowerCase().includes('restrict') || String(c).includes('Ограничен'));
+  const timeCol = cols.find(c=>String(c).toLowerCase().includes('time') || String(c).includes('Время'));
+
+  // Event types
+  if (evCol) {
+    const cnt = {};
+    for (const r of rows) {
+      const v = r[evCol];
+      if (v) cnt[v] = (cnt[v]||0)+1;
+    }
+    const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,15);
+    pl('ch-ge-types',[{
+      type:'bar', x:top.map(s=>String(s[0])), y:top.map(s=>s[1]),
+      marker:{color:C.pur}, text:top.map(s=>s[1]), textposition:'auto',
+    }],{title:'Типы событий GE (топ-15)', height:320, xaxis:{title:'Event#'}});
+  } else emptyFig('ch-ge-types','Нет колонки событий');
+
+  // Restricting events
+  if (restCol) {
+    const cnt = {};
+    for (const r of rows) {
+      const v = String(r[restCol]||'').trim();
+      if (v && !v.toLowerCase().includes('неограничивающ') && !v.toLowerCase().includes('non-rest')) {
+        cnt[v] = (cnt[v]||0)+1;
+      }
+    }
+    const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,12);
+    if (top.length) {
+      pl('ch-ge-restrict',[{
+        type:'bar', orientation:'h',
+        x:top.map(s=>s[1]), y:top.map(s=>s[0].substring(0,60)),
+        marker:{color:C.red},
+      }],{title:'Ограничивающие события GE', height:350,
+        yaxis:{autorange:'reversed'}, margin:{l:300,r:15,t:40,b:40}});
+    } else {
+      pl('ch-ge-restrict',[{type:'scatter',x:[],y:[]}],
+        {title:'Ограничивающих событий не найдено', height:200,
+         annotations:[{text:'Все события — неограничивающие ✓',showarrow:false,font:{color:C.grn}}]});
+    }
+  } else emptyFig('ch-ge-restrict','Нет колонки Restriction');
+
+  // Timeline scatter
+  if (timeCol) {
+    const truckNums=[], dts=[], names=[];
+    for (const r of rows.slice(0,1000)) {
+      const t = new Date(r[timeCol]);
+      if (isNaN(t)) continue;
+      truckNums.push('№'+(r.truck||'?'));
+      dts.push(t.toISOString());
+      names.push(String(r[nameCol]||r[evCol]||'').substring(0,40));
+    }
+    pl('ch-ge-timeline',[{
+      type:'scatter', x:dts, y:truckNums, mode:'markers',
+      text:names, hovertemplate:'%{y} %{x}<br>%{text}<extra></extra>',
+      marker:{color:C.pur, size:5, opacity:0.7},
+    }],{title:'Временная шкала событий GE', height:Math.max(280, new Set(truckNums).size*24+80)});
+  } else emptyFig('ch-ge-timeline','Нет колонки Time');
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 8: PRODUCTION
+// ════════════════════════════════════════════════════════════
+function renderProdTab() {
+  if (!DB.prod.length) {
+    ['prod-ton','prod-speed','prod-load','prod-scatter'].forEach(id=>emptyFig('ch-'+id,'Загрузите speed and production.csv'));
+    return;
+  }
+  const rows = DB.prod;
+  const cols = Object.keys(rows[0]||{});
+  const tonCol   = cols.find(c=>c.includes('Тонн'));
+  const speedCol = cols.find(c=>c.includes('Скорость'));
+  const loadCol  = cols.find(c=>c.includes('загрузка'));
+  const modelCol = cols.find(c=>c.includes('Модель'));
+  const monthCol = cols.find(c=>c.includes('Месяц'));
+
+  function byModel(col) {
+    const map = {};
+    for (const r of rows) {
+      const m = r[modelCol]||'?';
+      const v = parseFloat(String(r[col]).replace(',','.'));
+      if (isNaN(v)) continue;
+      if (!map[m]) map[m]={sum:0,cnt:0};
+      map[m].sum+=v; map[m].cnt++;
+    }
+    return Object.entries(map).map(([m,d])=>({m,avg:d.sum/d.cnt}));
+  }
+
+  const modelColors = {'KOMATSU 730-E':C.blu, 'NTE-200':C.acc, 'NTE200':C.acc};
+
+  // Tonnage by model
+  if (tonCol && modelCol) {
+    const data = byModel(tonCol);
+    pl('ch-prod-ton',[{
+      type:'bar', x:data.map(d=>d.m), y:data.map(d=>+d.avg.toFixed(0)),
+      marker:{color:[C.acc,C.blu,C.grn,C.amb]},
+      text:data.map(d=>d.avg.toFixed(0)), textposition:'auto',
+    }],{title:'Ср. тонн/год на единицу', height:300});
+  } else emptyFig('ch-prod-ton','Нет данных');
+
+  // Speed by model
+  if (speedCol && modelCol) {
+    const data = byModel(speedCol);
+    pl('ch-prod-speed',[{
+      type:'bar', x:data.map(d=>d.m), y:data.map(d=>+d.avg.toFixed(2)),
+      marker:{color:[C.grn,C.pur]},
+      text:data.map(d=>d.avg.toFixed(2)), textposition:'auto',
+    }],{title:'Ср. скорость груженым (км/ч)', height:300});
+  } else emptyFig('ch-prod-speed','Нет данных');
+
+  // Load by model
+  if (loadCol && modelCol) {
+    const data = byModel(loadCol);
+    pl('ch-prod-load',[{
+      type:'bar', x:data.map(d=>d.m), y:data.map(d=>+d.avg.toFixed(1)),
+      marker:{color:[C.amb,C.red]},
+      text:data.map(d=>d.avg.toFixed(1)), textposition:'auto',
+    }],{title:'Ср. загрузка АС (т)', height:300});
+  } else emptyFig('ch-prod-load','Нет данных');
+
+  // Speed vs tonnage scatter
+  if (speedCol && tonCol && modelCol) {
+    const modelTraces = {};
+    for (const r of rows) {
+      const m = String(r[modelCol]||'?');
+      const sp = parseFloat(String(r[speedCol]).replace(',','.'));
+      const tn = parseFloat(String(r[tonCol]).replace(',','.'));
+      if (isNaN(sp)||isNaN(tn)) continue;
+      if (!modelTraces[m]) modelTraces[m]={x:[],y:[]};
+      modelTraces[m].x.push(sp); modelTraces[m].y.push(tn);
+    }
+    const modelPalette = [C.acc, C.blu, C.grn, C.amb, C.pur];
+    const traces = Object.entries(modelTraces).map(([m,d],i)=>({
+      type:'scatter', mode:'markers', name:m,
+      x:d.x, y:d.y,
+      marker:{size:5, color:modelColors[m]||modelPalette[i]||C.amb, opacity:0.6},
+    }));
+    pl('ch-prod-scatter', traces, {title:'Скорость vs Тоннаж', height:300,
+      xaxis:{title:'Скорость (км/ч)'}, yaxis:{title:'Тонн/год'}});
+  } else emptyFig('ch-prod-scatter','Нет данных');
+}
+
+// ════════════════════════════════════════════════════════════
+// TAB 9: OIL
+// ════════════════════════════════════════════════════════════
+function renderOilTab() {
+  if (!DB.oil.length) {
+    ['oil-bar','oil-trend','oil-hm'].forEach(id=>emptyFig('ch-'+id,'Загрузите Доливки Горная Евразия.xlsx'));
+    return;
+  }
+  const rows = DB.oil;
+  const cols = Object.keys(rows[0]||{});
+  const dateKey = cols.find(c=>String(c).includes('Дата'));
+  const truckKey = cols.find(c=>String(c).toLowerCase().includes('хоз') || String(c).includes('Номер'));
+  const volKey = cols.find(c=>String(c).toLowerCase().includes('выдано') || String(c).toLowerCase().includes('объём'));
+
+  if (!truckKey || !volKey) {
+    ['oil-bar','oil-trend','oil-hm'].forEach(id=>emptyFig('ch-'+id,'Не найдены колонки Объём/Truck'));
+    return;
+  }
+
+  // Total by truck
+  const totals = {};
+  for (const r of rows) {
+    const t = parseFloat(r[truckKey]);
+    const v = parseFloat(String(r[volKey]).replace(',','.'));
+    if (!isNaN(t) && !isNaN(v)) totals[t] = (totals[t]||0)+v;
+  }
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  const avg = mean(sorted.map(s=>s[1]));
+  pl('ch-oil-bar',[{
+    type:'bar', x:sorted.map(s=>'№'+s[0]), y:sorted.map(s=>+s[1].toFixed(0)),
+    marker:{color:sorted.map(s=>s[1]>=avg*1.5?C.red:s[1]>=avg?C.amb:C.grn)},
+    text:sorted.map(s=>s[1].toFixed(0)+'л'), textposition:'auto',
+  }],{title:'Расход масла по самосвалу (л)', height:350});
+
+  // Trend
+  if (dateKey) {
+    const dayMap = {};
+    for (const r of rows) {
+      const dt = new Date(r[dateKey]);
+      if (isNaN(dt)) continue;
+      const day = dt.toISOString().substring(0,10);
+      const v = parseFloat(String(r[volKey]).replace(',','.'));
+      if (!isNaN(v)) dayMap[day] = (dayMap[day]||0)+v;
+    }
+    const days = Object.keys(dayMap).sort();
+    const dayVals = days.map(d=>dayMap[d]);
+    let cumsum = 0;
+    const cum = dayVals.map(v=>{cumsum+=v;return cumsum;});
+    pl('ch-oil-trend',[
+      {type:'bar', x:days, y:dayVals, name:'л/день', marker:{color:C.pur,opacity:0.7}, yaxis:'y'},
+      {type:'scatter', x:days, y:cum, name:'Накопленный', line:{color:C.acc,width:2}, yaxis:'y2'},
+    ],{title:'Динамика доливок масла', height:320,
+      yaxis:{title:'л/день'}, yaxis2:{title:'Накоп. (л)',overlaying:'y',side:'right',showgrid:false}});
+
+    // Heatmap oil by truck × month
+    if (truckKey) {
+      const hm = {};
+      for (const r of rows) {
+        const dt = new Date(r[dateKey]);
+        if (isNaN(dt)) continue;
+        const month = dt.toISOString().substring(0,7);
+        const t = parseFloat(r[truckKey]);
+        const v = parseFloat(String(r[volKey]).replace(',','.'));
+        if (!isNaN(t) && !isNaN(v)) {
+          if (!hm[t]) hm[t]={};
+          hm[t][month] = (hm[t][month]||0)+v;
+        }
+      }
+      const trucks = Object.keys(hm).sort((a,b)=>+a-+b);
+      const months = [...new Set(Object.values(hm).flatMap(m=>Object.keys(m)))].sort();
+      const z = trucks.map(t=>months.map(m=>hm[t][m]||0));
+      pl('ch-oil-hm',[{
+        type:'heatmap', z, x:months, y:trucks.map(t=>'№'+t),
+        colorscale:[[0,C.bg2],[0.5,C.amb],[1,C.red]],
+        colorbar:{title:{text:'л'},tickfont:{color:C.tx3}},
+      }],{title:'Доливки масла (самосвал × месяц)', height:Math.max(250,trucks.length*26+80)});
+    }
+  } else emptyFig('ch-oil-trend','Нет колонки Дата');
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════════
+function findMaintCol(include, exclude) {
+  const cols = Object.keys(DB.maint[0]||{});
+  return cols.find(c => {
+    const lc = c.toLowerCase();
+    if (include && !lc.includes(include.toLowerCase())) return false;
+    if (exclude && lc.includes(exclude.toLowerCase())) return false;
+    return true;
+  }) || null;
+}
+
+function parseDowntime(val) {
+  if (!val) return 0;
+  const s = String(val);
+  // "0 days 02:30:00" format
+  const dm = s.match(/(\d+)\s*days?\s+(\d+):(\d+)/i);
+  if (dm) return parseInt(dm[1])*24 + parseInt(dm[2]) + parseInt(dm[3])/60;
+  // "02:30:00"
+  const tm = s.match(/(\d+):(\d+)/);
+  if (tm) return parseInt(tm[1]) + parseInt(tm[2])/60;
+  // plain number
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+function getWeek(dt) {
+  const d = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+// ── INIT ───────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // render empty fleet tab
+  renderFleetTab();
+});
+</script>
+</body>
+</html>
