@@ -1,0 +1,5 @@
+# QSK50 dashboard runtime artifacts
+.qsk50_extracted/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
