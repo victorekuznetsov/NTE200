@@ -923,105 +923,236 @@ def slide12(prs):
 
 # ─── Bank asymmetry slides ────────────────────────────────────────────────────
 def make_bank_chart(uid, d):
+    """Bank asymmetry chart with 3-panel delta visualization."""
     bank_a = [1, 3, 5, 7, 9, 11, 13, 15]
     bank_b = [2, 4, 6, 8, 10, 12, 14, 16]
     colors_a = plt.cm.YlOrRd(np.linspace(0.35, 0.95, 8))
     colors_b = plt.cm.cool(np.linspace(0.25, 0.85, 8))
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+    sec = d['sec']
+    cyl_egt = d['cyl_egt']
+    valid_sec = sec[np.isfinite(sec)]
+    t_max = valid_sec[-1] if len(valid_sec) > 0 else 1
+
+    fig = plt.figure(figsize=(17, 11))
     fig.patch.set_facecolor(C_BG)
-    fig.suptitle(f'730E {UNIT_LABELS[uid]}  |  {d["date"]}  |  Температура цилиндров по банкам',
-                 fontsize=12, color=C_WHITE, fontweight='bold', y=0.99)
+    fig.suptitle(
+        f'730E {UNIT_LABELS[uid]}  |  {d["date"]}  |  Температурная асимметрия банков  |  Δ между цилиндрами',
+        color=C_WHITE, fontsize=11, fontweight='bold', y=1.0)
+
+    gs = gridspec.GridSpec(3, 2, figure=fig,
+                           height_ratios=[3.2, 1.6, 1.6],
+                           hspace=0.55, wspace=0.28)
+    ax_a  = fig.add_subplot(gs[0, 0])
+    ax_b  = fig.add_subplot(gs[0, 1])
+    ax_db = fig.add_subplot(gs[1, :])
+    ax_dt = fig.add_subplot(gs[2, :])
+
+    def bank_ts_fn(bank):
+        stacks = [cyl_egt[n] for n in bank if n in cyl_egt and np.any(np.isfinite(cyl_egt[n]))]
+        if not stacks: return np.full_like(sec, np.nan, dtype=float)
+        return np.nanmean(np.vstack(stacks), axis=0)
+
+    def bank_max_ts(bank):
+        stacks = [cyl_egt[n] for n in bank if n in cyl_egt and np.any(np.isfinite(cyl_egt[n]))]
+        if not stacks: return np.full_like(sec, np.nan, dtype=float)
+        return np.nanmax(np.vstack(stacks), axis=0)
+
+    def bank_min_ts(bank):
+        stacks = [cyl_egt[n] for n in bank if n in cyl_egt and np.any(np.isfinite(cyl_egt[n]))]
+        if not stacks: return np.full_like(sec, np.nan, dtype=float)
+        return np.nanmin(np.vstack(stacks), axis=0)
+
+    def sm(v, w=5):
+        return pd.Series(v).rolling(w, center=True, min_periods=1).mean().values
+
+    a_avg_ts = sm(bank_ts_fn(bank_a))
+    b_avg_ts = sm(bank_ts_fn(bank_b))
 
     bank_stats = {}
-    sec = d['sec']
 
-    for ax_i, (bank, colors, bname, ecm) in enumerate([
-        (bank_a, colors_a, 'А-банк (нечётные цилиндры)', 'ECM144'),
-        (bank_b, colors_b, 'В-банк (чётные цилиндры)',   'ECM1'),
-    ]):
-        ax = axes[ax_i]
-        ax.set_facecolor(C_AXES)
+    for ax_p, bank, colors, bname, ecm in [
+        (ax_a, bank_a, colors_a, 'А-банк (нечётные)', 'ECM144'),
+        (ax_b, bank_b, colors_b, 'В-банк (чётные)',   'ECM1'),
+    ]:
+        ax_p.set_facecolor(C_AXES)
 
+        # Intra-bank spread band
+        mx_ts = sm(bank_max_ts(bank))
+        mn_ts = sm(bank_min_ts(bank))
+        ax_p.fill_between(sec, mn_ts, mx_ts, alpha=0.12, color=C_GRAY, label='Разброс')
+
+        # Individual cylinders
         for cyl, color in zip(bank, colors):
-            if cyl not in d['cyl_egt']: continue
-            v = d['cyl_egt'][cyl]
-            v_s = pd.Series(v).rolling(5, center=True, min_periods=1).mean().values
-            lw = 2.2 if cyl in [1, 2, 6, 9, 11, 15] else 1.4
-            ax.plot(sec, v_s, color=color, lw=lw, label=f'Ц{cyl}', alpha=0.9)
+            if cyl not in cyl_egt: continue
+            v_s = sm(cyl_egt[cyl])
+            lw = 2.0 if cyl in [1, 2, 6, 9, 11, 15] else 1.3
+            ax_p.plot(sec, v_s, color=color, lw=lw, label=f'Ц{cyl}', alpha=0.9)
 
-        ax.axhline(450, color=C_ORANGE, lw=1.4, ls='--', alpha=0.85, label='450°C')
-        ax.axhline(500, color=C_RED,    lw=1.5, ls='--', alpha=0.85, label='500°C')
-        ax.set_ylim(100, 650)
-        ax.set_xlim(0 if len(sec) == 0 else sec[np.isfinite(sec)][0],
-                    1 if len(sec) == 0 else sec[np.isfinite(sec)][-1])
-        ax.set_title(f'{bname}\n{ecm}', color=C_WHITE, fontsize=11, fontweight='bold')
-        ax.set_ylabel('ЕГТ (°C)', color=C_WHITE, fontsize=9)
-        ax.set_xlabel('Время (сек)', color=C_WHITE, fontsize=9)
-        ax.legend(fontsize=7.5, ncol=2, loc='upper left', framealpha=0.35,
-                  facecolor=C_AXES, edgecolor='#445055', labelcolor=C_WHITE)
-        ax.grid(True, alpha=0.3)
-        ax.tick_params(colors=C_WHITE, labelsize=8)
-        for sp in ax.spines.values(): sp.set_edgecolor('#445055')
+        # Bank average
+        avg_ts = sm(bank_ts_fn(bank))
+        ax_p.plot(sec, avg_ts, color=C_WHITE, lw=1.8, ls='--', alpha=0.6,
+                  label='Avg банка', zorder=5)
 
-        avgs, maxs = [], []
+        ax_p.axhline(450, color=C_ORANGE, lw=1.3, ls='--', alpha=0.85, label='450°C')
+        ax_p.axhline(500, color=C_RED,    lw=1.4, ls='--', alpha=0.85, label='500°C')
+        ax_p.set_ylim(100, 650)
+        ax_p.set_xlim(0, t_max)
+        ax_p.set_title(f'{bname}  |  {ecm}', color=C_WHITE, fontsize=10, fontweight='bold')
+        ax_p.set_ylabel('ЕГТ (°C)', color=C_WHITE, fontsize=8.5)
+        ax_p.set_xlabel('Время (сек)', color=C_WHITE, fontsize=8.5)
+        ax_p.legend(fontsize=6.5, ncol=3, loc='upper left', framealpha=0.35,
+                    facecolor=C_AXES, edgecolor='#445055', labelcolor=C_WHITE)
+        ax_p.grid(True, alpha=0.3)
+        ax_p.tick_params(colors=C_WHITE, labelsize=7.5)
+        for sp in ax_p.spines.values(): sp.set_edgecolor('#445055')
+
+        avgs, maxs, mins = [], [], []
         for c in bank:
             if c in d['cyl_avgs']:
                 avgs.append(d['cyl_avgs'][c])
                 maxs.append(d['cyl_maxes'][c])
+            if c in cyl_egt:
+                finite = cyl_egt[c][np.isfinite(cyl_egt[c])]
+                if len(finite) > 5: mins.append(np.min(finite))
         if avgs:
             b_avg = np.mean(avgs); b_max = np.max(maxs)
+            intra = b_max - (np.min(mins) if mins else b_avg)
         else:
-            b_avg = b_max = 0.0
+            b_avg = b_max = intra = 0.0
 
         box_c = C_RED if b_max >= 500 else (C_ORANGE if b_max >= 450 else C_GREEN)
-        ax.text(0.98, 0.04, f'Avg банка: {b_avg:.0f}°C\nМакс банка: {b_max:.0f}°C',
-                transform=ax.transAxes, ha='right', va='bottom',
-                color=C_WHITE, fontsize=10, fontweight='bold',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor=C_AXES,
-                          edgecolor=box_c, alpha=0.95, linewidth=1.5))
-        bank_stats[bname] = (b_avg, b_max)
+        ax_p.text(0.98, 0.04,
+                  f'Avg: {b_avg:.0f}°C  Max: {b_max:.0f}°C\nΔ внутри банка: {intra:.0f}°C',
+                  transform=ax_p.transAxes, ha='right', va='bottom',
+                  color=C_WHITE, fontsize=8.5, fontweight='bold',
+                  bbox=dict(boxstyle='round,pad=0.4', facecolor=C_AXES,
+                            edgecolor=box_c, alpha=0.95, linewidth=1.5))
+        bank_stats[bname] = (b_avg, b_max, intra)
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    # ── Per-cylinder Δ from bank average ────────────────────────────────────
+    ax_db.set_facecolor(C_AXES)
+    ax_db.set_title('Δ каждого цилиндра от среднего по своему банку (avg − bank_avg)',
+                    color=C_WHITE, fontsize=9.5, fontweight='bold')
+
+    cyl_delta = {}
+    for n in range(1, 17):
+        if n not in cyl_egt: continue
+        finite = cyl_egt[n][np.isfinite(cyl_egt[n])]
+        if len(finite) < 5: continue
+        bank = bank_a if n % 2 == 1 else bank_b
+        b_vals = [cyl_egt[c][np.isfinite(cyl_egt[c])].mean()
+                  for c in bank if c in cyl_egt and np.any(np.isfinite(cyl_egt[c]))]
+        if b_vals:
+            cyl_delta[n] = np.mean(finite) - np.mean(b_vals)
+
+    if cyl_delta:
+        cyls = sorted(cyl_delta.keys())
+        deltas = [cyl_delta[n] for n in cyls]
+        bar_clr = []
+        for n, dv in zip(cyls, deltas):
+            if dv > 30: bar_clr.append(C_RED)
+            elif dv > 10: bar_clr.append(C_ORANGE)
+            elif dv < -15: bar_clr.append(C_GREEN)
+            else: bar_clr.append('#4EC9F0' if n % 2 == 1 else '#7090B0')
+
+        x_pos = np.arange(len(cyls))
+        bars = ax_db.bar(x_pos, deltas, color=bar_clr, alpha=0.88, width=0.7, zorder=3)
+        ax_db.axhline(0,   color=C_WHITE,  lw=1.2, alpha=0.6, zorder=4)
+        ax_db.axhline(20,  color=C_ORANGE, lw=0.8, ls=':', alpha=0.6)
+        ax_db.axhline(-20, color=C_GREEN,  lw=0.8, ls=':', alpha=0.6)
+        ax_db.set_xticks(x_pos)
+        ax_db.set_xticklabels([f'Ц{n}' for n in cyls], fontsize=8.5, color=C_WHITE)
+        ax_db.set_ylabel('Δ°C от avg', color=C_WHITE, fontsize=8.5)
+        ax_db.grid(True, alpha=0.3, axis='y', zorder=1)
+        ax_db.tick_params(colors=C_WHITE, labelsize=8)
+        for sp in ax_db.spines.values(): sp.set_edgecolor('#445055')
+
+        for bar, dv, n in zip(bars, deltas, cyls):
+            offset = 1.5 if dv >= 0 else -4.0
+            va = 'bottom' if dv >= 0 else 'top'
+            ax_db.text(bar.get_x() + bar.get_width()/2, dv + offset,
+                       f'{dv:+.0f}°', ha='center', va=va, fontsize=7.5,
+                       color=C_RED if abs(dv) > 25 else C_WHITE, fontweight='bold')
+
+        ax_db.axvline(7.5, color=C_GRAY, lw=1.2, ls='--', alpha=0.5)
+        ylim = ax_db.get_ylim()
+        ax_db.text(3.5,  ylim[1]*0.85, 'А-банк (нечётные)', ha='center',
+                   color=colors_a[4], fontsize=8, fontweight='bold', alpha=0.9)
+        ax_db.text(11.5, ylim[1]*0.85, 'В-банк (чётные)', ha='center',
+                   color=colors_b[4], fontsize=8, fontweight='bold', alpha=0.9)
+
+    # ── Inter-bank delta over time ───────────────────────────────────────────
+    ax_dt.set_facecolor(C_AXES)
+    ax_dt.set_title('Межбанковая дельта: В-банк avg − А-банк avg  (по времени)',
+                    color=C_WHITE, fontsize=9.5, fontweight='bold')
+
+    inter = sm(b_avg_ts - a_avg_ts, w=9)
+    ax_dt.fill_between(sec, inter, 0, where=inter > 0, alpha=0.35, color=C_RED,   label='В горячее')
+    ax_dt.fill_between(sec, inter, 0, where=inter < 0, alpha=0.35, color=C_GREEN, label='А горячее')
+    ax_dt.plot(sec, inter, color=C_ORANGE, lw=2.0, alpha=0.9, label='Δ (В−А)')
+    ax_dt.axhline(0,   color=C_WHITE,  lw=1.2, alpha=0.5, ls='--')
+    ax_dt.axhline(20,  color=C_ORANGE, lw=0.8, ls=':', alpha=0.6, label='+20°C')
+    ax_dt.axhline(-20, color=C_GREEN,  lw=0.8, ls=':', alpha=0.6, label='-20°C')
+    ax_dt.set_xlim(0, t_max)
+    ax_dt.set_ylabel('Δ (°C)', color=C_WHITE, fontsize=8.5)
+    ax_dt.set_xlabel('Время (сек)', color=C_WHITE, fontsize=8.5)
+    ax_dt.legend(fontsize=7.5, ncol=4, loc='upper right', framealpha=0.35,
+                 facecolor=C_AXES, edgecolor='#445055', labelcolor=C_WHITE)
+    ax_dt.grid(True, alpha=0.3)
+    ax_dt.tick_params(colors=C_WHITE, labelsize=7.5)
+    for sp in ax_dt.spines.values(): sp.set_edgecolor('#445055')
+
+    fd = inter[np.isfinite(inter)]
+    if len(fd) > 0:
+        mean_d = np.mean(fd)
+        ax_dt.text(0.99, 0.85, f'Ср. Δ(В−А) = {mean_d:+.0f}°C',
+                   transform=ax_dt.transAxes, ha='right', va='top',
+                   color=C_RED if mean_d > 15 else (C_GREEN if mean_d < -15 else C_WHITE),
+                   fontsize=9, fontweight='bold',
+                   bbox=dict(boxstyle='round,pad=0.35', facecolor=C_AXES,
+                             edgecolor=C_ORANGE, alpha=0.9))
+
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
     img = save_fig(fig)
-    return img, bank_stats
+    return img, bank_stats, cyl_delta
 
 def add_bank_slide(prs, uid, d):
-    img, bank_stats = make_bank_chart(uid, d)
+    img, bank_stats, cyl_delta = make_bank_chart(uid, d)
 
-    a_n, b_n = 'А-банк (нечётные цилиндры)', 'В-банк (чётные цилиндры)'
-    a_avg, a_max = bank_stats.get(a_n, (0, 0))
-    b_avg, b_max = bank_stats.get(b_n, (0, 0))
-    delta = b_avg - a_avg
+    a_n, b_n = 'А-банк (нечётные)', 'В-банк (чётные)'
+    a_avg, a_max, a_intra = bank_stats.get(a_n, (0, 0, 0))
+    b_avg, b_max, b_intra = bank_stats.get(b_n, (0, 0, 0))
+    delta_ab = b_avg - a_avg
 
-    if abs(delta) > 10:
-        hotter = 'В-банк горячее А-банка' if delta > 0 else 'А-банк горячее В-банка'
-        asym = f'{hotter} на {abs(delta):.0f}°C.'
+    if abs(delta_ab) > 10:
+        asym = f'В-банк горячее А-банка на {abs(delta_ab):.0f}°C' if delta_ab > 0 \
+               else f'А-банк горячее В-банка на {abs(delta_ab):.0f}°C'
     else:
-        asym = 'Банки температурно симметричны.'
+        asym = 'Банки симметричны'
 
-    hot_t = max(a_max, b_max)
-    if hot_t >= 500:
-        status = f' Макс. ЕГТ: {hot_t:.0f}°C — КРИТИЧНО (>500°C).'
-    elif hot_t >= 450:
-        status = f' Макс. ЕГТ: {hot_t:.0f}°C — ВНИМАНИЕ (>450°C).'
+    intra_txt = f'  |  Разброс: А={a_intra:.0f}°C  В={b_intra:.0f}°C'
+    if cyl_delta:
+        hot_cyl = max(cyl_delta, key=lambda n: cyl_delta[n])
+        cyl_txt = f'  |  Цил.{hot_cyl} горячее avg на {cyl_delta[hot_cyl]:+.0f}°C'
     else:
-        status = f' Макс. ЕГТ: {hot_t:.0f}°C — в норме.'
-    conclusion = f'ВЫВОД: {asym}{status}'
+        cyl_txt = ''
+
+    conclusion = f'ВЫВОД: {asym}.{intra_txt}.{cyl_txt}'
 
     sl = blank_slide(prs)
     set_bg(sl)
     add_rect(sl, 0, 0, 33.86, 2.0, fill=C_DARK2)
     add_rect(sl, 0, 1.85, 33.86, 0.12, fill=C_GREEN)
     add_text(sl, f'ТЕМПЕРАТУРА ЦИЛИНДРОВ — 730E {UNIT_LABELS[uid]}  |  {d["date"]}',
-             0.5, 0.1, 32, 1.1, fs=16, bold=True)
-    add_text(sl, 'А-банк (нечётные, ECM144) — В-банк (чётные, ECM1)  |  Индивидуальные ЕГТ по цилиндрам',
-             0.5, 1.2, 32, 0.65, fs=9.5, color=C_GRAY)
+             0.5, 0.1, 32, 1.0, fs=15, bold=True)
+    add_text(sl, 'Δ внутри банков  |  Δ каждого цилиндра от среднего  |  Межбанковая асимметрия по времени',
+             0.5, 1.15, 32, 0.7, fs=9, color=C_GRAY)
 
-    sl.shapes.add_picture(img, Cm(0.3), Cm(2.1), Cm(33.2), Cm(15.5))
+    sl.shapes.add_picture(img, Cm(0.2), Cm(2.05), Cm(33.46), Cm(15.55))
 
-    add_rect(sl, 0, 17.7, 33.86, 1.35, fill=C_DARK2, line=C_ORANGE, lw=1.2)
-    add_text(sl, conclusion, 0.5, 17.75, 32.5, 1.25, fs=10, bold=True, color=C_ORANGE)
+    add_rect(sl, 0, 17.68, 33.86, 1.37, fill=C_DARK2, line=C_ORANGE, lw=1.2)
+    add_text(sl, conclusion, 0.4, 17.73, 33.0, 1.27, fs=9.5, bold=True, color=C_ORANGE)
     footer(sl)
 
 # ─── Section divider ──────────────────────────────────────────────────────────
