@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Build qsk50_cylinders.html v2 — cylinder EGT + pressure analysis.
-Features: sidebar truck list, date selector, file loading, comparison tab, pressure tab.
-"""
+"""Build qsk50_cylinders.html — comprehensive QSK50 dashboard."""
 
 import io, json, re, pathlib, warnings
 import pandas as pd
@@ -13,7 +10,7 @@ EXTRACT   = pathlib.Path('/home/user/NTE200/.qsk50_extracted')
 PLOTLY_JS = pathlib.Path('/usr/local/lib/python3.11/dist-packages/plotly/package_data/plotly.min.js')
 OUTPUT    = pathlib.Path('/home/user/NTE200/qsk50_cylinders.html')
 
-MAX_ROWS = 600
+MAX_ROWS = 800
 
 RU_MONTHS = {
     'янв':'Jan','фев':'Feb','мар':'Mar','апр':'Apr','май':'May','июн':'Jun',
@@ -22,17 +19,48 @@ RU_MONTHS = {
 A_BANK = [1,3,5,7,9,11,13,15]
 B_BANK = [2,4,6,8,10,12,14,16]
 
-PRESS_PATTERNS = {
-    'oil':    ['Давление масла (кПа)', 'Engine Oil Pressure (kPa)'],
-    'crank':  ['Давление картерных газов', 'Crankcase Pressure (kPa)'],
-    'boost':  ['Давление во впускном коллекторе (кПа)- Идентификатор0',
-               'Intake Manifold Pressure (kPa)- Identifier0'],
-    'oil_t':  ['Температура масла (°C)', 'Engine Oil Temperature (°C)'],
-    'cool_t': ['Датчик температуры (°C)- Идентификатор0',
-               'Engine Coolant Temperature (°C)'],
-    'rpm':    ['Частота вращения двигателя (об/мин)', 'Engine Speed (RPM)- Identifier0'],
-    'load':   ['Относительная нагрузка (Проценты)- Идентификатор0',
-               'Percent Load (percent)- Identifier0'],
+PARAM_PATTERNS = {
+    'rpm':         ['Engine Speed (RPM)- Identifier0', 'Частота вращения двигателя (об/мин)- Идентификатор0'],
+    'load':        ['Percent Load (percent)- Identifier0', 'Относительная нагрузка (Проценты)- Идентификатор0'],
+    'accel':       ['Percent Accelerator Pedal or Lever (percent)- Identifier0', 'Процент действия педали или рычага акселератора (Проценты)- Идентификатор0'],
+    'oil_p':       ['Engine Oil Pressure (kPa)- Identifier0', 'Давление масла (кПа)- Идентификатор0'],
+    'crank_p':     ['Crankcase Pressure (kPa)- Identifier0', 'Давление картерных газов (кПа)- Идентификатор0'],
+    'boost':       ['Intake Manifold Pressure (kPa)- Identifier0', 'Давление во впускном коллекторе (кПа)- Идентификатор0'],
+    'boost1':      ['Intake Manifold Pressure Sensor 1 (kPa)- Identifier0', 'Датчик давления во впускном коллекторе 1 (кПа)- Идентификатор0'],
+    'boost2':      ['Intake Manifold Pressure Sensor 2 (kPa)- Identifier1', 'Датчик давления во впускном коллекторе 2 (кПа)- Идентификатор1'],
+    'rail_meas':   ['Fuel Rail Pressure Measured (bar)- Identifier0', 'Измеренное давление в общем топливопроводе высокого давления (Бар)- Идентификатор0'],
+    'rail_cmd':    ['Fuel Rail Pressure Commanded (bar)- Identifier0', 'Заданное давление в общем топливопроводе высокого давления (Бар)- Идентификатор0'],
+    'pump_oil_p':  ['Fuel Pump Oil Pressure (kPa)- Identifier0', 'Fuel Pump Oil Pressure (кПа)- Идентификатор0'],
+    'pre_filt_p':  ['Pre Oil Filter Pressure (kPa)- Identifier1', 'Давление в предварительном масляном фильтре (кПа)- Идентификатор1'],
+    'filt_dp':     ['Oil Filter Differential Pressure Sensor (Calculated) (kPa)- Identifier0', 'датчик перепада давления в масляном фильтре (расчетное значение) (кПа)- Идентификатор0'],
+    'cool_p':      ['Coolant Pressure Sensor (kPa)- Identifier0', 'Датчик давления охлаждающей жидкости (кПа)- Идентификатор0'],
+    'baro_p':      ['Barometric Air Pressure (kPa)- Identifier0', 'Атмосферное давление (кПа)- Идентификатор0'],
+    'fuel_reg_p':  ['Fuel Regulator Intake Pressure (kPa)- Identifier0', 'Давление на входе топливного регулятора (кПа)- Идентификатор0'],
+    'cool_t':      ['Engine Coolant Temperature (°C)- Identifier0', 'Датчик температуры (°C)- Идентификатор0'],
+    'oil_t':       ['Engine Oil Temperature (°C)- Identifier0', 'Температура масла (°C)- Идентификатор0'],
+    'intake_t':    ['Intake Manifold Air Temperature (°C)- Identifier0', 'Температура воздуха во впускном коллекторе (°C)- Идентификатор0'],
+    'im_t1':       ['Intake Manifold Temperature Sensor 1 (°C)- Identifier0', 'Датчик температуры впускного коллектора 1 (°C)- Идентификатор0'],
+    'im_t2':       ['Intake Manifold Temperature Sensor 2 (°C)- Identifier0', 'Датчик температуры впускного коллектора 2 (°C)- Идентификатор0'],
+    'im_t3':       ['Intake Manifold Temperature Sensor 3 (°C)- Identifier0', 'Датчик температуры впускного коллектора 3 (°C)- Идентификатор0'],
+    'im_t4':       ['Intake Manifold Temperature Sensor 4 (°C)- Identifier0', 'Датчик температуры впускного коллектора 4 (°C)- Идентификатор0'],
+    'fuel_t':      ['Fuel Temperature Sensor (°C)- Identifier0', 'Датчик температуры топлива (°C)- Идентификатор0'],
+    'ecm_t2':      ['ECM Temperature 2 (°C)- Identifier1', 'Температура 2 модуля ECM (°C)- Идентификатор1'],
+    'ecm_t3':      ['ECM Temperature 3 (°C)- Identifier144', 'Температура 3 модуля ECM (°C)- Идентификатор144'],
+    'avg_egt_l':   ['Average Exhaust Temperature - Left Bank (Calculated) (°C)- Identifier144', 'Средняя температура отработавших газов - левый ряд (расчетное значение) (°C)- Идентификатор144'],
+    'avg_egt_r':   ['Average Exhaust Temperature - Right Bank (Calculated) (°C)- Identifier1', 'Средняя температура отработавших газов - правый ряд (расчетное значение) (°C)- Идентификатор1'],
+    'fuel_flow':   ['Fuel Flow Rate Commanded (L/hr)- Identifier0', 'Управляемый расход топлива (л/час)- Идентификатор0'],
+    'fuel_inst':   ['Instantaneous Fuel Rate (L/hr)- Identifier0', 'Мгновенный расход топлива (л/час)- Идентификатор0'],
+    'fuel_dos':    ['Instantaneous Dosing Fuel Rate (L/hr)- Identifier0', 'Мгновенный расход топлива через систему дозирования (л/час)- Идентификатор0'],
+    'pump_mA_cmd': ['Fuel Pump Actuator Commanded Current (mA)- Identifier0', 'Заданный ток привода топливного насоса (мА)- Идентификатор0'],
+    'pump_mA_meas':['Fuel Pump Actuator Measured Current (mA)- Identifier0', 'Измеренный ток привода топливного насоса (мА)- Идентификатор0'],
+    'pump_dc':     ['Fuel Pump Actuator Duty Cycle (percent)- Identifier0', 'Рабочий цикл привода топливного насоса (Проценты)- Идентификатор0'],
+    'lift_dc':     ['Electric Fuel Lift Pump Duty Cycle (percent)- Identifier0', 'Рабочий цикл электрического подкачивающего топливного насоса (Проценты)- Идентификатор0'],
+    'water_fuel':  ['Water In Fuel State- Identifier0', 'Состояние обнаружения воды в топливе- Идентификатор0'],
+    'fan_cmd':     ['Fan Control Command (percent)- Identifier0', 'Команда управления вентилятором (Проценты)- Идентификатор0'],
+    'battery':     ['Battery Voltage (V)- Identifier0', 'Напряжение аккумуляторной батареи (В)- Идентификатор0'],
+    'amber_lamp':  ['Amber Warning Lamp Status- Identifier0', 'Состояние желтого сигнального индикатора- Идентификатор0'],
+    'red_lamp':    ['Red Stop Lamp Status- Identifier0', 'Состояние красного индикатора останова- Идентификатор0'],
+    'cool_level':  ['Engine Coolant Level- Identifier0', 'Уровень охлаждающей жидкости- Идентификатор0'],
 }
 
 
@@ -42,7 +70,7 @@ def ru_date(d):
     return d
 
 
-def open_file(fp):
+def open_csv(fp):
     with open(fp, 'rb') as fh:
         bom = fh.read(3)
     enc_order = ('utf-8-sig', 'cp1251') if bom[:3] == b'\xef\xbb\xbf' else ('cp1251', 'utf-8-sig', 'utf-8')
@@ -50,14 +78,24 @@ def open_file(fp):
         try:
             with open(fp, encoding=enc, errors='replace') as fh:
                 raw = fh.read()
-            if 'Дата' in raw or '"Date"' in raw or 'Date,' in raw:
+            if 'Дата' in raw or 'Date' in raw:
                 return raw.splitlines(keepends=True), enc
         except Exception:
             pass
     return None, None
 
 
+def find_header_row(lines):
+    for i, line in enumerate(lines[:80]):
+        s = line.strip()
+        if (s.startswith('"Date"') or s.startswith('Date,') or
+                s.startswith('"Дата"') or s.startswith('Дата,')):
+            return i
+    return None
+
+
 def find_col(cols, *patterns):
+    """Exact substring match, try each pattern in order."""
     for pat in patterns:
         for c in cols:
             if pat in c:
@@ -67,25 +105,26 @@ def find_col(cols, *patterns):
 
 def find_cyl_col(cols, n):
     for c in cols:
-        if f'отработавших газов цилиндра {n} (°C)' in c:
-            return c
         if f'Exhaust Temperature Sensor Cylinder {n} (' in c:
+            return c
+        if f'отработавших газов цилиндра {n} (°C)' in c:
             return c
     return None
 
 
+def parse_val(series):
+    """Convert a pandas Series with comma decimals to float list."""
+    conv = series.astype(str).str.replace(',', '.', regex=False).str.strip()
+    num = pd.to_numeric(conv, errors='coerce')
+    return num
+
+
 def read_csv(fp):
-    lines, enc = open_file(fp)
+    lines, enc = open_csv(fp)
     if lines is None:
         return None
 
-    hdr = None
-    for i, line in enumerate(lines[:80]):
-        s = line.strip()
-        if s.startswith('"Date"') or s.startswith('Date,') or \
-           s.startswith('"Дата"') or s.startswith('Дата,'):
-            hdr = i
-            break
+    hdr = find_header_row(lines)
     if hdr is None:
         return None
 
@@ -100,7 +139,10 @@ def read_csv(fp):
     all_cols = list(df.columns)
     date_col = 'Date' if 'Date' in all_cols else 'Дата'
     time_col = 'Time' if 'Time' in all_cols else 'Время'
+    if date_col not in all_cols or time_col not in all_cols:
+        return None
 
+    # Cylinder columns
     cyl_cols = {}
     for n in range(1, 17):
         c = find_cyl_col(all_cols, n)
@@ -110,24 +152,28 @@ def read_csv(fp):
     if len(cyl_cols) < 8:
         return None
 
-    press_cols = {}
-    for key, patterns in PRESS_PATTERNS.items():
+    # Parameter columns
+    param_cols = {}
+    for key, patterns in PARAM_PATTERNS.items():
         c = find_col(all_cols, *patterns)
         if c:
-            press_cols[key] = c
+            param_cols[key] = c
 
-    keep = [date_col, time_col] + list(cyl_cols.values()) + list(press_cols.values())
-    df_sub = df[keep].copy()
+    # Parse numeric values
+    keep = [date_col, time_col] + list(cyl_cols.values()) + list(set(param_cols.values()))
+    df_sub = df[[c for c in keep if c in df.columns]].copy()
 
-    for col in keep[2:]:
+    for col in list(cyl_cols.values()) + list(set(param_cols.values())):
+        if col not in df_sub.columns:
+            continue
         try:
-            conv = df_sub[col].astype(str).str.replace(',', '.', regex=False).str.strip()
-            num  = pd.to_numeric(conv, errors='coerce')
-            if num.notna().sum() > len(df_sub) * 0.2:
-                df_sub[col] = num.round(1)
+            num = parse_val(df_sub[col])
+            if num.notna().sum() > len(df_sub) * 0.1:
+                df_sub[col] = num
         except Exception:
             pass
 
+    # Parse timestamps
     ts_list = []
     for _, row in df_sub.iterrows():
         d = ru_date(str(row[date_col]))
@@ -143,20 +189,40 @@ def read_csv(fp):
     if len(df_sub) < 10:
         return None
 
+    # Downsample
     step = max(1, len(df_sub) // MAX_ROWS)
     df_sub = df_sub.iloc[::step].reset_index(drop=True)
 
     ts = df_sub['_ts'].tolist()
 
+    # Build cylinder data
     cyls = {}
     for n, col in cyl_cols.items():
         s = df_sub[col]
-        cyls[n] = [None if pd.isna(v) else int(v) for v in s]
+        cyls[str(n)] = [None if pd.isna(v) else int(round(float(v))) for v in s]
 
-    press = {}
-    for key, col in press_cols.items():
+    # Build parameter data — handle boolean/string cols (water_fuel, lamps, cool_level)
+    BOOL_KEYS = {'water_fuel', 'amber_lamp', 'red_lamp', 'cool_level'}
+    p = {}
+    for key, col in param_cols.items():
+        if col not in df_sub.columns:
+            continue
         s = df_sub[col]
-        press[key] = [None if pd.isna(v) else round(float(v), 1) for v in s]
+        if key in BOOL_KEYS:
+            # Convert On/Off/Low/High/etc to 0/1
+            def bool_val(v):
+                sv = str(v).strip().lower()
+                if sv in ('on', 'yes', 'true', '1', 'low', 'active', 'detected'):
+                    return 1
+                if sv in ('off', 'no', 'false', '0', 'ok', 'normal', 'not detected'):
+                    return 0
+                try:
+                    return int(float(sv.replace(',', '.')))
+                except Exception:
+                    return None
+            p[key] = [bool_val(v) for v in s]
+        else:
+            p[key] = [None if pd.isna(v) else round(float(v), 2) for v in s]
 
     # Date display string
     raw_date = ts[0][:10] if ts else ''
@@ -164,12 +230,12 @@ def read_csv(fp):
     date_str = f"{parts[2]}.{parts[1]}.{parts[0]}" if len(parts) == 3 else raw_date
 
     return {
-        'ts':    ts,
-        'cyls':  cyls,
-        'press': press,
-        'date':  date_str,
+        'ts':   ts,
+        'cyls': cyls,
+        'p':    p,
+        'date': date_str,
         'n_cyls': len(cyl_cols),
-        'n_press': len(press_cols),
+        'n_params': len(param_cols),
     }
 
 
@@ -178,19 +244,13 @@ def truck_num(fname):
         m = re.search(pat, fname)
         if m:
             return int(m.group(1))
-    m = re.search(r'DML-\d+-\d+\s+(\d+)', fname)
-    if m:
-        return int(m.group(1))
     return None
 
 
 def build_data():
-    # Structure: TRUCKS[key] = {truck, model, sessions:[{date,ts,cyls,press},...]}
     db, order = {}, []
     for fp in sorted(EXTRACT.glob('*.csv')):
         name = fp.name
-        if 'production' in name.lower() or 'speed' in name.lower():
-            continue
         truck = truck_num(name)
         if truck is None:
             continue
@@ -201,34 +261,35 @@ def build_data():
         if result is None:
             print("skip")
             continue
-        print(f"{len(result['ts'])} rows, {result['n_cyls']} cyls, {result['n_press']} press")
+        print(f"{len(result['ts'])} rows, {result['n_cyls']} cyls, {result['n_params']} params")
         session = {
-            'date':  result['date'],
-            'ts':    result['ts'],
-            'cyls':  result['cyls'],
-            'press': result['press'],
-            'file':  name,
+            'date': result['date'],
+            'ts':   result['ts'],
+            'cyls': result['cyls'],
+            'p':    result['p'],
+            'file': name,
         }
         if key not in db:
             db[key] = {'truck': truck, 'model': model, 'sessions': [session]}
             order.append(key)
         else:
-            # Add as new session (don't merge — keep dates separate)
             db[key]['sessions'].append(session)
     return db, order
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HTML TEMPLATE
 # ─────────────────────────────────────────────────────────────────────────────
 HTML = r"""<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>QSK50 — Цилиндры и давление</title>
+<title>QSK50 — Дашборд INSITE</title>
 <script>__PLOTLY__</script>
 <style>
 :root{
-  --bg:#0b1622;--bg2:#0f1e2e;--sb:#0d1926;--card:#112030;--brd:rgba(60,120,180,0.14);
+  --bg:#0d1a2b;--bg2:#0f1e2e;--sb:#0a1628;--card:#0f1e30;--brd:rgba(60,120,180,0.14);
   --tx:#c8dff0;--tx2:#6a9ab0;--tx3:#334d60;
   --acc:#00d4aa;--red:#ff4060;--amb:#ffb830;--grn:#2ecc71;
   --blu:#5b8fff;--pur:#b06bff;--org:#ff7c3a;
@@ -236,127 +297,157 @@ HTML = r"""<!DOCTYPE html>
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:13px;display:grid;grid-template-columns:230px 1fr;grid-template-rows:48px 1fr;height:100vh}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--tx);font-size:13px;display:grid;grid-template-columns:230px 1fr;grid-template-rows:44px 1fr;height:100vh}
 
-/* ── HEADER ── */
+/* HEADER */
 .hdr{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(6,12,22,0.98);border-bottom:1px solid var(--brd);z-index:10}
-.logo{font-weight:800;font-size:14px;color:#fff;letter-spacing:-.3px}
+.logo{font-weight:800;font-size:14px;color:#fff;letter-spacing:-.3px;white-space:nowrap}
 .logo span{color:var(--tx3);font-weight:400;font-size:10px;margin-left:8px}
-.hdr-info{font-size:11px;color:var(--amb);font-family:'SF Mono',monospace;margin-left:auto}
+.hdr-info{font-size:11px;color:var(--amb);font-family:'SF Mono',monospace;margin-left:auto;white-space:nowrap}
 
-/* ── SIDEBAR ── */
+/* SIDEBAR */
 .sidebar{grid-column:1;grid-row:2;background:var(--sb);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
-.sb-section{padding:10px 12px;border-bottom:1px solid var(--brd);flex-shrink:0}
-.sb-label{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+.sb-section{padding:8px 10px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.sb-label{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
 .sb-label button{font-size:9px;color:var(--acc);background:none;border:1px solid rgba(0,212,170,0.3);border-radius:4px;padding:1px 6px;cursor:pointer}
 .sb-label button:hover{background:rgba(0,212,170,0.08)}
+.sb-label button.active{background:rgba(0,212,170,0.15);border-color:var(--acc)}
 
-.truck-list{flex:1;overflow-y:auto;padding:6px 0}
+.truck-list{flex:1;overflow-y:auto;padding:4px 0}
 .truck-list::-webkit-scrollbar{width:3px}
 .truck-list::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px}
-.truck-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;transition:background .12s;border-left:3px solid transparent;user-select:none;position:relative}
+.truck-item{display:flex;align-items:center;gap:7px;padding:6px 10px;cursor:pointer;transition:background .12s;border-left:3px solid transparent;user-select:none}
 .truck-item:hover{background:rgba(255,255,255,0.04)}
 .truck-item.active{background:rgba(0,212,170,0.07);border-left-color:var(--acc)}
-.truck-item.cmp-on{background:rgba(91,143,255,0.07)}
-.truck-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.truck-name{font-size:12px;font-weight:600;flex:1}
+.truck-item.cmp-sel{background:rgba(91,143,255,0.06);border-left-color:var(--blu)}
+.truck-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.truck-info{flex:1;min-width:0}
+.truck-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .truck-date{font-size:9px;color:var(--tx3);margin-top:1px}
-.cmp-chk{width:14px;height:14px;accent-color:var(--blu);flex-shrink:0;cursor:pointer}
+.cmp-chk{width:13px;height:13px;accent-color:var(--blu);flex-shrink:0;cursor:pointer;display:none}
+.cmp-chk.show{display:block}
 
-.date-pills{display:flex;flex-wrap:wrap;gap:5px}
-.date-pill{padding:3px 9px;border:1px solid var(--brd);border-radius:12px;font-size:10px;color:var(--tx2);cursor:pointer;transition:all .12s}
+/* Date pills */
+.date-pills{display:flex;flex-wrap:wrap;gap:4px}
+.date-pill{padding:2px 8px;border:1px solid var(--brd);border-radius:10px;font-size:9px;color:var(--tx2);cursor:pointer;transition:all .12s}
 .date-pill:hover{border-color:var(--acc);color:var(--acc)}
 .date-pill.active{background:rgba(0,212,170,0.12);border-color:var(--acc);color:var(--acc);font-weight:600}
 
-.file-zone{border:1px dashed rgba(60,120,180,0.35);border-radius:7px;padding:8px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
-.file-zone:hover{border-color:var(--acc);background:rgba(0,212,170,0.04)}
-.file-zone input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-.file-zone-icon{font-size:18px;margin-bottom:3px}
-.file-zone-txt{font-size:10px;color:var(--tx3);line-height:1.4}
-.file-status{font-size:9px;color:var(--grn);margin-top:4px;font-weight:600}
+/* Calendar panel */
+.cal-panel{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.cal-panel.open{max-height:300px;overflow-y:auto}
+.cal-grid{display:grid;gap:2px;margin-top:4px}
+.cal-head{font-size:8px;color:var(--tx3);padding:2px 3px;text-align:center}
+.cal-truck-name{font-size:8px;color:var(--tx2);padding:2px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-cell{padding:2px 4px;border-radius:3px;font-size:8px;text-align:center;cursor:default;color:var(--tx3)}
+.cal-cell.has-data{background:rgba(0,212,170,0.15);color:var(--acc);cursor:pointer;font-weight:600}
+.cal-cell.has-data:hover{background:rgba(0,212,170,0.28)}
+.cal-cell.active-date{outline:1px solid var(--blu);background:rgba(91,143,255,0.18);color:var(--blu)}
 
-/* ── MAIN AREA ── */
+/* File upload */
+.file-zone{border:1px dashed rgba(60,120,180,0.35);border-radius:6px;padding:7px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.file-zone:hover{border-color:var(--acc);background:rgba(0,212,170,0.04)}
+.file-zone-icon{font-size:16px;margin-bottom:2px}
+.file-zone-txt{font-size:9px;color:var(--tx3);line-height:1.4}
+.file-status{font-size:9px;color:var(--grn);margin-top:3px;font-weight:600}
+
+/* MAIN */
 .main{grid-column:2;grid-row:2;display:flex;flex-direction:column;overflow:hidden}
-.tabs{display:flex;border-bottom:1px solid var(--brd);background:var(--bg2);flex-shrink:0}
-.tbtn{padding:10px 16px;border:none;border-bottom:2px solid transparent;background:none;color:var(--tx3);cursor:pointer;font-size:11px;font-weight:500;white-space:nowrap;transition:all .12s}
+.tabs{display:flex;border-bottom:1px solid var(--brd);background:var(--bg2);flex-shrink:0;overflow-x:auto}
+.tabs::-webkit-scrollbar{height:2px}
+.tbtn{padding:9px 14px;border:none;border-bottom:2px solid transparent;background:none;color:var(--tx3);cursor:pointer;font-size:11px;font-weight:500;white-space:nowrap;transition:all .12s}
 .tbtn:hover{color:var(--tx);background:rgba(255,255,255,0.03)}
 .tbtn.act{color:var(--acc);border-bottom-color:var(--acc);background:rgba(0,212,170,0.04)}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px}
 .content::-webkit-scrollbar{width:5px}
 .content::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
 
-.panel{display:none;flex-direction:column;gap:12px}
+.panel{display:none;flex-direction:column;gap:10px}
 .panel.show{display:flex}
 
-/* ── CARDS / LAYOUT ── */
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.card{background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:10px;overflow:hidden}
-.card-title{font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
-.tag{padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.3px}
+/* Cards */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+.card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:9px;overflow:hidden}
+.card-title{font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tag{padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.3px}
 .tag-a{background:rgba(255,124,58,.2);color:var(--org)}
 .tag-b{background:rgba(91,143,255,.2);color:var(--blu)}
+.thres-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.tb-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--tx3)}
+.tb-box{width:18px;height:3px;border-radius:2px}
 
-.stats-row{display:flex;gap:14px;padding:6px 10px;background:rgba(255,255,255,.03);border-radius:6px;border:1px solid var(--brd);margin-top:6px;flex-wrap:wrap}
+.stats-row{display:flex;gap:12px;padding:5px 8px;background:rgba(255,255,255,.025);border-radius:5px;border:1px solid var(--brd);margin-top:5px;flex-wrap:wrap}
 .stat{text-align:center}
-.stat .sv{font-size:15px;font-weight:700;font-family:'SF Mono',monospace;color:var(--acc)}
-.stat .sl{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
-.stat.warn .sv{color:var(--amb)} .stat.crit .sv{color:var(--red)}
+.stat .sv{font-size:14px;font-weight:700;font-family:'SF Mono',monospace;color:var(--acc)}
+.stat .sl{font-size:8px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+.stat.warn .sv{color:var(--amb)}
+.stat.crit .sv{color:var(--red)}
 
-.conclusion{background:linear-gradient(90deg,rgba(255,124,58,.07),rgba(91,143,255,.07));border:1px solid rgba(255,124,58,.2);border-radius:8px;padding:10px 16px;font-size:11px;line-height:1.9}
+.conclusion{background:linear-gradient(90deg,rgba(255,124,58,.06),rgba(91,143,255,.06));border:1px solid rgba(255,124,58,.18);border-radius:7px;padding:9px 14px;font-size:11px;line-height:1.9}
 .conclusion strong{color:#fff;font-size:12px}
-.cp{display:inline-block;padding:1px 7px;border-radius:4px;font-weight:700;font-size:11px;margin:0 2px}
-.cp-a{background:rgba(255,124,58,.2);color:var(--org)} .cp-b{background:rgba(91,143,255,.2);color:var(--blu)}
-.cp-ok{background:rgba(46,204,113,.2);color:var(--grn)} .cp-w{background:rgba(255,184,48,.2);color:var(--amb)} .cp-r{background:rgba(255,64,96,.2);color:var(--red)}
+.cp{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11px;margin:0 2px}
+.cp-a{background:rgba(255,124,58,.2);color:var(--org)}
+.cp-b{background:rgba(91,143,255,.2);color:var(--blu)}
+.cp-ok{background:rgba(46,204,113,.2);color:var(--grn)}
+.cp-w{background:rgba(255,184,48,.2);color:var(--amb)}
+.cp-r{background:rgba(255,64,96,.2);color:var(--red)}
 
-/* empty state */
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--tx3);text-align:center}
-.empty .ei{font-size:48px;opacity:.2}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:50px;color:var(--tx3);text-align:center}
+.empty .ei{font-size:44px;opacity:.2}
 .empty p{font-size:12px}
 
-/* Сравнение tab */
-.cmp-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
-.cmp-leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
-.cmp-dot{width:10px;height:10px;border-radius:50%}
+/* Compare sub-tabs */
+.sub-tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.stbtn{padding:4px 10px;border:1px solid var(--brd);border-radius:5px;background:none;color:var(--tx3);cursor:pointer;font-size:10px;transition:all .12s}
+.stbtn:hover{color:var(--tx);border-color:var(--tx3)}
+.stbtn.act{background:rgba(0,212,170,0.1);border-color:var(--acc);color:var(--acc)}
+.sub-panel{display:none;flex-direction:column;gap:10px}
+.sub-panel.show{display:flex}
 
-/* Давление tab */
-.press-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.press-wide{grid-column:1/-1}
-.thres-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
-.tl-item{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--tx3)}
-.tl-box{width:22px;height:4px;border-radius:2px}
+.cmp-legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+.cmp-leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
+.cmp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="logo">⚙ QSK50 <span>Цилиндры · Давление · Сравнение — Cummins MCRS</span></div>
+  <div class="logo">⚙ QSK50 <span>Цилиндры · Давление · Температуры · Топливо · Режимы</span></div>
   <div class="hdr-info" id="hdr-info">–</div>
 </div>
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-  <!-- Truck list header -->
   <div class="sb-section">
     <div class="sb-label">
       🚛 Самосвалы
-      <button onclick="toggleCmpMode()">⊞ Сравнение</button>
+      <button id="cmp-btn" onclick="toggleCmpMode()">⊞ Сравнение</button>
     </div>
   </div>
   <div class="truck-list" id="truck-list"></div>
 
-  <!-- Date selector -->
   <div class="sb-section" id="date-section" style="display:none">
-    <div class="sb-label">📅 Дата</div>
+    <div class="sb-label">📅 Дата сессии</div>
     <div class="date-pills" id="date-pills"></div>
   </div>
 
-  <!-- File loader -->
   <div class="sb-section">
-    <div class="sb-label">📂 Добавить файлы</div>
+    <div class="sb-label">
+      🗓 Календарь
+      <button onclick="toggleCal()">▸</button>
+    </div>
+    <div class="cal-panel" id="cal-panel">
+      <div id="cal-grid"></div>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">📂 Добавить CSV</div>
     <div class="file-zone" onclick="document.getElementById('file-in').click()">
       <div class="file-zone-icon">📊</div>
-      <div class="file-zone-txt">Log Files CSV<br>Один или несколько файлов</div>
+      <div class="file-zone-txt">INSITE Log CSV</div>
       <div class="file-status" id="file-status"></div>
       <input type="file" id="file-in" accept=".csv" multiple style="display:none" onchange="loadFiles(this.files)">
     </div>
@@ -366,103 +457,252 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 <!-- MAIN -->
 <div class="main">
   <div class="tabs">
-    <button class="tbtn act" onclick="showTab('cylinders',this)">🔩 Цилиндры</button>
+    <button class="tbtn act" onclick="showTab('cylinders',this)">🌡️ Цилиндры</button>
+    <button class="tbtn" onclick="showTab('pressure',this)">🔵 Давление</button>
+    <button class="tbtn" onclick="showTab('temps',this)">🌡️ Температуры</button>
+    <button class="tbtn" onclick="showTab('fuel',this)">⛽ Топливо</button>
+    <button class="tbtn" onclick="showTab('modes',this)">⚙️ Режимы</button>
     <button class="tbtn" onclick="showTab('compare',this)">📊 Сравнение</button>
-    <button class="tbtn" onclick="showTab('pressure',this)">💧 Давление</button>
   </div>
   <div class="content">
 
     <!-- TAB: CYLINDERS -->
     <div id="tab-cylinders" class="panel show">
-      <div class="row2">
+      <div class="grid2">
         <div class="card">
-          <div class="card-title"><span class="tag tag-a">А-банк</span>Нечётные цилиндры — ECM144</div>
+          <div class="card-title"><span class="tag tag-a">А-банк</span>Нечётные цилиндры (ECM144)</div>
           <div id="ch-a"></div>
           <div class="stats-row" id="stats-a"></div>
         </div>
         <div class="card">
-          <div class="card-title"><span class="tag tag-b">В-банк</span>Чётные цилиндры — ECM1</div>
+          <div class="card-title"><span class="tag tag-b">В-банк</span>Чётные цилиндры (ECM1)</div>
           <div id="ch-b"></div>
           <div class="stats-row" id="stats-b"></div>
         </div>
       </div>
       <div class="card">
-        <div class="card-title">∆ каждого цилиндра от среднего по своему банку</div>
+        <div class="card-title">∆ каждого цилиндра от среднего по банку</div>
         <div id="ch-dev"></div>
       </div>
       <div class="card">
-        <div class="card-title">Межбанковая дельта: В-банк avg − А-банк avg (по времени)</div>
+        <div class="card-title">Межбанковая дельта: В-банк avg − А-банк avg</div>
         <div id="ch-delta"></div>
       </div>
       <div class="conclusion" id="conclusion">← Выберите самосвал слева</div>
+    </div>
+
+    <!-- TAB: PRESSURE -->
+    <div id="tab-pressure" class="panel">
+      <div class="grid2">
+        <div class="card full">
+          <div class="card-title">Давление масла + пред. фильтр + перепад [кПа]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 350 кПа</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 300 кПа</div>
+          </div>
+          <div id="ch-p-oil"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Картерные газы [кПа]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 3 кПа</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 7 кПа</div>
+          </div>
+          <div id="ch-p-crank"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Наддув: boost + boost1 + boost2 [кПа]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 200 кПа</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 180 кПа</div>
+          </div>
+          <div id="ch-p-boost"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Давление топливной рейки: измеренное vs заданное [бар]</div>
+          <div id="ch-p-rail"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Давление масла топливного насоса [кПа]</div>
+          <div id="ch-p-pump"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Атм. давление + охл. жидкость + регулятор [кПа]</div>
+          <div id="ch-p-misc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: TEMPERATURES -->
+    <div id="tab-temps" class="panel">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Охлаждающая жидкость [°C]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(46,204,113,.6)"></div>Норма 82–95°C</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 95–105°C</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 >105°C</div>
+          </div>
+          <div id="ch-t-cool"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Масло [°C]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 105°C</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 115°C</div>
+          </div>
+          <div id="ch-t-oil"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Впускной коллектор 4 датчика [°C]</div>
+          <div id="ch-t-im4"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Температура топлива [°C]</div>
+          <div id="ch-t-fuel"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Средняя ТОГ: левый банк + правый банк [°C]</div>
+          <div id="ch-t-avg"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">ECM температура 2 + 3 [°C]</div>
+          <div id="ch-t-ecm"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: FUEL -->
+    <div id="tab-fuel" class="panel">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Расход топлива: мгн. + управл. + дозирование [л/час]</div>
+          <div id="ch-f-flow"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Рейка: измеренное vs заданное давление [бар]</div>
+          <div id="ch-f-rail"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ток насоса: задан. vs изм. [мА]</div>
+          <div id="ch-f-curr"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Рабочий цикл насоса + лифт-насос [%]</div>
+          <div id="ch-f-dc"></div>
+        </div>
+        <div class="card full">
+          <div class="card-title">Вода в топливе (0=нет, 1=обнаружена)</div>
+          <div id="ch-f-water"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: MODES -->
+    <div id="tab-modes" class="panel">
+      <div class="grid2">
+        <div class="card full">
+          <div class="card-title">Обороты [RPM] + Нагрузка [%]</div>
+          <div id="ch-m-rpm"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Педаль акселератора [%]</div>
+          <div id="ch-m-accel"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Вентилятор [%]</div>
+          <div id="ch-m-fan"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Напряжение АКБ [В]</div>
+          <div class="thres-badges">
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,184,48,.6)"></div>⚠ 22В</div>
+            <div class="tb-item"><div class="tb-box" style="background:rgba(255,64,96,.6)"></div>🔴 26В макс.</div>
+          </div>
+          <div id="ch-m-bat"></div>
+        </div>
+        <div class="card full">
+          <div class="card-title">Лампы аварий: Amber / Red + Уровень ОЖ</div>
+          <div id="ch-m-lamps"></div>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: COMPARE -->
     <div id="tab-compare" class="panel">
       <div id="cmp-empty" class="empty" style="display:none">
         <div class="ei">📊</div>
-        <p>Отметьте ✓ несколько самосвалов в панели слева для сравнения</p>
+        <p>Отметьте ✓ несколько самосвалов в панели слева</p>
       </div>
       <div id="cmp-legend-box" class="cmp-legend"></div>
-      <div class="card">
-        <div class="card-title">Средняя температура по цилиндрам (по выбранным самосвалам)</div>
-        <div id="ch-cmp-cyls"></div>
+      <div class="sub-tabs">
+        <button class="stbtn act" onclick="showSub('cmp-cyls',this)">🌡️ Цилиндры</button>
+        <button class="stbtn" onclick="showSub('cmp-press',this)">🔵 Давление</button>
+        <button class="stbtn" onclick="showSub('cmp-temps',this)">🌡️ Температуры</button>
+        <button class="stbtn" onclick="showSub('cmp-fuel',this)">⛽ Топливо</button>
+        <button class="stbtn" onclick="showSub('cmp-modes',this)">⚙️ Режимы</button>
+        <button class="stbtn" onclick="showSub('cmp-cal',this)">🗓 Календарь</button>
       </div>
-      <div class="row2">
-        <div class="card">
-          <div class="card-title">А-банк avg vs В-банк avg по самосвалам</div>
-          <div id="ch-cmp-banks"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Межбанковая дельта (В–А) по самосвалам</div>
-          <div id="ch-cmp-delta"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Сводная таблица сравнения</div>
-        <div id="ch-cmp-table"></div>
-      </div>
-    </div>
 
-    <!-- TAB: PRESSURE -->
-    <div id="tab-pressure" class="panel">
-      <div class="press-grid">
-        <div class="card press-wide">
-          <div class="card-title">Давление масла (кПа)</div>
-          <div class="thres-legend">
-            <div class="tl-item"><div class="tl-box" style="background:rgba(46,204,113,.5)"></div>Норма 350–650</div>
-            <div class="tl-item"><div class="tl-box" style="background:rgba(255,184,48,.5)"></div>Внимание &lt;350</div>
-            <div class="tl-item"><div class="tl-box" style="background:rgba(255,64,96,.5)"></div>Критично &lt;300</div>
+      <div id="sub-cmp-cyls" class="sub-panel show">
+        <div class="card">
+          <div class="card-title">Средняя EGT по цилиндрам (все выбранные)</div>
+          <div id="ch-cmp-cyls"></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">А-банк avg vs В-банк avg</div>
+            <div id="ch-cmp-banks"></div>
           </div>
-          <div id="ch-p-oil"></div>
+          <div class="card">
+            <div class="card-title">Межбанковая дельта (В−А)</div>
+            <div id="ch-cmp-delta"></div>
+          </div>
         </div>
         <div class="card">
-          <div class="card-title">Давление картерных газов (кПа)</div>
-          <div class="thres-legend">
-            <div class="tl-item"><div class="tl-box" style="background:rgba(46,204,113,.5)"></div>Норма 0–3</div>
-            <div class="tl-item"><div class="tl-box" style="background:rgba(255,184,48,.5)"></div>Внимание 3–7</div>
-            <div class="tl-item"><div class="tl-box" style="background:rgba(255,64,96,.5)"></div>Критично &gt;7</div>
-          </div>
-          <div id="ch-p-crank"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Давление наддува — впускной коллектор (кПа)</div>
-          <div class="thres-legend">
-            <div class="tl-item"><div class="tl-box" style="background:rgba(46,204,113,.5)"></div>Норма 200–350</div>
-            <div class="tl-item"><div class="tl-box" style="background:rgba(255,184,48,.5)"></div>Внимание &lt;180</div>
-          </div>
-          <div id="ch-p-boost"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">T масла + T охл. жидкости (°C)</div>
-          <div id="ch-p-temps"></div>
-        </div>
-        <div class="card press-wide">
-          <div class="card-title">Обороты (об/мин) + Нагрузка (%)</div>
-          <div id="ch-p-rpm"></div>
+          <div class="card-title">Сводная таблица</div>
+          <div id="ch-cmp-table"></div>
         </div>
       </div>
-      <div class="conclusion" id="press-summary">← Выберите самосвал слева</div>
+
+      <div id="sub-cmp-press" class="sub-panel">
+        <div class="grid2">
+          <div class="card"><div class="card-title">Давление масла avg [кПа]</div><div id="ch-cmp-oil"></div></div>
+          <div class="card"><div class="card-title">Наддув avg [кПа]</div><div id="ch-cmp-boost"></div></div>
+          <div class="card"><div class="card-title">Картерные газы avg [кПа]</div><div id="ch-cmp-crank"></div></div>
+          <div class="card"><div class="card-title">Рейка измеренная avg [бар]</div><div id="ch-cmp-rail"></div></div>
+        </div>
+      </div>
+
+      <div id="sub-cmp-temps" class="sub-panel">
+        <div class="grid2">
+          <div class="card"><div class="card-title">Охл. жидкость avg [°C]</div><div id="ch-cmp-cool"></div></div>
+          <div class="card"><div class="card-title">Масло avg [°C]</div><div id="ch-cmp-oil-t"></div></div>
+          <div class="card"><div class="card-title">Avg ТОГ левый банк [°C]</div><div id="ch-cmp-egt-l"></div></div>
+          <div class="card"><div class="card-title">Avg ТОГ правый банк [°C]</div><div id="ch-cmp-egt-r"></div></div>
+        </div>
+      </div>
+
+      <div id="sub-cmp-fuel" class="sub-panel">
+        <div class="grid2">
+          <div class="card"><div class="card-title">Расход мгновенный avg [л/час]</div><div id="ch-cmp-fuel-inst"></div></div>
+          <div class="card"><div class="card-title">Ток насоса cmd avg [мА]</div><div id="ch-cmp-pump-ma"></div></div>
+        </div>
+      </div>
+
+      <div id="sub-cmp-modes" class="sub-panel">
+        <div class="grid2">
+          <div class="card"><div class="card-title">RPM avg</div><div id="ch-cmp-rpm"></div></div>
+          <div class="card"><div class="card-title">Нагрузка avg [%]</div><div id="ch-cmp-load"></div></div>
+        </div>
+      </div>
+
+      <div id="sub-cmp-cal" class="sub-panel">
+        <div class="card">
+          <div class="card-title">Флит-календарь: самосвалы × даты (цвет = кол-во точек)</div>
+          <div id="ch-cmp-heatmap"></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -470,7 +710,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-// PRE-LOADED DATA
+// DATA
 // ═══════════════════════════════════════════════════════════════════
 const TRUCKS = __DATA__;
 const TRUCK_ORDER = __ORDER__;
@@ -479,39 +719,42 @@ const A_CYLS = [1,3,5,7,9,11,13,15];
 const B_CYLS = [2,4,6,8,10,12,14,16];
 const COLORS_A = ['#ff7c3a','#ffb830','#e55c3a','#cc4020','#ff9860','#f0c000','#dd7060','#aa3010'];
 const COLORS_B = ['#5b8fff','#00bfff','#7066ee','#9955dd','#3399ff','#44aaff','#8877ff','#bb77ee'];
-const TC = ['#00d4aa','#5b8fff','#ffb830','#ff4060','#b06bff','#00bfff','#2ecc71','#ff7c3a','#ff6eb4','#a3e635'];
+const TC = ['#00d4aa','#5b8fff','#ffb830','#ff4060','#b06bff','#00bfff','#2ecc71','#ff7c3a',
+            '#ff6eb4','#a3e635','#38bdf8','#fb923c','#c084fc','#34d399','#f472b6','#facc15'];
 
 const PLY_CFG = {responsive:true,displaylogo:false,modeBarButtonsToRemove:['select2d','lasso2d']};
-const PLY = {
-  paper_bgcolor:'#112030',plot_bgcolor:'rgba(8,18,32,0.7)',
+const PLY_BASE = {
+  paper_bgcolor:'#0f1e30',plot_bgcolor:'rgba(8,16,28,0.8)',
   font:{color:'#c8dff0',family:'Segoe UI,sans-serif',size:10},
-  margin:{l:48,r:14,t:26,b:36},
+  margin:{l:50,r:14,t:22,b:36},
   xaxis:{gridcolor:'rgba(60,120,180,0.07)',zerolinecolor:'rgba(60,120,180,0.12)',color:'#334d60'},
   yaxis:{gridcolor:'rgba(60,120,180,0.07)',zerolinecolor:'rgba(60,120,180,0.12)',color:'#334d60'},
   legend:{bgcolor:'rgba(0,0,0,0)',borderwidth:0,font:{size:9}},
 };
-function pl(id,data,lay={}){
-  const L=Object.assign({},PLY,lay);
-  if(lay.xaxis)L.xaxis=Object.assign({},PLY.xaxis,lay.xaxis);
-  if(lay.yaxis)L.yaxis=Object.assign({},PLY.yaxis,lay.yaxis);
-  if(lay.yaxis2)L.yaxis2=Object.assign({showgrid:false,color:'#334d60'},lay.yaxis2);
+function pl(id,data,lay){
+  const L=Object.assign({},PLY_BASE,lay||{});
+  if(lay&&lay.xaxis)L.xaxis=Object.assign({},PLY_BASE.xaxis,lay.xaxis);
+  if(lay&&lay.yaxis)L.yaxis=Object.assign({},PLY_BASE.yaxis,lay.yaxis);
+  if(lay&&lay.yaxis2)L.yaxis2=Object.assign({showgrid:false,color:'#334d60'},lay.yaxis2);
   Plotly.react(id,data,L,PLY_CFG);
 }
+function plEmpty(id,msg,h){pl(id,[],{height:h||180,title:{text:msg||'Нет данных',font:{color:'#334d60',size:10}}});}
 
-// ═══ STATE ═══════════════════════════════════════════════════════════
-let activeTruck = null;   // truck key
-let activeSession = {};   // truckKey → sessionIndex
-let compareMode = false;
-let compareSet = new Set();
-let currentTab = 'cylinders';
+// ═══ STATE ════════════════════════════════════════════════════════
+let activeTruck=null;
+let activeSession={};
+let compareMode=false;
+let compareSet=new Set();
+let currentTab='cylinders';
+let currentSub='cmp-cyls';
 
-// ═══ MATH ════════════════════════════════════════════════════════════
-function nn(a){return(a||[]).filter(v=>v!==null&&!isNaN(v));}
+// ═══ MATH ══════════════════════════════════════════════════════════
+function nn(a){return(a||[]).filter(v=>v!==null&&v!==undefined&&!isNaN(v));}
 function mean(a){const b=nn(a);return b.length?b.reduce((s,v)=>s+v,0)/b.length:null;}
 function maxv(a){const b=nn(a);return b.length?Math.max(...b):null;}
 function minv(a){const b=nn(a);return b.length?Math.min(...b):null;}
 function rowMeans(cyls,keys){
-  if(!cyls||!keys.length)return [];
+  if(!cyls||!keys.length)return[];
   const n=(cyls[keys[0]]||[]).length;
   return Array.from({length:n},(_,i)=>{
     const vals=keys.map(k=>cyls[k]?cyls[k][i]:null).filter(v=>v!==null&&!isNaN(v));
@@ -523,46 +766,96 @@ function timeSecs(ts){
   const t0=new Date(ts[0]).getTime();
   return ts.map(t=>t?Math.round((new Date(t).getTime()-t0)/1000):null);
 }
-function ewma(arr,a=0.06){let s=null;return arr.map(v=>{if(v!=null){s=s==null?v:a*v+(1-a)*s;return Math.round(s*10)/10;}return s;});}
+function ewma(arr,a=0.06){
+  let s=null;
+  return arr.map(v=>{if(v!=null&&!isNaN(v)){s=s==null?v:a*v+(1-a)*s;return Math.round(s*10)/10;}return s;});
+}
+function mkLine(y,color,dash='dot'){return{type:'line',x0:0,x1:1,xref:'paper',y0:y,y1:y,line:{color,dash,width:1.5}};}
+function mkZone(y0,y1,color){return{type:'rect',x0:0,x1:1,xref:'paper',y0,y1,fillcolor:color,line:{width:0}};}
 
-// ═══ SESSION HELPERS ════════════════════════════════════════════════
+// ═══ SESSION ═══════════════════════════════════════════════════════
 function getSession(key){
   const d=TRUCKS[key];if(!d)return null;
   const si=activeSession[key]||0;
   return d.sessions[si]||d.sessions[0]||null;
 }
-function sessionLabel(key){
+function truckLabel(key){
   const d=TRUCKS[key];if(!d)return key;
-  return d.model+' №'+d.truck;
+  const s=getSession(key);
+  return d.model+' №'+d.truck+(s?' | '+s.date:'');
 }
-function sessionDateLabel(key){
-  const s=getSession(key);return s?s.date:'?';
+function truckColor(key){return TC[TRUCK_ORDER.indexOf(key)%TC.length];}
+
+// ═══ ACTIVE KEYS (single or compare) ══════════════════════════════
+function getActiveKeys(){
+  if(compareMode&&compareSet.size>=2)return[...compareSet].filter(k=>TRUCKS[k]);
+  return activeTruck&&TRUCKS[activeTruck]?[activeTruck]:[];
 }
 
-// ═══ SIDEBAR ════════════════════════════════════════════════════════
+// ═══ GENERIC TIME-SERIES TRACE BUILDER ════════════════════════════
+function tsTraces(paramKey,defColor,withEWMA){
+  if(withEWMA===undefined)withEWMA=true;
+  const keys=getActiveKeys();const traces=[];
+  keys.forEach(k=>{
+    const s=getSession(k);if(!s||!s.p)return;
+    const v=s.p[paramKey];if(!v||nn(v).length<5)return;
+    const secs=timeSecs(s.ts);
+    const color=keys.length>1?truckColor(k):defColor;
+    const name=keys.length>1?truckLabel(k):'Факт';
+    traces.push({type:'scattergl',x:secs,y:v,name,line:{color,width:1.2},opacity:keys.length>1?.7:.55});
+    if(withEWMA&&keys.length===1)
+      traces.push({type:'scattergl',x:secs,y:ewma(v),name:'EWMA',line:{color,width:2.5}});
+  });
+  return traces;
+}
+function tsChart(id,paramKey,yTitle,defColor,h,shapes){
+  const traces=tsTraces(paramKey,defColor);
+  if(!traces.length){plEmpty(id,'Нет данных: '+yTitle,h||180);return;}
+  pl(id,traces,{height:h||200,yaxis:{title:yTitle},xaxis:{title:'сек'},shapes:shapes||[]});
+}
+function tsChart2(id,key1,key2,name1,name2,c1,c2,yTitle,h,shapes){
+  const keys=getActiveKeys();const traces=[];
+  keys.forEach(k=>{
+    const s=getSession(k);if(!s||!s.p)return;
+    const v1=s.p[key1],v2=s.p[key2];
+    const secs=timeSecs(s.ts);
+    const pfx=keys.length>1?(truckLabel(k)+' '):''
+    if(v1&&nn(v1).length>4)traces.push({type:'scattergl',x:secs,y:v1,name:pfx+name1,line:{color:c1,width:keys.length>1?1:2},opacity:keys.length>1?.7:.8});
+    if(v2&&nn(v2).length>4)traces.push({type:'scattergl',x:secs,y:v2,name:pfx+name2,line:{color:c2,width:keys.length>1?1:2},opacity:keys.length>1?.7:.8});
+  });
+  if(!traces.length){plEmpty(id,'Нет данных',h||180);return;}
+  pl(id,traces,{height:h||200,yaxis:{title:yTitle},xaxis:{title:'сек'},shapes:shapes||[]});
+}
+
+// ═══ SIDEBAR ═══════════════════════════════════════════════════════
 function buildSidebar(){
   const list=document.getElementById('truck-list');
   list.innerHTML='';
   TRUCK_ORDER.forEach((key,i)=>{
     const d=TRUCKS[key];if(!d)return;
     const item=document.createElement('div');
-    item.className='truck-item'+(activeTruck===key?' active':'');
+    item.className='truck-item'+(activeTruck===key?' active':'')+(compareSet.has(key)?' cmp-sel':'');
     item.id='ti-'+key;
-    item.onclick=(e)=>{if(e.target.classList.contains('cmp-chk'))return;selectTruck(key);};
+    item.onclick=e=>{if(e.target.tagName==='INPUT')return;selectTruck(key);};
 
     const dot=document.createElement('span');
     dot.className='truck-dot';dot.style.background=TC[i%TC.length];
-    const info=document.createElement('div');info.style.flex='1';info.style.minWidth=0;
+
+    const info=document.createElement('div');info.className='truck-info';
     const nm=document.createElement('div');nm.className='truck-name';nm.textContent=d.model+' №'+d.truck;
     const dt=document.createElement('div');dt.className='truck-date';dt.id='td-'+key;
-    dt.textContent=sessionDateLabel(key)+(d.sessions.length>1?' (+'+( d.sessions.length-1)+')':'');
+    const s=getSession(key);
+    dt.textContent=(s?s.date:'?')+(d.sessions.length>1?' (+'+( d.sessions.length-1)+')':'');
     info.appendChild(nm);info.appendChild(dt);
 
     const chk=document.createElement('input');
-    chk.type='checkbox';chk.className='cmp-chk';chk.id='chk-'+key;
-    chk.style.display=compareMode?'':'none';
+    chk.type='checkbox';chk.className='cmp-chk'+(compareMode?' show':'');
     chk.checked=compareSet.has(key);
-    chk.onchange=()=>{if(chk.checked)compareSet.add(key);else compareSet.delete(key);if(currentTab==='compare')renderCompare();};
+    chk.onchange=()=>{
+      if(chk.checked)compareSet.add(key);else compareSet.delete(key);
+      item.className='truck-item'+(activeTruck===key?' active':'')+(compareSet.has(key)?' cmp-sel':'');
+      if(currentTab==='compare')renderCompare();
+    };
 
     item.appendChild(dot);item.appendChild(info);item.appendChild(chk);
     list.appendChild(item);
@@ -571,8 +864,14 @@ function buildSidebar(){
 
 function toggleCmpMode(){
   compareMode=!compareMode;
-  document.querySelectorAll('.cmp-chk').forEach(c=>c.style.display=compareMode?'':'none');
-  if(compareMode&&currentTab==='cylinders')showTab('compare',document.querySelectorAll('.tbtn')[1]);
+  document.querySelectorAll('.cmp-chk').forEach(c=>compareMode?c.classList.add('show'):c.classList.remove('show'));
+  document.getElementById('cmp-btn').classList.toggle('active',compareMode);
+  if(compareMode&&currentTab!=='compare'){
+    const btn=document.querySelectorAll('.tbtn')[5];
+    showTab('compare',btn);
+  }else if(!compareMode){
+    renderCurrentTab();
+  }
 }
 
 function selectTruck(key){
@@ -580,6 +879,7 @@ function selectTruck(key){
   document.querySelectorAll('.truck-item').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('ti-'+key);if(el)el.classList.add('active');
   buildDatePills(key);
+  updateCal();
   renderCurrentTab();
   updateHeader();
 }
@@ -600,6 +900,7 @@ function buildDatePills(key){
       pills.querySelectorAll('.date-pill').forEach(x=>x.classList.remove('active'));
       p.classList.add('active');
       document.getElementById('td-'+key).textContent=s.date+(d.sessions.length>1?' (+'+( d.sessions.length-1)+')':'');
+      updateCal();
       renderCurrentTab();updateHeader();
     };
     pills.appendChild(p);
@@ -611,7 +912,53 @@ function updateHeader(){
   const s=getSession(activeTruck);
   const d=TRUCKS[activeTruck];
   document.getElementById('hdr-info').textContent=
-    (d?d.model+' №'+d.truck:'')+(s?' | '+s.date:'');
+    (d?d.model+' №'+d.truck:'')+(s?' | '+s.date+' | '+nn(s.p&&s.p.rpm||[]).length+' точек':'');
+}
+
+// ═══ CALENDAR ═══════════════════════════════════════════════════════
+function toggleCal(){
+  const p=document.getElementById('cal-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open'))buildCalGrid();
+}
+function buildCalGrid(){
+  // Collect all unique dates across all trucks
+  const allDates=new Set();
+  TRUCK_ORDER.forEach(k=>{
+    const d=TRUCKS[k];if(!d)return;
+    d.sessions.forEach(s=>allDates.add(s.date));
+  });
+  const dates=[...allDates].sort();
+  const nCols=dates.length+1;
+  const grid=document.getElementById('cal-grid');
+  grid.style.display='grid';
+  grid.style.gridTemplateColumns='70px '+dates.map(()=>'1fr').join(' ');
+
+  let html='<div class="cal-head"></div>';
+  dates.forEach(d=>{html+=`<div class="cal-head">${d.slice(0,5)}</div>`;});
+  TRUCK_ORDER.forEach(k=>{
+    const d=TRUCKS[k];if(!d)return;
+    html+=`<div class="cal-truck-name">${d.model} №${d.truck}</div>`;
+    dates.forEach(dt=>{
+      const si=d.sessions.findIndex(s=>s.date===dt);
+      if(si<0){html+=`<div class="cal-cell">–</div>`;}
+      else{
+        const active=activeTruck===k&&(activeSession[k]||0)===si;
+        const pts=nn(d.sessions[si].p&&d.sessions[si].p.rpm||[]).length;
+        html+=`<div class="cal-cell has-data${active?' active-date':''}" onclick="selectTruckDate('${k}',${si})">${pts}</div>`;
+      }
+    });
+  });
+  grid.innerHTML=html;
+}
+function selectTruckDate(key,si){
+  activeSession[key]=si;
+  selectTruck(key);
+  buildCalGrid();
+}
+function updateCal(){
+  const p=document.getElementById('cal-panel');
+  if(p.classList.contains('open'))buildCalGrid();
 }
 
 // ═══ TAB SWITCHING ══════════════════════════════════════════════════
@@ -623,19 +970,24 @@ function showTab(name,btn){
   currentTab=name;
   renderCurrentTab();
 }
+function showSub(name,btn){
+  document.querySelectorAll('.sub-panel').forEach(p=>p.classList.remove('show'));
+  document.querySelectorAll('.stbtn').forEach(b=>b.classList.remove('act'));
+  document.getElementById('sub-'+name).classList.add('show');
+  btn.classList.add('act');
+  currentSub=name;
+  renderCompare();
+}
 function renderCurrentTab(){
   if(currentTab==='cylinders')renderCylinders();
-  else if(currentTab==='compare')renderCompare();
   else if(currentTab==='pressure')renderPressure();
+  else if(currentTab==='temps')renderTemps();
+  else if(currentTab==='fuel')renderFuel();
+  else if(currentTab==='modes')renderModes();
+  else if(currentTab==='compare')renderCompare();
 }
 
-// ═══ CHART HELPERS ══════════════════════════════════════════════════
-function refLines(vals,colors){
-  return vals.map((v,i)=>({type:'line',x0:0,x1:1,xref:'paper',y0:v,y1:v,line:{color:colors[i]||'#888',dash:'dot',width:1.5}}));
-}
-function refAnnots(vals,labels,colors){
-  return vals.map((v,i)=>({x:0.01,xref:'paper',y:v,text:labels[i],showarrow:false,font:{color:colors[i]||'#888',size:9},xanchor:'left'}));
-}
+// ═══ STATS ROW ══════════════════════════════════════════════════════
 function statsHTML(avg,max,delta){
   const ac=avg>=560?'crit':avg>=520?'warn':'';
   const dc=delta>=200?'crit':delta>=100?'warn':'';
@@ -646,294 +998,429 @@ function statsHTML(avg,max,delta){
 
 // ═══ TAB: CYLINDERS ═════════════════════════════════════════════════
 function renderCylinders(){
-  if(!activeTruck||!TRUCKS[activeTruck]){
+  const keys=getActiveKeys();
+  if(!keys.length){
     ['ch-a','ch-b','ch-dev','ch-delta'].forEach(id=>Plotly.purge(id));
     document.getElementById('conclusion').innerHTML='← Выберите самосвал слева';
     return;
   }
-  const s=getSession(activeTruck);if(!s)return;
-  const {ts,cyls}=s;
-  const secs=timeSecs(ts);
-  const aCyls=A_CYLS.filter(n=>cyls[n]);
-  const bCyls=B_CYLS.filter(n=>cyls[n]);
-  const aAvg=aCyls.length?rowMeans(cyls,aCyls):[];
-  const bAvg=bCyls.length?rowMeans(cyls,bCyls):[];
 
-  // A-bank chart
-  if(aCyls.length){
-    const tr=aCyls.map((n,i)=>({type:'scattergl',x:secs,y:cyls[n],name:'Ц'+n,line:{color:COLORS_A[i%8],width:1},opacity:.8}));
-    tr.push({type:'scattergl',x:secs,y:ewma(aAvg),name:'avg А',line:{color:'#fff',width:2.5,dash:'dot'}});
-    pl('ch-a',tr,{height:260,yaxis:{title:'EGT °C',range:[250,650]},xaxis:{title:'сек'},
-      shapes:refLines([500,550],['rgba(255,184,48,.5)','rgba(255,64,96,.5)']),
-      annotations:refAnnots([500,550],['500°C','550°C'],['rgba(255,184,48,.7)','rgba(255,64,96,.7)'])});
-    const av=mean(aAvg)||0,al=aCyls.flatMap(n=>nn(cyls[n]));
-    document.getElementById('stats-a').innerHTML=statsHTML(av,maxv(al)||0,(maxv(al)||0)-(minv(al)||0));
+  if(keys.length===1){
+    const key=keys[0];
+    const s=getSession(key);if(!s)return;
+    const{ts,cyls}=s;
+    const secs=timeSecs(ts);
+    const aCyls=A_CYLS.filter(n=>cyls[String(n)]);
+    const bCyls=B_CYLS.filter(n=>cyls[String(n)]);
+    const aAvg=aCyls.length?rowMeans(cyls,aCyls.map(String)):[];
+    const bAvg=bCyls.length?rowMeans(cyls,bCyls.map(String)):[];
+    const thShapes=[mkLine(500,'rgba(255,184,48,.5)'),mkLine(550,'rgba(255,64,96,.5)')];
+
+    if(aCyls.length){
+      const tr=aCyls.map((n,i)=>({type:'scattergl',x:secs,y:cyls[String(n)],name:'Ц'+n,line:{color:COLORS_A[i%8],width:1},opacity:.8}));
+      tr.push({type:'scattergl',x:secs,y:ewma(aAvg),name:'avg А',line:{color:'#fff',width:2.5,dash:'dot'}});
+      pl('ch-a',tr,{height:250,yaxis:{title:'EGT °C',range:[250,650]},xaxis:{title:'сек'},shapes:thShapes});
+      const aVals=aCyls.flatMap(n=>nn(cyls[String(n)]));
+      document.getElementById('stats-a').innerHTML=statsHTML(mean(aAvg)||0,maxv(aVals)||0,(maxv(aVals)||0)-(minv(aVals)||0));
+    }
+    if(bCyls.length){
+      const tr=bCyls.map((n,i)=>({type:'scattergl',x:secs,y:cyls[String(n)],name:'Ц'+n,line:{color:COLORS_B[i%8],width:1},opacity:.8}));
+      tr.push({type:'scattergl',x:secs,y:ewma(bAvg),name:'avg В',line:{color:'#fff',width:2.5,dash:'dot'}});
+      pl('ch-b',tr,{height:250,yaxis:{title:'EGT °C',range:[250,650]},xaxis:{title:'сек'},shapes:thShapes});
+      const bVals=bCyls.flatMap(n=>nn(cyls[String(n)]));
+      document.getElementById('stats-b').innerHTML=statsHTML(mean(bAvg)||0,maxv(bVals)||0,(maxv(bVals)||0)-(minv(bVals)||0));
+    }
+
+    // Deviation bar
+    const aAvgM=mean(aAvg)||0,bAvgM=mean(bAvg)||0;
+    const allC=[...aCyls,...bCyls].sort((a,b)=>a-b);
+    const devs=allC.map(n=>{
+      const v=mean(cyls[String(n)])||0;
+      const bk=A_CYLS.includes(n)?aAvgM:bAvgM;
+      return{n,d:Math.round(v-bk),bank:A_CYLS.includes(n)?'A':'B'};
+    });
+    pl('ch-dev',[{type:'bar',x:devs.map(d=>'Ц'+d.n),y:devs.map(d=>d.d),
+      text:devs.map(d=>(d.d>=0?'+':'')+d.d+'°'),textposition:'outside',textfont:{size:9},
+      marker:{color:devs.map(d=>{const ab=Math.abs(d.d),base=d.bank==='A'?'255,124,58':'91,143,255',op=ab>60?.95:ab>30?.7:.45;return`rgba(${base},${op})`;})},
+    }],{height:185,
+      shapes:[mkLine(30,'rgba(255,184,48,.4)'),mkLine(-30,'rgba(255,184,48,.4)'),mkLine(60,'rgba(255,64,96,.4)'),mkLine(-60,'rgba(255,64,96,.4)')],
+      yaxis:{title:'∆°C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5},
+      xaxis:{tickfont:{size:9}},margin:{l:48,r:40,t:14,b:36}});
+
+    // Delta time
+    const delta=secs.map((_,i)=>{
+      const a=aAvg[i],b=bAvg[i];return(a!=null&&b!=null)?Math.round(b-a):null;});
+    const dm=mean(delta);
+    pl('ch-delta',[
+      {type:'scattergl',x:secs,y:delta.map(v=>v!=null&&v>0?v:0),name:'В>А',fill:'tozeroy',fillcolor:'rgba(91,143,255,.15)',line:{color:'rgba(91,143,255,.6)',width:1}},
+      {type:'scattergl',x:secs,y:delta.map(v=>v!=null&&v<0?v:0),name:'А>В',fill:'tozeroy',fillcolor:'rgba(255,124,58,.15)',line:{color:'rgba(255,124,58,.6)',width:1}},
+      {type:'scattergl',x:secs,y:ewma(delta,.05),name:'EWMA',line:{color:'#ffb830',width:2.5}},
+    ],{height:185,yaxis:{title:'∆°C (В−А)',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5},xaxis:{title:'сек'},
+      shapes:[mkLine(20,'rgba(91,143,255,.35)'),mkLine(-20,'rgba(255,124,58,.35)')]});
+
+    // Conclusion
+    const hotBank=dm!=null?(dm>0?'В-банк':'А-банк'):'?',hotAmt=dm!=null?Math.abs(Math.round(dm)):0;
+    const aValsAll=aCyls.flatMap(n=>nn(cyls[String(n)]));
+    const bValsAll=bCyls.flatMap(n=>nn(cyls[String(n)]));
+    const aSpread=Math.round((maxv(aValsAll)||0)-(minv(aValsAll)||0));
+    const bSpread=Math.round((maxv(bValsAll)||0)-(minv(bValsAll)||0));
+    let maxDevC=null,maxDevV=0;
+    allC.forEach(n=>{const v=mean(cyls[String(n)])||0;const bk=A_CYLS.includes(n)?aAvgM:bAvgM;const dv=Math.abs(v-bk);if(dv>maxDevV){maxDevV=dv;maxDevC={n,d:Math.round(v-bk)};}});
+    const riskC=maxDevC&&Math.abs(maxDevC.d)>60?'cp-r':maxDevC&&Math.abs(maxDevC.d)>30?'cp-w':'cp-ok';
+    document.getElementById('conclusion').innerHTML=`
+      <strong>ВЫВОД: ${truckLabel(keys[0])}</strong><br>
+      <span class="cp ${dm>=0?'cp-b':'cp-a'}">${hotBank} горячее</span> на <b>${hotAmt}°С</b> &nbsp;|&nbsp;
+      Разброс: <span class="cp cp-a">A=${aSpread}°</span><span class="cp cp-b">B=${bSpread}°</span> &nbsp;|&nbsp;
+      ${maxDevC?`Цил.<b>${maxDevC.n}</b>: <span class="cp ${riskC}">${maxDevC.d>0?'+':''}${maxDevC.d}°</span> от avg банка`:''}`;
+
+  }else{
+    // Compare mode: grouped EGT bar per truck
+    const allCyls=[...A_CYLS,...B_CYLS].sort((a,b)=>a-b);
+    const trCylAvgs=keys.map(k=>{
+      const s=getSession(k);if(!s)return{};
+      const out={};allCyls.forEach(n=>{out[n]=mean(s.cyls&&s.cyls[String(n)]);});
+      return out;
+    });
+    const cylTraces=keys.map((k,i)=>({
+      type:'bar',name:truckLabel(k),
+      x:allCyls.map(n=>'Ц'+n),
+      y:allCyls.map(n=>trCylAvgs[i][n]!=null?Math.round(trCylAvgs[i][n]):null),
+      marker:{color:truckColor(k)},
+    }));
+    pl('ch-a',cylTraces,{height:260,barmode:'group',
+      yaxis:{title:'°C'},xaxis:{tickfont:{size:9}},
+      shapes:[mkLine(500,'rgba(255,184,48,.35)'),mkLine(550,'rgba(255,64,96,.35)')]});
+    plEmpty('ch-b','(см. график слева — режим сравнения)',200);
+    // Banks
+    const bankX=keys.map(k=>truckLabel(k));
+    pl('ch-dev',[
+      {type:'bar',name:'А-банк',x:bankX,y:keys.map((_,i)=>Math.round(mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),marker:{color:'rgba(255,124,58,.8)'}},
+      {type:'bar',name:'В-банк',x:bankX,y:keys.map((_,i)=>Math.round(mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),marker:{color:'rgba(91,143,255,.8)'}},
+    ],{height:185,barmode:'group',yaxis:{title:'°C'},shapes:[mkLine(500,'rgba(255,184,48,.25)'),mkLine(550,'rgba(255,64,96,.25)')]});
+    pl('ch-delta',[{type:'bar',
+      x:bankX,
+      y:keys.map((_,i)=>{const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;return Math.round(b-a);}),
+      marker:{color:keys.map((_,i)=>{const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;return(b-a)>=0?'rgba(91,143,255,.8)':'rgba(255,124,58,.8)';})}
+    }],{height:185,yaxis:{title:'В−А °C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5}});
+    document.getElementById('conclusion').innerHTML='<strong>Режим сравнения:</strong> выбрано '+keys.length+' самосвалов';
   }
+}
 
-  // B-bank chart
-  if(bCyls.length){
-    const tr=bCyls.map((n,i)=>({type:'scattergl',x:secs,y:cyls[n],name:'Ц'+n,line:{color:COLORS_B[i%8],width:1},opacity:.8}));
-    tr.push({type:'scattergl',x:secs,y:ewma(bAvg),name:'avg В',line:{color:'#fff',width:2.5,dash:'dot'}});
-    pl('ch-b',tr,{height:260,yaxis:{title:'EGT °C',range:[250,650]},xaxis:{title:'сек'},
-      shapes:refLines([500,550],['rgba(255,184,48,.5)','rgba(255,64,96,.5)']),
-      annotations:refAnnots([500,550],['500°C','550°C'],['rgba(255,184,48,.7)','rgba(255,64,96,.7)'])});
-    const bv=mean(bAvg)||0,bl=bCyls.flatMap(n=>nn(cyls[n]));
-    document.getElementById('stats-b').innerHTML=statsHTML(bv,maxv(bl)||0,(maxv(bl)||0)-(minv(bl)||0));
-  }
+// ═══ TAB: PRESSURE ══════════════════════════════════════════════════
+function renderPressure(){
+  // Oil pressure + pre-filter + DP
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      const col=keys.length>1?truckColor(k):'#00d4aa';
+      if(s.p.oil_p&&nn(s.p.oil_p).length>4){
+        traces.push({type:'scattergl',x:secs,y:s.p.oil_p,name:pfx+'P масла',line:{color:col,width:keys.length>1?1:1.2},opacity:.55});
+        if(keys.length===1)traces.push({type:'scattergl',x:secs,y:ewma(s.p.oil_p),name:'EWMA масло',line:{color:col,width:2.5}});
+      }
+      if(keys.length===1){
+        if(s.p.pre_filt_p&&nn(s.p.pre_filt_p).length>4)traces.push({type:'scattergl',x:secs,y:s.p.pre_filt_p,name:'Пред.фильтр',line:{color:'#5b8fff',width:2}});
+        if(s.p.filt_dp&&nn(s.p.filt_dp).length>4)traces.push({type:'scattergl',x:secs,y:s.p.filt_dp,name:'∆P фильтра',line:{color:'#ffb830',width:2,dash:'dash'}});
+      }
+    });
+    if(!traces.length){plEmpty('ch-p-oil','Нет данных давления масла',200);return;}
+    pl('ch-p-oil',traces,{height:200,yaxis:{title:'кПа'},xaxis:{title:'сек'},
+      shapes:[mkZone(350,650,'rgba(46,204,113,.025)'),mkLine(350,'rgba(255,184,48,.5)'),mkLine(300,'rgba(255,64,96,.5)')]});
+  })();
 
-  // Deviation bar
-  const aAvgM=mean(aAvg)||0,bAvgM=mean(bAvg)||0;
-  const allC=[...aCyls,...bCyls].sort((a,b)=>a-b);
-  const devs=allC.map(n=>{
-    const v=mean(cyls[n])||0;
-    const bk=A_CYLS.includes(n)?aAvgM:bAvgM;
-    return{n,d:Math.round(v-bk),bank:A_CYLS.includes(n)?'A':'B'};
-  });
-  pl('ch-dev',[{type:'bar',x:devs.map(d=>'Ц'+d.n),y:devs.map(d=>d.d),
-    text:devs.map(d=>(d.d>=0?'+':'')+d.d+'°'),textposition:'outside',textfont:{size:9},
-    marker:{color:devs.map(d=>{const ab=Math.abs(d.d),base=d.bank==='A'?'255,124,58':'91,143,255',op=ab>60?.95:ab>30?.7:.5;return `rgba(${base},${op})`;})},
-  }],{height:190,
-    shapes:[...refLines([30,-30,60,-60],['rgba(255,184,48,.4)','rgba(255,184,48,.4)','rgba(255,64,96,.4)','rgba(255,64,96,.4)'])],
-    yaxis:{title:'∆°C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5},
-    xaxis:{tickfont:{size:9}},margin:{l:48,r:40,t:14,b:36}});
+  // Crankcase
+  tsChart('ch-p-crank','crank_p','кПа','#ff4060',200,[
+    mkZone(0,3,'rgba(46,204,113,.04)'),mkLine(3,'rgba(255,184,48,.5)'),mkLine(7,'rgba(255,64,96,.5)')]);
 
-  // Delta time series
-  const delta=secs.map((_,i)=>{
-    const a=aAvg[i],b=bAvg[i];return(a!=null&&b!=null)?Math.round(b-a):null;});
-  const dm=mean(delta);
-  pl('ch-delta',[
-    {type:'scattergl',x:secs,y:delta.map(v=>v!=null&&v>0?v:0),name:'В>А',fill:'tozeroy',fillcolor:'rgba(91,143,255,.15)',line:{color:'rgba(91,143,255,.6)',width:1}},
-    {type:'scattergl',x:secs,y:delta.map(v=>v!=null&&v<0?v:0),name:'А>В',fill:'tozeroy',fillcolor:'rgba(255,124,58,.15)',line:{color:'rgba(255,124,58,.6)',width:1}},
-    {type:'scattergl',x:secs,y:ewma(delta,.05),name:'EWMA',line:{color:'#ffb830',width:2.5}},
-  ],{height:190,yaxis:{title:'∆°C (В−А)',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5},xaxis:{title:'сек'},
-    shapes:refLines([20,-20],['rgba(91,143,255,.35)','rgba(255,124,58,.35)']),
-    annotations:refAnnots([20,-20],['+20°','-20°'],['rgba(91,143,255,.6)','rgba(255,124,58,.6)'])});
+  // Boost
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const col=keys.length>1?truckColor(k):'#5b8fff';
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.boost&&nn(s.p.boost).length>4){
+        traces.push({type:'scattergl',x:secs,y:s.p.boost,name:pfx+'boost',line:{color:col,width:keys.length>1?1:1.2},opacity:.55});
+        if(keys.length===1)traces.push({type:'scattergl',x:secs,y:ewma(s.p.boost),name:'EWMA',line:{color:col,width:2.5}});
+      }
+      if(keys.length===1){
+        if(s.p.boost1&&nn(s.p.boost1).length>4)traces.push({type:'scattergl',x:secs,y:s.p.boost1,name:'boost1',line:{color:'#00bfff',width:1.5,dash:'dash'}});
+        if(s.p.boost2&&nn(s.p.boost2).length>4)traces.push({type:'scattergl',x:secs,y:s.p.boost2,name:'boost2',line:{color:'#9955dd',width:1.5,dash:'dot'}});
+      }
+    });
+    if(!traces.length){plEmpty('ch-p-boost','Нет данных наддува',200);return;}
+    pl('ch-p-boost',traces,{height:200,yaxis:{title:'кПа'},xaxis:{title:'сек'},
+      shapes:[mkZone(200,350,'rgba(46,204,113,.03)'),mkLine(200,'rgba(255,184,48,.5)'),mkLine(180,'rgba(255,64,96,.5)')]});
+  })();
 
-  // Conclusion
-  const hotBank=dm!=null?(dm>0?'В-банк':'А-банк'):'?',hotAmt=dm!=null?Math.abs(Math.round(dm)):0;
-  const aSpread=Math.round((maxv(aCyls.flatMap(n=>nn(cyls[n])))||0)-(minv(aCyls.flatMap(n=>nn(cyls[n])))||0));
-  const bSpread=Math.round((maxv(bCyls.flatMap(n=>nn(cyls[n])))||0)-(minv(bCyls.flatMap(n=>nn(cyls[n])))||0));
-  let maxDevC=null,maxDevV=0;
-  allC.forEach(n=>{const v=mean(cyls[n])||0;const bk=A_CYLS.includes(n)?aAvgM:bAvgM;const dv=Math.abs(v-bk);if(dv>maxDevV){maxDevV=dv;maxDevC={n,d:Math.round(v-bk)};}});
-  const riskC=maxDevC&&Math.abs(maxDevC.d)>60?'cp-r':maxDevC&&Math.abs(maxDevC.d)>30?'cp-w':'cp-ok';
-  document.getElementById('conclusion').innerHTML=`
-    <strong>ВЫВОД:</strong>
-    <span class="cp ${dm>=0?'cp-b':'cp-a'}">${hotBank} горячее</span> на <b>${hotAmt}°С</b> &nbsp;|&nbsp;
-    Разброс: <span class="cp cp-a">A=${aSpread}°</span><span class="cp cp-b">B=${bSpread}°</span> &nbsp;|&nbsp;
-    ${maxDevC?`Цил.<b>${maxDevC.n}</b>: <span class="cp ${riskC}">${maxDevC.d>0?'+':''}${maxDevC.d}°</span> от avg банка`:''}`;
+  // Rail meas vs cmd
+  tsChart2('ch-p-rail','rail_meas','rail_cmd','Изм.','Зад.','#00d4aa','#ffb830','бар',200);
+
+  // Pump oil pressure
+  tsChart('ch-p-pump','pump_oil_p','кПа','#b06bff',200);
+
+  // Misc
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.baro_p&&nn(s.p.baro_p).length>4)traces.push({type:'scattergl',x:secs,y:s.p.baro_p,name:pfx+'Атм.',line:{color:'#a3e635',width:1.5}});
+      if(s.p.cool_p&&nn(s.p.cool_p).length>4)traces.push({type:'scattergl',x:secs,y:s.p.cool_p,name:pfx+'ОЖ',line:{color:'#00d4aa',width:1.5}});
+      if(s.p.fuel_reg_p&&nn(s.p.fuel_reg_p).length>4)traces.push({type:'scattergl',x:secs,y:s.p.fuel_reg_p,name:pfx+'Регулятор',line:{color:'#ff7c3a',width:1.5}});
+    });
+    if(!traces.length){plEmpty('ch-p-misc','Нет данных',200);return;}
+    pl('ch-p-misc',traces,{height:200,yaxis:{title:'кПа'},xaxis:{title:'сек'}});
+  })();
+}
+
+// ═══ TAB: TEMPERATURES ══════════════════════════════════════════════
+function renderTemps(){
+  tsChart('ch-t-cool','cool_t','°C','#00d4aa',200,[
+    mkZone(82,95,'rgba(46,204,113,.04)'),mkZone(95,105,'rgba(255,184,48,.04)'),
+    mkLine(95,'rgba(255,184,48,.5)'),mkLine(105,'rgba(255,64,96,.5)')]);
+
+  tsChart('ch-t-oil','oil_t','°C','#ff7c3a',200,[
+    mkLine(105,'rgba(255,184,48,.5)'),mkLine(115,'rgba(255,64,96,.5)')]);
+
+  // IM4 temps
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    const imColors=['#00d4aa','#5b8fff','#ffb830','#ff4060'];
+    const imKeys=['im_t1','im_t2','im_t3','im_t4'];
+    const imNames=['IM1','IM2','IM3','IM4'];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      imKeys.forEach((pk,i)=>{
+        if(s.p[pk]&&nn(s.p[pk]).length>4)
+          traces.push({type:'scattergl',x:secs,y:s.p[pk],name:pfx+imNames[i],line:{color:keys.length>1?truckColor(k):imColors[i],width:1.5},opacity:.8});
+      });
+    });
+    if(!traces.length){plEmpty('ch-t-im4','Нет данных IM',200);return;}
+    pl('ch-t-im4',traces,{height:200,yaxis:{title:'°C'},xaxis:{title:'сек'}});
+  })();
+
+  tsChart('ch-t-fuel','fuel_t','°C','#ffb830',200);
+
+  tsChart2('ch-t-avg','avg_egt_l','avg_egt_r','Лев. банк','Пр. банк','#ff7c3a','#5b8fff','°C',200);
+  tsChart2('ch-t-ecm','ecm_t2','ecm_t3','ECM T2','ECM T3','#00d4aa','#b06bff','°C',200);
+}
+
+// ═══ TAB: FUEL ══════════════════════════════════════════════════════
+function renderFuel(){
+  // Flow 3 lines
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.fuel_inst&&nn(s.p.fuel_inst).length>4)traces.push({type:'scattergl',x:secs,y:s.p.fuel_inst,name:pfx+'Мгн.',line:{color:'#00d4aa',width:1.5}});
+      if(s.p.fuel_flow&&nn(s.p.fuel_flow).length>4)traces.push({type:'scattergl',x:secs,y:s.p.fuel_flow,name:pfx+'Упр.',line:{color:'#5b8fff',width:1.5,dash:'dash'}});
+      if(s.p.fuel_dos&&nn(s.p.fuel_dos).length>4)traces.push({type:'scattergl',x:secs,y:s.p.fuel_dos,name:pfx+'Доз.',line:{color:'#ffb830',width:1.5,dash:'dot'}});
+    });
+    if(!traces.length){plEmpty('ch-f-flow','Нет данных расхода',200);return;}
+    pl('ch-f-flow',traces,{height:200,yaxis:{title:'л/час'},xaxis:{title:'сек'}});
+  })();
+
+  tsChart2('ch-f-rail','rail_meas','rail_cmd','Изм.','Зад.','#00d4aa','#ffb830','бар',200);
+  tsChart2('ch-f-curr','pump_mA_cmd','pump_mA_meas','Зад.','Изм.','#5b8fff','#ff4060','мА',200);
+  tsChart2('ch-f-dc','pump_dc','lift_dc','Насос','Лифт','#00d4aa','#b06bff','%',200);
+
+  // Water (step chart)
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const col=keys.length>1?truckColor(k):'#ff4060';
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.water_fuel&&nn(s.p.water_fuel).length>4)
+        traces.push({type:'scatter',x:secs,y:s.p.water_fuel,name:pfx+'Вода',mode:'lines',line:{color:col,width:2,shape:'hv'},fill:'tozeroy',fillcolor:col.replace(/[^#\d]/,'')+'22'});
+    });
+    if(!traces.length){plEmpty('ch-f-water','Нет данных (вода в топливе)',120);return;}
+    pl('ch-f-water',traces,{height:120,yaxis:{title:'0/1',range:[-0.1,1.5],tickvals:[0,1],ticktext:['Нет','Обнаружена']},xaxis:{title:'сек'}});
+  })();
+}
+
+// ═══ TAB: MODES ═════════════════════════════════════════════════════
+function renderModes(){
+  // RPM + Load dual-axis
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const col=keys.length>1?truckColor(k):'#00d4aa';
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.rpm&&nn(s.p.rpm).length>4){
+        traces.push({type:'scattergl',x:secs,y:keys.length===1?ewma(s.p.rpm,.1):s.p.rpm,name:pfx+'RPM',line:{color:col,width:2},yaxis:'y'});
+      }
+      if(s.p.load&&nn(s.p.load).length>4){
+        traces.push({type:'scattergl',x:secs,y:keys.length===1?ewma(s.p.load,.1):s.p.load,name:pfx+'Нагрузка%',line:{color:'#ffb830',width:2,dash:keys.length>1?'dot':'solid'},yaxis:'y2'});
+      }
+    });
+    if(!traces.length){plEmpty('ch-m-rpm','Нет данных оборотов',200);return;}
+    pl('ch-m-rpm',traces,{height:200,yaxis:{title:'RPM'},yaxis2:{title:'Нагрузка %',side:'right',overlaying:'y'},xaxis:{title:'сек'}});
+  })();
+
+  tsChart('ch-m-accel','accel','%','#a3e635',180);
+  tsChart('ch-m-fan','fan_cmd','%','#38bdf8',180);
+  tsChart('ch-m-bat','battery','В','#ffb830',180,[mkLine(22,'rgba(255,184,48,.5)'),mkLine(26,'rgba(255,64,96,.5)')]);
+
+  // Lamps step chart
+  (()=>{
+    const keys=getActiveKeys();const traces=[];
+    keys.forEach(k=>{
+      const s=getSession(k);if(!s||!s.p)return;
+      const secs=timeSecs(s.ts);
+      const pfx=keys.length>1?(truckLabel(k)+' '):'';
+      if(s.p.amber_lamp&&nn(s.p.amber_lamp).length>4)
+        traces.push({type:'scatter',x:secs,y:s.p.amber_lamp,name:pfx+'Amber',mode:'lines',line:{color:'#ffb830',width:2,shape:'hv'}});
+      if(s.p.red_lamp&&nn(s.p.red_lamp).length>4)
+        traces.push({type:'scatter',x:secs,y:s.p.red_lamp.map(v=>v!=null?v*1.5:null),name:pfx+'Red',mode:'lines',line:{color:'#ff4060',width:2,shape:'hv'}});
+      if(s.p.cool_level&&nn(s.p.cool_level).length>4)
+        traces.push({type:'scatter',x:secs,y:s.p.cool_level.map(v=>v!=null?v*0.8:null),name:pfx+'ОЖ уровень',mode:'lines',line:{color:'#00d4aa',width:2,shape:'hv'}});
+    });
+    if(!traces.length){plEmpty('ch-m-lamps','Нет данных ламп',120);return;}
+    pl('ch-m-lamps',traces,{height:120,yaxis:{title:'0/1',range:[-0.1,2]},xaxis:{title:'сек'}});
+  })();
 }
 
 // ═══ TAB: COMPARE ═══════════════════════════════════════════════════
 function renderCompare(){
   const keys=[...compareSet].filter(k=>TRUCKS[k]);
   const empty=document.getElementById('cmp-empty');
-  if(keys.length<2){
-    empty.style.display='';
-    ['ch-cmp-cyls','ch-cmp-banks','ch-cmp-delta','ch-cmp-table'].forEach(id=>Plotly.purge(id));
-    document.getElementById('cmp-legend-box').innerHTML='';
-    return;
-  }
+  if(keys.length<2){empty.style.display='';document.getElementById('cmp-legend-box').innerHTML='';return;}
   empty.style.display='none';
 
-  // Legend
   const legBox=document.getElementById('cmp-legend-box');
-  legBox.innerHTML=keys.map((k,i)=>`<div class="cmp-leg"><div class="cmp-dot" style="background:${TC[i%TC.length]}"></div>${sessionLabel(k)} — ${sessionDateLabel(k)}</div>`).join('');
+  legBox.innerHTML=keys.map((k,i)=>`<div class="cmp-leg"><div class="cmp-dot" style="background:${truckColor(k)}"></div>${truckLabel(k)}</div>`).join('');
 
-  // Per-cylinder avg for each selected truck
   const allCyls=[...A_CYLS,...B_CYLS].sort((a,b)=>a-b);
-  const trCylAvgs=keys.map(k=>{
-    const s=getSession(k);if(!s)return{};
-    const out={};allCyls.forEach(n=>{out[n]=mean(s.cyls[n]);});
-    return out;
-  });
 
-  // Chart: grouped bar per cylinder
-  const cylTraces=keys.map((k,i)=>({
-    type:'bar',name:sessionLabel(k)+' '+sessionDateLabel(k),
-    x:allCyls.map(n=>'Ц'+n),y:allCyls.map(n=>trCylAvgs[i][n]!=null?Math.round(trCylAvgs[i][n]):null),
-    marker:{color:TC[i%TC.length]},
-  }));
-  pl('ch-cmp-cyls',cylTraces,{height:280,barmode:'group',
-    yaxis:{title:'°C'},xaxis:{tickfont:{size:9}},
-    shapes:refLines([500,550],['rgba(255,184,48,.35)','rgba(255,64,96,.35)'])});
+  if(currentSub==='cmp-cyls'){
+    const trCylAvgs=keys.map(k=>{
+      const s=getSession(k);if(!s)return{};
+      const out={};allCyls.forEach(n=>{out[n]=mean(s.cyls&&s.cyls[String(n)]);});return out;
+    });
+    const cylTraces=keys.map((k,i)=>({
+      type:'bar',name:truckLabel(k),
+      x:allCyls.map(n=>'Ц'+n),
+      y:allCyls.map(n=>trCylAvgs[i][n]!=null?Math.round(trCylAvgs[i][n]):null),
+      marker:{color:truckColor(k)},
+    }));
+    pl('ch-cmp-cyls',cylTraces,{height:280,barmode:'group',yaxis:{title:'°C'},xaxis:{tickfont:{size:9}},
+      shapes:[mkLine(500,'rgba(255,184,48,.35)'),mkLine(550,'rgba(255,64,96,.35)')]});
 
-  // Bank comparison
-  const bankTraces=[{
-    type:'bar',name:'А-банк avg',
-    x:keys.map(k=>sessionLabel(k)),
-    y:keys.map((k,i)=>Math.round(mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),
-    marker:{color:TC.slice(0,keys.length).map(c=>c+'cc')},offsetgroup:0,
-  },{
-    type:'bar',name:'В-банк avg',
-    x:keys.map(k=>sessionLabel(k)),
-    y:keys.map((k,i)=>Math.round(mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),
-    marker:{color:TC.slice(0,keys.length)},offsetgroup:1,
-  }];
-  pl('ch-cmp-banks',bankTraces,{height:220,barmode:'group',yaxis:{title:'°C'},
-    shapes:refLines([500,550],['rgba(255,184,48,.35)','rgba(255,64,96,.35)'])});
+    const bankX=keys.map(k=>truckLabel(k));
+    pl('ch-cmp-banks',[
+      {type:'bar',name:'А-банк',x:bankX,y:keys.map((_,i)=>Math.round(mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),marker:{color:'rgba(255,124,58,.8)'}},
+      {type:'bar',name:'В-банк',x:bankX,y:keys.map((_,i)=>Math.round(mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0)),marker:{color:'rgba(91,143,255,.8)'}},
+    ],{height:220,barmode:'group',yaxis:{title:'°C'},shapes:[mkLine(500,'rgba(255,184,48,.25)')]});
 
-  // Interbank delta bar
-  const idTraces=[{
-    type:'bar',
-    x:keys.map(k=>sessionLabel(k)),
-    y:keys.map((k,i)=>{
-      const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      return Math.round(b-a);
-    }),
-    marker:{color:keys.map((k,i)=>{
-      const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      return(b-a)>=0?'rgba(91,143,255,.8)':'rgba(255,124,58,.8)';
-    })},
-    text:keys.map((k,i)=>{
-      const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;
-      return(b-a>0?'+':'')+Math.round(b-a)+'°';
-    }),textposition:'outside',
-  }];
-  pl('ch-cmp-delta',idTraces,{height:220,yaxis:{title:'В−А °C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5}});
+    pl('ch-cmp-delta',[{type:'bar',
+      x:bankX,
+      y:keys.map((_,i)=>{const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;return Math.round(b-a);}),
+      marker:{color:keys.map((_,i)=>{const a=mean(A_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;const b=mean(B_CYLS.map(n=>trCylAvgs[i][n]).filter(v=>v!=null))||0;return(b-a)>=0?'rgba(91,143,255,.8)':'rgba(255,124,58,.8)';})}
+    }],{height:220,yaxis:{title:'В−А °C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5}});
 
-  // Summary table
-  const tHead=['Самосвал','Дата','A-avg °C','B-avg °C','Разброс A','Разброс B','∆(B−A)','Макс цил.'];
-  const tRows=keys.map((k,i)=>{
-    const s=getSession(k);const ca=trCylAvgs[i];
-    const aAvgM=mean(A_CYLS.map(n=>ca[n]).filter(v=>v!=null))||0;
-    const bAvgM=mean(B_CYLS.map(n=>ca[n]).filter(v=>v!=null))||0;
-    const aVals=A_CYLS.map(n=>ca[n]).filter(v=>v!=null);
-    const bVals=B_CYLS.map(n=>ca[n]).filter(v=>v!=null);
-    let maxCyl=null,maxDev=0;
-    allCyls.forEach(n=>{if(ca[n]==null)return;const bk=A_CYLS.includes(n)?aAvgM:bAvgM;const dv=Math.abs(ca[n]-bk);if(dv>maxDev){maxDev=dv;maxCyl=n;}});
-    return[sessionLabel(k),s?s.date:'?',Math.round(aAvgM),Math.round(bAvgM),
-      Math.round((maxv(aVals)||0)-(minv(aVals)||0)),
-      Math.round((maxv(bVals)||0)-(minv(bVals)||0)),
-      (bAvgM-aAvgM>0?'+':'')+Math.round(bAvgM-aAvgM),
-      maxCyl?'Ц'+maxCyl+' (∆'+Math.round(ca[maxCyl]-(A_CYLS.includes(maxCyl)?aAvgM:bAvgM))+'°)':'—'];
-  });
-  pl('ch-cmp-table',[{type:'table',
-    header:{values:tHead,fill:{color:'#0f1e2e'},font:{color:'#00d4aa',size:10},align:'left'},
-    cells:{values:tHead.map((_,ci)=>tRows.map(r=>r[ci])),
-      fill:{color:'#112030'},font:{color:'#c8dff0',size:10},align:'left'},
-  }],{height:Math.max(180,60+keys.length*28),margin:{l:4,r:4,t:4,b:4}});
+    const tHead=['Самосвал','Дата','A avg°','B avg°','∆A','∆B','B−A','Max цил.'];
+    const tRows=keys.map((k,i)=>{
+      const s=getSession(k);const ca=trCylAvgs[i];
+      const aAvgM=mean(A_CYLS.map(n=>ca[n]).filter(v=>v!=null))||0;
+      const bAvgM=mean(B_CYLS.map(n=>ca[n]).filter(v=>v!=null))||0;
+      const aVals=A_CYLS.map(n=>ca[n]).filter(v=>v!=null);
+      const bVals=B_CYLS.map(n=>ca[n]).filter(v=>v!=null);
+      let maxCyl=null,maxDev=0;
+      allCyls.forEach(n=>{if(ca[n]==null)return;const bk=A_CYLS.includes(n)?aAvgM:bAvgM;const dv=Math.abs(ca[n]-bk);if(dv>maxDev){maxDev=dv;maxCyl=n;}});
+      return[truckLabel(k),s?s.date:'?',Math.round(aAvgM),Math.round(bAvgM),
+        Math.round((maxv(aVals)||0)-(minv(aVals)||0)),
+        Math.round((maxv(bVals)||0)-(minv(bVals)||0)),
+        (bAvgM-aAvgM>0?'+':'')+Math.round(bAvgM-aAvgM),
+        maxCyl?'Ц'+maxCyl+' (∆'+Math.round(ca[maxCyl]-(A_CYLS.includes(maxCyl)?aAvgM:bAvgM))+'°)':'—'];
+    });
+    pl('ch-cmp-table',[{type:'table',
+      header:{values:tHead,fill:{color:'#0f1e2e'},font:{color:'#00d4aa',size:10},align:'left'},
+      cells:{values:tHead.map((_,ci)=>tRows.map(r=>r[ci])),fill:{color:'#0f1e30'},font:{color:'#c8dff0',size:10},align:'left'},
+    }],{height:Math.max(180,60+keys.length*28),margin:{l:4,r:4,t:4,b:4}});
+
+  }else if(currentSub==='cmp-press'){
+    function cmpBar(id,pkey,unit){
+      const vals=keys.map(k=>{const s=getSession(k);return s&&s.p&&s.p[pkey]?Math.round((mean(s.p[pkey])||0)*10)/10:null;});
+      pl(id,[{type:'bar',x:keys.map(k=>truckLabel(k)),y:vals,marker:{color:keys.map(k=>truckColor(k))}}],
+        {height:200,yaxis:{title:unit},xaxis:{tickfont:{size:8}}});
+    }
+    cmpBar('ch-cmp-oil','oil_p','кПа');
+    cmpBar('ch-cmp-boost','boost','кПа');
+    cmpBar('ch-cmp-crank','crank_p','кПа');
+    cmpBar('ch-cmp-rail','rail_meas','бар');
+
+  }else if(currentSub==='cmp-temps'){
+    function cmpBar(id,pkey,unit){
+      const vals=keys.map(k=>{const s=getSession(k);return s&&s.p&&s.p[pkey]?Math.round((mean(s.p[pkey])||0)*10)/10:null;});
+      pl(id,[{type:'bar',x:keys.map(k=>truckLabel(k)),y:vals,marker:{color:keys.map(k=>truckColor(k))}}],
+        {height:200,yaxis:{title:unit},xaxis:{tickfont:{size:8}}});
+    }
+    cmpBar('ch-cmp-cool','cool_t','°C');
+    cmpBar('ch-cmp-oil-t','oil_t','°C');
+    cmpBar('ch-cmp-egt-l','avg_egt_l','°C');
+    cmpBar('ch-cmp-egt-r','avg_egt_r','°C');
+
+  }else if(currentSub==='cmp-fuel'){
+    function cmpBar(id,pkey,unit){
+      const vals=keys.map(k=>{const s=getSession(k);return s&&s.p&&s.p[pkey]?Math.round((mean(s.p[pkey])||0)*10)/10:null;});
+      pl(id,[{type:'bar',x:keys.map(k=>truckLabel(k)),y:vals,marker:{color:keys.map(k=>truckColor(k))}}],
+        {height:200,yaxis:{title:unit},xaxis:{tickfont:{size:8}}});
+    }
+    cmpBar('ch-cmp-fuel-inst','fuel_inst','л/час');
+    cmpBar('ch-cmp-pump-ma','pump_mA_cmd','мА');
+
+  }else if(currentSub==='cmp-modes'){
+    function cmpBar(id,pkey,unit){
+      const vals=keys.map(k=>{const s=getSession(k);return s&&s.p&&s.p[pkey]?Math.round((mean(s.p[pkey])||0)*10)/10:null;});
+      pl(id,[{type:'bar',x:keys.map(k=>truckLabel(k)),y:vals,marker:{color:keys.map(k=>truckColor(k))}}],
+        {height:200,yaxis:{title:unit},xaxis:{tickfont:{size:8}}});
+    }
+    cmpBar('ch-cmp-rpm','rpm','RPM');
+    cmpBar('ch-cmp-load','load','%');
+
+  }else if(currentSub==='cmp-cal'){
+    // Fleet heatmap
+    const allDates=new Set();
+    TRUCK_ORDER.forEach(k=>{const d=TRUCKS[k];if(d)d.sessions.forEach(s=>allDates.add(s.date));});
+    const dates=[...allDates].sort();
+    const truckNames=TRUCK_ORDER.map(k=>{const d=TRUCKS[k];return d?d.model+' №'+d.truck:'?';});
+    const z=TRUCK_ORDER.map(k=>{
+      const d=TRUCKS[k];if(!d)return dates.map(()=>0);
+      return dates.map(dt=>{
+        const s=d.sessions.find(ss=>ss.date===dt);
+        return s?nn(s.p&&s.p.rpm||[]).length:0;
+      });
+    });
+    pl('ch-cmp-heatmap',[{type:'heatmap',x:dates,y:truckNames,z,
+      colorscale:[[0,'#0f1e30'],[0.001,'rgba(0,212,170,0.3)'],[1,'#00d4aa']],
+      hoverongaps:false,showscale:true,
+    }],{height:Math.max(200,TRUCK_ORDER.length*24+60),
+      margin:{l:100,r:60,t:20,b:60},
+      xaxis:{tickangle:-30},yaxis:{autorange:'reversed'}});
+  }
 }
 
-// ═══ TAB: PRESSURE ══════════════════════════════════════════════════
-function renderPressure(){
-  if(!activeTruck||!TRUCKS[activeTruck]){
-    document.getElementById('press-summary').innerHTML='← Выберите самосвал слева';
-    return;
-  }
-  const s=getSession(activeTruck);if(!s)return;
-  const {ts,press}=s;
-  const secs=timeSecs(ts);
-  const d=TRUCKS[activeTruck];
-  const lbl=d.model+' №'+d.truck+' | '+s.date;
-  const ACC='#00d4aa',AMB='#ffb830',RED='#ff4060',BLU='#5b8fff',ORG='#ff7c3a';
-
-  function tsChart(id,key,color,title,h=200){
-    const v=press&&press[key];
-    if(!v||nn(v).length<5){pl(id,[],{height:h,title:{text:'Нет данных: '+title,font:{color:'#334d60',size:10}}});return;}
-    pl(id,[
-      {type:'scattergl',x:secs,y:v,name:'Факт',line:{color:color,width:1},opacity:.55},
-      {type:'scattergl',x:secs,y:ewma(v,.06),name:'EWMA',line:{color:color,width:2.5}},
-    ],{height:h,yaxis:{title:title},xaxis:{title:'сек'}});
-  }
-
-  // Oil pressure with thresholds
-  {const v=press&&press.oil;
-   if(v&&nn(v).length>4){
-     pl('ch-p-oil',[
-       {type:'scattergl',x:secs,y:v,name:'P масла',line:{color:ACC,width:1},opacity:.5},
-       {type:'scattergl',x:secs,y:ewma(v),name:'EWMA',line:{color:ACC,width:2.5}},
-     ],{height:220,yaxis:{title:'кПа'},xaxis:{title:'сек'},
-       shapes:[
-         {type:'rect',x0:0,x1:1,xref:'paper',y0:350,y1:650,fillcolor:'rgba(46,204,113,.04)',line:{width:0}},
-         {type:'line',x0:0,x1:1,xref:'paper',y0:350,y1:350,line:{color:'rgba(255,184,48,.5)',dash:'dot',width:1.5}},
-         {type:'line',x0:0,x1:1,xref:'paper',y0:300,y1:300,line:{color:'rgba(255,64,96,.5)',dash:'dot',width:1.5}},
-       ],
-       annotations:[
-         {x:.01,xref:'paper',y:350,text:'⚠ 350',showarrow:false,font:{color:AMB,size:9},xanchor:'left'},
-         {x:.01,xref:'paper',y:300,text:'🔴 300',showarrow:false,font:{color:RED,size:9},xanchor:'left'},
-       ]});
-   }else pl('ch-p-oil',[],{height:220,title:{text:'Нет данных давления масла',font:{color:'#334d60',size:10}}});}
-
-  // Crankcase with thresholds
-  {const v=press&&press.crank;
-   if(v&&nn(v).length>4){
-     pl('ch-p-crank',[
-       {type:'scattergl',x:secs,y:v,name:'P картера',line:{color:RED,width:1},opacity:.5},
-       {type:'scattergl',x:secs,y:ewma(v,.04),name:'EWMA',line:{color:RED,width:2.5}},
-     ],{height:220,yaxis:{title:'кПа'},xaxis:{title:'сек'},
-       shapes:[
-         {type:'rect',x0:0,x1:1,xref:'paper',y0:0,y1:3,fillcolor:'rgba(46,204,113,.06)',line:{width:0}},
-         {type:'line',x0:0,x1:1,xref:'paper',y0:3,y1:3,line:{color:'rgba(255,184,48,.5)',dash:'dot',width:1.5}},
-         {type:'line',x0:0,x1:1,xref:'paper',y0:7,y1:7,line:{color:'rgba(255,64,96,.5)',dash:'dot',width:1.5}},
-       ],
-       annotations:[
-         {x:.01,xref:'paper',y:3,text:'⚠ 3 кПа',showarrow:false,font:{color:AMB,size:9},xanchor:'left'},
-         {x:.01,xref:'paper',y:7,text:'🔴 7 кПа',showarrow:false,font:{color:RED,size:9},xanchor:'left'},
-       ]});
-   }else pl('ch-p-crank',[],{height:220,title:{text:'Нет данных давления картера',font:{color:'#334d60',size:10}}});}
-
-  // Boost pressure
-  {const v=press&&press.boost;
-   if(v&&nn(v).length>4){
-     pl('ch-p-boost',[
-       {type:'scattergl',x:secs,y:v,name:'Наддув',line:{color:BLU,width:1},opacity:.5},
-       {type:'scattergl',x:secs,y:ewma(v),name:'EWMA',line:{color:BLU,width:2.5}},
-     ],{height:220,yaxis:{title:'кПа'},xaxis:{title:'сек'},
-       shapes:[
-         {type:'rect',x0:0,x1:1,xref:'paper',y0:200,y1:350,fillcolor:'rgba(46,204,113,.04)',line:{width:0}},
-         {type:'line',x0:0,x1:1,xref:'paper',y0:180,y1:180,line:{color:'rgba(255,184,48,.5)',dash:'dot',width:1.5}},
-       ],
-       annotations:[{x:.01,xref:'paper',y:180,text:'⚠ 180',showarrow:false,font:{color:AMB,size:9},xanchor:'left'}]});
-   }else pl('ch-p-boost',[],{height:220,title:{text:'Нет данных наддува',font:{color:'#334d60',size:10}}});}
-
-  // Temps dual
-  {const ot=press&&press.oil_t,ct=press&&press.cool_t;
-   const tr=[];
-   if(ot&&nn(ot).length>4)tr.push({type:'scattergl',x:secs,y:ewma(ot),name:'T масла',line:{color:ORG,width:2}});
-   if(ct&&nn(ct).length>4)tr.push({type:'scattergl',x:secs,y:ewma(ct),name:'T охл.',line:{color:ACC,width:2}});
-   if(tr.length)pl('ch-p-temps',tr,{height:220,yaxis:{title:'°C'},xaxis:{title:'сек'},
-     shapes:[
-       {type:'line',x0:0,x1:1,xref:'paper',y0:105,y1:105,line:{color:'rgba(255,184,48,.4)',dash:'dot',width:1.2}},
-       {type:'line',x0:0,x1:1,xref:'paper',y0:95,y1:95,line:{color:'rgba(46,204,113,.4)',dash:'dot',width:1.2}},
-     ]});
-   else pl('ch-p-temps',[],{height:220,title:{text:'Нет данных температур',font:{color:'#334d60',size:10}}});}
-
-  // RPM + Load dual axis
-  {const rpm=press&&press.rpm,ld=press&&press.load;
-   const tr=[];
-   if(rpm&&nn(rpm).length>4)tr.push({type:'scattergl',x:secs,y:ewma(rpm,.1),name:'RPM',line:{color:ACC,width:2},yaxis:'y'});
-   if(ld&&nn(ld).length>4)tr.push({type:'scattergl',x:secs,y:ewma(ld,.1),name:'Нагрузка %',line:{color:AMB,width:2},yaxis:'y2'});
-   if(tr.length)pl('ch-p-rpm',tr,{height:200,
-     yaxis:{title:'RPM'},yaxis2:{title:'Нагрузка %',side:'right',overlaying:'y'},xaxis:{title:'сек'}});
-   else pl('ch-p-rpm',[],{height:200,title:{text:'Нет данных оборотов',font:{color:'#334d60',size:10}}});}
-
-  // Pressure summary
-  const avgOil=mean(press&&press.oil);
-  const avgCrank=mean(press&&press.crank);
-  const avgBoost=mean(press&&press.boost);
-  const oilC=avgOil!=null?(avgOil<300?'cp-r':avgOil<350?'cp-w':'cp-ok'):'';
-  const crankC=avgCrank!=null?(avgCrank>7?'cp-r':avgCrank>3?'cp-w':'cp-ok'):'';
-  const boostC=avgBoost!=null?(avgBoost<180?'cp-r':avgBoost<200?'cp-w':'cp-ok'):'';
-  document.getElementById('press-summary').innerHTML=`
-    <strong>${lbl}</strong> &nbsp;|&nbsp;
-    P масла: <span class="cp ${oilC}">${avgOil!=null?Math.round(avgOil)+' кПа':'н/д'}</span> &nbsp;|&nbsp;
-    P картера: <span class="cp ${crankC}">${avgCrank!=null?Math.round(avgCrank*10)/10+' кПа':'н/д'}</span> &nbsp;|&nbsp;
-    Наддув: <span class="cp ${boostC}">${avgBoost!=null?Math.round(avgBoost)+' кПа':'н/д'}</span>`;
-}
-
-// ═══ FILE LOADING (browser CSV) ═════════════════════════════════════
+// ═══ FILE LOADING ════════════════════════════════════════════════════
 const RU_MON={янв:'Jan',фев:'Feb',мар:'Mar',апр:'Apr',май:'May',июн:'Jun',июл:'Jul',авг:'Aug',сен:'Sep',окт:'Oct',ноя:'Nov',дек:'Dec'};
 function ruDate2(s){for(const[r,e] of Object.entries(RU_MON))s=s.replace(r,e);return s;}
-
 function splitCSV(line){
   const f=[];let q=false,s='';
   for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){f.push(s.trim());s='';}else s+=c;}
   f.push(s.trim());return f;
 }
-
 function parseINSITE(text){
   const lines=text.split(/\r?\n/);
   let hdr=-1;
@@ -954,62 +1441,44 @@ function parseINSITE(text){
   }
   return{cols,rows,dateC,timeC};
 }
-
-function findCylColBrowser(cols,n){
-  return cols.find(c=>c.includes('отработавших газов цилиндра '+n+' (°C)')||c.includes('Exhaust Temperature Sensor Cylinder '+n+' ('))||null;
+function findCylColBr(cols,n){
+  return cols.find(c=>c.includes('Exhaust Temperature Sensor Cylinder '+n+' (')||c.includes('отработавших газов цилиндра '+n+' (°C)'))||null;
 }
-function findPressBrowser(cols,patterns){
+const PARAM_PATS_BR = __PARAM_PATS_BROWSER__;
+function findParamColBr(cols,patterns){
   for(const p of patterns){const c=cols.find(x=>x.includes(p));if(c)return c;}return null;
 }
-
 function processINSITE(text,fname){
   const parsed=parseINSITE(text);if(!parsed)return null;
   const{cols,rows,dateC,timeC}=parsed;
-  const cylCols={};for(let n=1;n<=16;n++){const c=findCylColBrowser(cols,n);if(c)cylCols[n]=c;}
+  const cylCols={};for(let n=1;n<=16;n++){const c=findCylColBr(cols,n);if(c)cylCols[n]=c;}
   if(Object.keys(cylCols).length<8)return null;
-  const pressPat={
-    oil:['Давление масла (кПа)','Engine Oil Pressure (kPa)'],
-    crank:['Давление картерных','Crankcase Pressure (kPa)'],
-    boost:['Давление во впускном коллекторе (кПа)- Идентификатор0','Intake Manifold Pressure (kPa)- Identifier0'],
-    oil_t:['Температура масла (°C)','Engine Oil Temperature (°C)'],
-    cool_t:['Датчик температуры (°C)- Идентификатор0','Engine Coolant Temperature (°C)'],
-    rpm:['Частота вращения двигателя','Engine Speed (RPM)'],
-    load:['Относительная нагрузка','Percent Load'],
-  };
-  const pressC={};for(const[k,p]of Object.entries(pressPat)){const c=findPressBrowser(cols,p);if(c)pressC[k]=c;}
-
-  // Parse, downsample
-  const step=Math.max(1,Math.floor(rows.length/600));
-  const out={ts:[],cyls:{},press:{}};
-  for(let n=1;n<=16;n++)if(cylCols[n])out.cyls[n]=[];
-  for(const k of Object.keys(pressC))out.press[k]=[];
-
+  const paramCols={};
+  for(const[k,pats]of Object.entries(PARAM_PATS_BR)){const c=findParamColBr(cols,pats);if(c)paramCols[k]=c;}
+  const BOOL_KEYS=new Set(['water_fuel','amber_lamp','red_lamp','cool_level']);
+  function boolVal(v){const sv=v.trim().toLowerCase();if(['on','yes','true','1','low','active','detected'].includes(sv))return 1;if(['off','no','false','0','ok','normal','not detected'].includes(sv))return 0;const n=parseFloat(sv.replace(',','.'));return isNaN(n)?null:Math.round(n);}
+  const step=Math.max(1,Math.floor(rows.length/800));
+  const out={ts:[],cyls:{},p:{}};
+  for(let n=1;n<=16;n++)if(cylCols[n])out.cyls[String(n)]=[];
+  for(const k of Object.keys(paramCols))out.p[k]=[];
   for(let i=0;i<rows.length;i+=step){
     const r=rows[i];
     let d=ruDate2(r[dateC]||''),t=(r[timeC]||'').substring(0,8);
     try{const dt=new Date(d+' '+t);if(isNaN(dt))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
-    for(let n=1;n<=16;n++){if(!cylCols[n])continue;const v=parseFloat((r[cylCols[n]]||'').replace(',','.'));out.cyls[n].push(isNaN(v)?null:Math.round(v));}
-    for(const[k,c] of Object.entries(pressC)){const v=parseFloat((r[c]||'').replace(',','.'));out.press[k].push(isNaN(v)?null:Math.round(v*10)/10);}
+    for(let n=1;n<=16;n++){if(!cylCols[n])continue;const v=parseFloat((r[cylCols[n]]||'').replace(',','.'));out.cyls[String(n)].push(isNaN(v)?null:Math.round(v));}
+    for(const[k,c]of Object.entries(paramCols)){const raw=(r[c]||'').replace(',','.');const v=BOOL_KEYS.has(k)?boolVal(r[c]||''):parseFloat(raw);out.p[k].push(isNaN(v)?null:BOOL_KEYS.has(k)?v:Math.round(v*100)/100);}
   }
   if(out.ts.length<10)return null;
-
-  // Date string
-  const raw=out.ts[0]?.substring(0,10)||'';
-  const p=raw.split('-');const dateStr=p.length===3?`${p[2]}.${p[1]}.${p[0]}`:raw;
-
-  // Truck number
+  const raw=out.ts[0]?.substring(0,10)||'';const pp=raw.split('-');const dateStr=pp.length===3?`${pp[2]}.${pp[1]}.${pp[0]}`:raw;
   let truck=null;
   for(const pat of[/№\s*(\d+)/,/N(\d+)\b/,/[\s_-](\d{2,3})[\s_.(]/]){const m=fname.match(pat);if(m){truck=+m[1];break;}}
-  if(!truck)truck=Math.floor(Math.random()*900)+10;
+  if(!truck)truck=Math.floor(Math.random()*900)+100;
   const model=fname.includes('NTE')||fname.includes('DML')?'NTE200':'730E';
   const key=model+'_'+truck;
-
-  return{key,truck,model,session:{date:dateStr,ts:out.ts,cyls:out.cyls,press:out.press,file:fname}};
+  return{key,truck,model,session:{date:dateStr,ts:out.ts,cyls:out.cyls,p:out.p,file:fname}};
 }
-
 function loadFiles(files){
-  let loaded=0;
-  const total=files.length;
+  let loaded=0;const total=files.length;
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=e=>{
@@ -1022,7 +1491,7 @@ function loadFiles(files){
           loaded++;
           document.getElementById('file-status').textContent=`Загружено: ${loaded}/${total}`;
           buildSidebar();
-          if(!activeTruck){selectTruck(key);}
+          if(!activeTruck)selectTruck(key);
         }
       }catch(ex){console.warn(file.name,ex);}
     };
@@ -1032,14 +1501,13 @@ function loadFiles(files){
 
 // ═══ INIT ════════════════════════════════════════════════════════════
 window.addEventListener('load',function(){
+  buildSidebar();
   if(TRUCK_ORDER.length){
     activeTruck=TRUCK_ORDER[0];
-    buildSidebar();
+    const el=document.getElementById('ti-'+activeTruck);if(el)el.classList.add('active');
     buildDatePills(activeTruck);
     updateHeader();
     renderCylinders();
-  }else{
-    buildSidebar();
   }
 });
 </script>
@@ -1050,27 +1518,59 @@ window.addEventListener('load',function(){
 
 def build_html(db_data, truck_order):
     plotly_src = PLOTLY_JS.read_text(encoding='utf-8')
+
+    # Build browser-side pattern map (same patterns as Python)
+    param_pats_browser = {k: v for k, v in PARAM_PATTERNS.items()}
+    param_pats_json = json.dumps(param_pats_browser, ensure_ascii=False, separators=(',', ':'))
+
     data_json  = json.dumps(db_data,     ensure_ascii=False, separators=(',', ':'))
     order_json = json.dumps(truck_order, ensure_ascii=False)
+
     html = HTML.replace('__PLOTLY__', plotly_src) \
                .replace('__DATA__',   data_json) \
-               .replace('__ORDER__',  order_json)
+               .replace('__ORDER__',  order_json) \
+               .replace('__PARAM_PATS_BROWSER__', param_pats_json)
     return html
 
 
 def main():
-    print('=== QSK50 Cylinders v2 Builder ===\n')
+    print('=== QSK50 Comprehensive Dashboard Builder ===\n')
     db_data, truck_order = build_data()
     if not db_data:
         print('ERROR: No data found!')
         return
-    total = sum(sum(len(s['ts']) for s in v['sessions']) for v in db_data.values())
+    total_rows = sum(sum(len(s['ts']) for s in v['sessions']) for v in db_data.values())
+    total_params = sum(sum(len(s.get('p', {})) for s in v['sessions']) for v in db_data.values())
     kb = len(json.dumps(db_data, separators=(',', ':')).encode()) // 1024
-    print(f'\n{len(db_data)} trucks, {total} rows, data JSON: {kb} KB')
+    print(f'\n{len(db_data)} trucks, {total_rows} rows, {total_params} param-sets, data JSON: {kb} KB')
+
+    # Verify JSON
+    data_str = json.dumps(db_data, ensure_ascii=False)
+    try:
+        json.loads(data_str)
+        print('JSON validation: OK')
+    except Exception as e:
+        print(f'JSON validation FAILED: {e}')
+        return
+
     html = build_html(db_data, truck_order)
     OUTPUT.write_text(html, encoding='utf-8')
     mb = OUTPUT.stat().st_size / 1024 / 1024
     print(f'Written: {OUTPUT}  ({mb:.1f} MB)')
+
+    # Check for unreplaced tokens
+    bad = [t for t in ['__DATA__', '__ORDER__', '__PLOTLY__', '__PARAM_PATS_BROWSER__'] if t in html]
+    if bad:
+        print(f'WARNING: Unreplaced tokens: {bad}')
+    else:
+        print('Token replacement: OK')
+
+    print(f'\nSummary:')
+    for key, d in sorted(db_data.items()):
+        for s in d['sessions']:
+            n_p = len(s.get('p', {}))
+            n_cyls = len(s.get('cyls', {}))
+            print(f'  {key}: {s["date"]} — {len(s["ts"])} pts, {n_cyls} cyls, {n_p} params')
 
 
 if __name__ == '__main__':
