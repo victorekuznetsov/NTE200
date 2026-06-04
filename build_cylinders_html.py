@@ -458,7 +458,7 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
       <button id="cmp-btn" onclick="toggleCmpMode()">⊞ Сравнение</button>
     </div>
   </div>
-  <div class="truck-list" id="truck-list"></div>
+  <div class="truck-list" id="truck-list">__TRUCK_LIST_HTML__</div>
 
   <div class="sb-section" id="date-section" style="display:none">
     <div class="sb-label">📅 Дата сессии</div>
@@ -897,6 +897,16 @@ function mkLine(y,color,dash='dot'){return{type:'line',x0:0,x1:1,xref:'paper',y0
 function mkZone(y0,y1,color){return{type:'rect',x0:0,x1:1,xref:'paper',y0,y1,fillcolor:color,line:{width:0}};}
 
 // ═══ SESSION ═══════════════════════════════════════════════════════
+// Thin wrappers used by static pre-rendered truck list HTML
+function _truckClick(e,key){if(e.target.tagName==='INPUT')return;selectTruck(key);}
+function _cmpChk(el,key){
+  if(el.checked)compareSet.add(key);else compareSet.delete(key);
+  const item=document.getElementById('ti-'+key);
+  if(item)item.className='truck-item'+(activeTruck===key?' active':'')+(compareSet.has(key)?' cmp-sel':'');
+  if(currentTab==='compare')renderCompare();
+}
+function _delTruck(key,e){deleteTruck(key,e);}
+
 function getSession(key){
   const d=TRUCKS[key];if(!d)return null;
   const si=activeSession[key]||0;
@@ -1746,6 +1756,33 @@ if(document.readyState==='loading'){
 """
 
 
+TC_COLORS = ['#3EF0AF','#7E83FA','#FBAE40','#ff4060','#B668E4','#38bdf8','#34d399','#fb923c',
+             '#ff6eb4','#a3e635','#00bfff','#f0c000','#c084fc','#3CF2AE','#f472b6','#facc15']
+
+
+def build_truck_list_html(db_data, truck_order):
+    parts = []
+    for i, key in enumerate(truck_order):
+        d = db_data.get(key)
+        if not d:
+            continue
+        color = TC_COLORS[i % len(TC_COLORS)]
+        date_str = d['sessions'][0]['date'] if d['sessions'] else '?'
+        extra = f" (+{len(d['sessions'])-1})" if len(d['sessions']) > 1 else ''
+        parts.append(
+            f'<div class="truck-item" id="ti-{key}" onclick="_truckClick(event,\'{key}\')">'
+            f'<span class="truck-dot" style="background:{color}"></span>'
+            f'<div class="truck-info">'
+            f'<div class="truck-name">{d["model"]} №{d["truck"]}</div>'
+            f'<div class="truck-date" id="td-{key}">{date_str}{extra}</div>'
+            f'</div>'
+            f'<input type="checkbox" class="cmp-chk" onchange="_cmpChk(this,\'{key}\')">'
+            f'<button class="truck-del" title="Удалить" onclick="_delTruck(\'{key}\',event)">×</button>'
+            f'</div>'
+        )
+    return ''.join(parts)
+
+
 def build_html(db_data, truck_order):
     plotly_src = PLOTLY_JS.read_text(encoding='utf-8')
 
@@ -1755,11 +1792,13 @@ def build_html(db_data, truck_order):
 
     data_json  = json.dumps(db_data,     ensure_ascii=False, separators=(',', ':'))
     order_json = json.dumps(truck_order, ensure_ascii=False)
+    truck_list_html = build_truck_list_html(db_data, truck_order)
 
     html = HTML.replace('__PLOTLY__', plotly_src) \
                .replace('__DATA__',   data_json) \
                .replace('__ORDER__',  order_json) \
-               .replace('__PARAM_PATS_BROWSER__', param_pats_json)
+               .replace('__PARAM_PATS_BROWSER__', param_pats_json) \
+               .replace('__TRUCK_LIST_HTML__', truck_list_html)
     return html
 
 
