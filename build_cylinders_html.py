@@ -1723,7 +1723,8 @@ function loadFiles(files){
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════════
-window.addEventListener('load',function(){
+// Script is at end of <body> so DOM is ready — call directly
+function _init(){
   buildSidebar();
   if(TRUCK_ORDER.length){
     activeTruck=TRUCK_ORDER[0];
@@ -1733,7 +1734,12 @@ window.addEventListener('load',function(){
     renderCylinders();
     setTimeout(attachAllSync,400);
   }
-});
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_init);
+}else{
+  _init();
+}
 </script>
 </body>
 </html>
