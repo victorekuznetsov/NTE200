@@ -764,11 +764,6 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 const TRUCKS = __DATA__;
 const TRUCK_ORDER = __ORDER__;
 
-// Capture clean template HTML before Plotly renders anything into the DOM.
-// Used by saveDashboard() so the saved file opens with a fresh layout.
-const _PAGE_TEMPLATE = (function(){
-  try{return '<!DOCTYPE html>\n'+document.documentElement.outerHTML;}catch(e){return '';}
-})();
 
 const A_CYLS = [1,3,5,7,9,11,13,15];
 const B_CYLS = [2,4,6,8,10,12,14,16];
@@ -1037,9 +1032,28 @@ function saveDashboard(){
   btns.forEach(b=>{if(b.textContent.includes('HTML')){b.textContent='⏳ Сохранение...';b.disabled=true;}});
   setTimeout(function(){
     try{
-      // Use the clean template captured before Plotly rendered anything.
-      // This avoids saving Plotly's inline px-sizes which break the layout on reopen.
-      let html=_PAGE_TEMPLATE||('<!DOCTYPE html>\n'+document.documentElement.outerHTML);
+      // Strip Plotly's runtime inline styles/content before capturing HTML.
+      // Plotly adds style="width:Xpx;height:Ypx" and class="js-plotly-plot" which
+      // freeze the layout when the saved file is reopened.
+      const chartIds=['ch-a','ch-b','ch-dev','ch-delta'];
+      const snaps=[];
+      chartIds.forEach(function(id){
+        const el=document.getElementById(id);
+        if(!el)return;
+        snaps.push({el:el,html:el.innerHTML,style:el.getAttribute('style'),cls:el.className});
+        el.innerHTML='';
+        el.removeAttribute('style');
+        el.className='';
+      });
+
+      let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+
+      // Restore charts immediately so the page keeps working
+      snaps.forEach(function(s){
+        s.el.innerHTML=s.html;
+        if(s.style!==null)s.el.setAttribute('style',s.style);
+        s.el.className=s.cls;
+      });
 
       // Inject current runtime TRUCKS/TRUCK_ORDER (includes any CSV-loaded trucks)
       const trucksJson=JSON.stringify(TRUCKS,null,0);
@@ -1063,7 +1077,6 @@ function saveDashboard(){
         const marker='id="truck-list">';
         const si=html.indexOf(marker);
         if(si>-1){
-          // Find end of truck-list div: next sibling section
           const ei=html.indexOf('<div class="sb-section" id="date-section"',si);
           if(ei>-1){
             html=html.substring(0,si+marker.length)+listDiv.innerHTML+'\n  '+html.substring(ei);
