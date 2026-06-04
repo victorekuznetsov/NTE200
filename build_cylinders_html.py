@@ -488,6 +488,7 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
   <div class="sb-section">
     <div class="sb-label">💾 Экспорт</div>
     <button class="save-btn" onclick="saveDashboard()">⬇ Сохранить дашборд (HTML)</button>
+    <button class="save-btn" style="margin-top:5px" onclick="exportCSV()">📄 Экспорт данных (CSV)</button>
   </div>
 </div>
 
@@ -1024,24 +1025,68 @@ function deleteTruck(key,e){
 }
 
 function saveDashboard(){
-  const btn=document.querySelector('.save-btn');
-  if(btn){btn.textContent='⏳ Сохранение...';btn.disabled=true;}
+  const btns=document.querySelectorAll('.save-btn');
+  btns.forEach(b=>{if(b.textContent.includes('HTML')){b.textContent='⏳ Сохранение...';b.disabled=true;}});
   setTimeout(function(){
     try{
-      const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-      const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;
-      const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','');
-      a.download='qsk50_dashboard_'+ts+'.html';
-      document.body.appendChild(a);a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Capture current DOM (includes pre-rendered + dynamically added trucks)
+      let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+      // Re-inject current runtime TRUCKS/TRUCK_ORDER so saved file has all loaded data
+      const trucksJson=JSON.stringify(TRUCKS,null,0);
+      const orderJson=JSON.stringify(TRUCK_ORDER);
+      const tm='const TRUCKS = ';
+      const om='const TRUCK_ORDER = ';
+      const ti=html.indexOf(tm);
+      if(ti>-1){
+        // Find end of TRUCKS assignment: semicolon before next const/let/var statement
+        const after=html.indexOf('\nconst TRUCK_ORDER',ti);
+        if(after>-1) html=html.substring(0,ti+tm.length)+trucksJson+';'+html.substring(after);
+      }
+      const oi=html.indexOf(om);
+      if(oi>-1){
+        const oend=html.indexOf(';',oi);
+        if(oend>-1) html=html.substring(0,oi+om.length)+orderJson+html.substring(oend);
+      }
+      // Also update static truck-list HTML to match current state
+      const tlRe=/id="truck-list">[^<]*([\s\S]*?)<\/div>\s*<div class="sb-section" id="date-section"/;
+      const listDiv=document.getElementById('truck-list');
+      if(listDiv){
+        const newList='id="truck-list">'+listDiv.innerHTML;
+        html=html.replace(/id="truck-list">[\s\S]*?(?=<div class="sb-section" id="date-section")/,newList);
+      }
+      _triggerDownload(html,'text/html;charset=utf-8',
+        'qsk50_dashboard_'+_ts()+'.html');
     }catch(err){alert('Ошибка сохранения: '+err.message);}
-    if(btn){btn.textContent='⬇ Сохранить дашборд (HTML)';btn.disabled=false;}
-  },50);
+    btns.forEach(b=>{if(b.disabled){b.textContent='⬇ Сохранить дашборд (HTML)';b.disabled=false;}});
+  },80);
 }
+
+function exportCSV(){
+  const key=activeTruck;
+  const s=getSession(key);
+  if(!s||!s.ts||!s.ts.length){alert('Сначала выберите самосвал');return;}
+  const d=TRUCKS[key];
+  const rows=['Дата/Время,'+Object.keys(s.p||{}).concat(Object.keys(s.cyls||{}).map(n=>'Цил_'+n)).join(',')];
+  for(let i=0;i<s.ts.length;i++){
+    const pv=Object.values(s.p||{}).map(arr=>(arr[i]===null||arr[i]===undefined?'':arr[i]));
+    const cv=Object.keys(s.cyls||{}).map(n=>(s.cyls[n][i]===null||s.cyls[n][i]===undefined?'':s.cyls[n][i]));
+    rows.push(s.ts[i]+','+pv.concat(cv).join(','));
+  }
+  const bom='﻿'; // UTF-8 BOM for Excel
+  _triggerDownload(bom+rows.join('\r\n'),'text/csv;charset=utf-8',
+    `qsk50_${d?d.model+'_'+d.truck:'data'}_${s.date.replace(/\./g,'-')}.csv`);
+}
+
+function _triggerDownload(content,mime,filename){
+  const blob=new Blob([content],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function _ts(){return new Date().toISOString().slice(0,16).replace('T','_').replace(/:/g,'');}
 
 function toggleCmpMode(){
   compareMode=!compareMode;
