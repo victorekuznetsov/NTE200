@@ -12,880 +12,1009 @@
   --brd:rgba(255,255,255,0.08);--brd2:rgba(255,255,255,0.14);
   --tx:#e8edf6;--tx2:#b3bddc;--tx3:#80868b;
   --acc:#3ef0af;--red:#e84855;--amb:#f5a623;--grn:#22c55e;--blu:#7e83fa;--pur:#b668e4;
-  --rd:rgba(232,72,85,.14);--ad:rgba(245,166,35,.12);--gd:rgba(34,197,94,.1);
+  --rd:rgba(232,72,85,.15);--ad:rgba(245,166,35,.13);--gd:rgba(34,197,94,.1);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:14px}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(62,240,175,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(62,240,175,.018) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
-.tb{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;border-bottom:1px solid var(--brd);background:rgba(10,13,18,.96);backdrop-filter:blur(12px);position:relative;z-index:50;flex-shrink:0}
-.logo{font-size:12px;font-weight:800;color:var(--acc);white-space:nowrap}
+/* TOPBAR */
+.tb{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;border-bottom:1px solid var(--brd);background:rgba(10,13,18,.97);backdrop-filter:blur(12px);position:relative;z-index:50;flex-shrink:0}
+.logo{font-size:12px;font-weight:800;color:var(--acc);white-space:nowrap;line-height:1.2}
 .logo small{color:var(--tx3);font-weight:400;font-size:9px;display:block}
 .sep{width:1px;height:22px;background:var(--brd2);flex-shrink:0}
 .ks{display:flex;gap:16px}
 .kv{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:700}
 .kl{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px}
 .tr2{margin-left:auto;display:flex;align-items:center;gap:8px}
-.lbar{font-size:10px;color:var(--acc);white-space:nowrap}
+/* LAYOUT */
 .lay{display:flex;flex:1;overflow:hidden;position:relative;z-index:1}
 /* SIDEBAR */
-.sb2{width:230px;min-width:230px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
-.sb-top2{padding:8px;border-bottom:1px solid var(--brd)}
-.sb-nav2{display:flex;flex-direction:column;gap:3px}
-.sbn2{padding:7px 10px;border:1px solid var(--brd);border-radius:6px;background:transparent;color:var(--tx2);font-size:11px;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:7px}
+.sb2{width:210px;min-width:210px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
+.sb-nav2{padding:8px;border-bottom:1px solid var(--brd);display:flex;flex-direction:column;gap:3px}
+.sbn2{padding:7px 10px;border:1px solid var(--brd);border-radius:6px;background:transparent;color:var(--tx2);font-size:11px;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:7px;width:100%}
 .sbn2:hover,.sbn2.act{background:rgba(62,240,175,.1);color:var(--acc);border-color:rgba(62,240,175,.25)}
-.sb-section{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);padding:10px 4px 4px}
-.sbl2{overflow-y:auto;flex:1;padding:8px}
-/* machine list */
-.mach-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:3px}
+.sb-sec{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);padding:9px 8px 4px}
+.sbl2{overflow-y:auto;flex:1;padding:0 8px 8px}
+.mach-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:2px}
 .mach-item:hover{background:var(--card);border-color:var(--brd)}
 .mach-item.act{background:var(--card2);border-color:rgba(62,240,175,.3)}
-.mach-num{font-family:'SF Mono','Fira Code',monospace;font-size:13px;font-weight:800;color:var(--acc);min-width:30px}
+.mach-num{font-family:'SF Mono','Fira Code',monospace;font-size:13px;font-weight:800;color:var(--acc);min-width:28px}
 .mach-meta{flex:1;min-width:0}
-.mach-name{font-size:11px;font-weight:600}
+.mach-name{font-size:10px;font-weight:600}
 .mach-sub{font-size:9px;color:var(--tx3)}
-.mach-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px}
-.badge-crit{background:var(--rd);color:var(--red)}
-.badge-warn{background:var(--ad);color:var(--amb)}
-.badge-ok{background:var(--gd);color:var(--grn)}
+.mb{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;white-space:nowrap}
 /* MAIN */
 .mn2{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
-.pg{display:none;flex:1;overflow:auto;padding:16px}
-.pg.act{display:flex;flex-direction:column}
-/* OVERVIEW PAGE */
-.pt2{font-size:18px;font-weight:800;letter-spacing:-.4px;margin-bottom:2px}
-.ps2{font-size:11px;color:var(--tx3);margin-bottom:16px}
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:18px}
-.kpi{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px;position:relative;overflow:hidden;cursor:default}
-.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:.8}
+.pg{display:none;flex:1;overflow:auto;padding:16px;flex-direction:column}
+.pg.act{display:flex}
+/* TYPOGRAPHY */
+.pt2{font-size:18px;font-weight:800;letter-spacing:-.3px;margin-bottom:2px;flex-shrink:0}
+.ps2{font-size:11px;color:var(--tx3);margin-bottom:14px;flex-shrink:0}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0}
+.st2{font-size:12px;font-weight:700}
+.ss{font-size:10px;color:var(--tx3)}
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:14px;flex-shrink:0}
+.kpi{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
 .kpi-crit::after{background:var(--red)}
 .kpi-warn::after{background:var(--amb)}
 .kpi-ok::after{background:var(--grn)}
 .kpi-blu::after{background:var(--blu)}
 .kpi-acc::after{background:var(--acc)}
-.kpi-v{font-family:'SF Mono','Fira Code',monospace;font-size:28px;font-weight:800;line-height:1}
-.kpi-l{font-size:10px;color:var(--tx3);margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
-.kpi-sub{font-size:9px;color:var(--tx3);margin-top:3px}
-.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px}
-.st2{font-size:13px;font-weight:700}
-.ss{font-size:10px;color:var(--tx3)}
-/* MACHINE PAGE */
-.mh{padding:10px 14px;border-bottom:1px solid var(--brd);background:var(--bg2);flex-shrink:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.mid{font-size:20px;font-weight:800;font-family:'SF Mono','Fira Code',monospace}
-.mbr{font-size:10px;color:var(--tx3)}
+.kpi-v{font-family:'SF Mono','Fira Code',monospace;font-size:26px;font-weight:800;line-height:1}
+.kpi-l{font-size:9px;color:var(--tx3);margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
+.kpi-sub{font-size:8px;color:var(--tx3);margin-top:2px}
 /* TABLE */
-.tw{background:var(--card);border:1px solid var(--brd);border-radius:9px;overflow:hidden;margin-bottom:14px}
-.th3{padding:10px 13px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
-.tt2{font-size:12px;font-weight:700}
+.tw{background:var(--card);border:1px solid var(--brd);border-radius:9px;overflow:hidden;margin-bottom:12px;flex-shrink:0}
+.th3{padding:9px 12px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.tt2{font-size:11px;font-weight:700}
 .tsb{font-size:9px;color:var(--tx3)}
 .rt{width:100%;border-collapse:collapse;font-size:11px}
-.rt th{text-align:left;padding:7px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);border-bottom:1px solid var(--brd);background:var(--bg3);white-space:nowrap}
-.rt td{padding:7px 10px;border-bottom:1px solid var(--brd);white-space:nowrap;font-family:'SF Mono','Fira Code',monospace;font-size:11px}
+.rt th{text-align:left;padding:6px 9px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);border-bottom:1px solid var(--brd);background:var(--bg3);white-space:nowrap}
+.rt td{padding:6px 9px;border-bottom:1px solid var(--brd);white-space:nowrap;font-family:'SF Mono','Fira Code',monospace;font-size:11px}
 .rt tr:last-child td{border-bottom:none}
-.rt tr:hover td{background:var(--card2)}
-.bg4{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700;white-space:nowrap}
+.rt tr:hover td{background:var(--card2);cursor:pointer}
+/* BADGES */
+.bg4{font-size:9px;padding:2px 5px;border-radius:3px;font-weight:700;white-space:nowrap}
 .bt{background:rgba(232,72,85,.2);color:var(--red)}
-.bc{background:rgba(232,72,85,.35);color:#ff6b6b;border:1px solid rgba(232,72,85,.4)}
+.bc{background:rgba(232,72,85,.35);color:#ff7070;border:1px solid rgba(232,72,85,.5)}
 .bo{background:var(--gd);color:var(--grn)}
 .bw{background:var(--ad);color:var(--amb)}
-.bb{background:rgba(126,131,250,.15);color:var(--blu)}
-/* value cells */
-.val-ok{color:var(--grn)}
-.val-hi{color:var(--red);font-weight:700}
-.val-lo{color:var(--amb);font-weight:700}
-.val-crit{color:#ff4040;font-weight:800}
+/* VALUE COLORS */
+.vok{color:var(--grn)}.vhi{color:var(--red);font-weight:700}.vlo{color:var(--amb);font-weight:700}.vcrit{color:#ff4444;font-weight:800}
 /* CHARTS */
-.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-.chart-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px}
-.chart-title{font-size:11px;font-weight:700;margin-bottom:10px;color:var(--tx2)}
-.chart-wrap{position:relative;height:200px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:12px;flex-shrink:0}
+.chart-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px}
+.chart-title{font-size:11px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.norm-hint{font-size:9px;color:var(--tx3);padding:2px 5px;background:var(--bg3);border-radius:3px;border:1px solid var(--brd);font-weight:400}
+.chart-wrap{position:relative;height:220px}
 /* HEATMAP */
-.heat-grid{display:grid;gap:6px;margin-bottom:14px}
-.heat-row{display:flex;gap:6px;align-items:center}
-.heat-lbl{font-size:10px;color:var(--tx3);width:60px;text-align:right;flex-shrink:0;font-family:'SF Mono','Fira Code',monospace}
-.heat-cells{display:flex;gap:4px;flex:1}
-.heat-cell{flex:1;height:34px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;border:1px solid transparent;min-width:38px}
-.heat-cell:hover{border-color:rgba(255,255,255,.25);transform:translateY(-1px)}
-.heat-val{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;line-height:1}
-.heat-id{font-size:8px;opacity:.7;line-height:1;margin-top:1px}
-.heat-header{display:flex;gap:4px;margin-left:66px;margin-bottom:3px}
-.heat-hcell{flex:1;text-align:center;font-size:9px;color:var(--tx3);font-weight:700;min-width:38px}
+.heat-section{margin-bottom:20px}
+.heat-machine-hdr{font-size:11px;font-weight:800;color:var(--acc);margin-bottom:7px;padding:5px 9px;background:var(--card);border-radius:6px;border-left:3px solid var(--acc)}
+.heat-row{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.heat-lbl{width:56px;text-align:right;flex-shrink:0;font-size:9px;color:var(--tx3);font-family:'SF Mono','Fira Code',monospace;line-height:1.2}
+.heat-cells{display:flex;gap:3px;flex:1}
+.heat-cell{flex:1;min-width:36px;max-width:52px;height:36px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.heat-cell:hover{border-color:rgba(255,255,255,.3);transform:scale(1.05)}
+.heat-v{font-family:'SF Mono','Fira Code',monospace;font-size:10px;font-weight:700;line-height:1}
+.heat-arrow{font-size:9px;opacity:.8;margin-top:1px}
+.heat-hdr{display:flex;gap:3px;margin-left:61px;margin-bottom:2px}
+.heat-hlbl{flex:1;min-width:36px;max-width:52px;text-align:center;font-size:8px;color:var(--tx3);font-weight:700}
+/* LEGEND */
+.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 /* STATUS CARDS */
-.status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
-.status-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px;border-left:4px solid;transition:all .15s}
-.status-card:hover{border-color:rgba(255,255,255,.2);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
-.sc-id{font-family:'SF Mono','Fira Code',monospace;font-size:15px;font-weight:800;margin-bottom:3px}
-.sc-machine{font-size:10px;color:var(--tx3);margin-bottom:8px}
-.sc-tests{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-.sc-test{display:flex;flex-direction:column;background:var(--bg3);border-radius:4px;padding:4px 6px}
-.sc-tname{font-size:8px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
-.sc-tval{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:700}
-.sc-verdict{margin-top:8px;font-size:10px;font-weight:700;padding:4px 8px;border-radius:5px;text-align:center}
-/* DEVIATION BAR */
-.dev-bar-wrap{height:6px;border-radius:3px;background:var(--brd2);overflow:visible;position:relative;margin-top:4px}
-.dev-bar{height:100%;border-radius:3px;position:absolute;transition:width .4s}
-.dev-min,.dev-max{position:absolute;top:-3px;width:2px;height:12px;background:rgba(255,255,255,.3);border-radius:1px}
-/* ALERT LIST */
-.al2{display:flex;flex-direction:column;gap:6px}
-.ac{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:10px 13px;border-left:4px solid;transition:all .15s}
+.status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px;margin-bottom:12px;flex-shrink:0}
+.sc{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:11px;border-left:4px solid;cursor:pointer;transition:all .15s}
+.sc:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.sc-id{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:800;margin-bottom:2px}
+.sc-date{font-size:9px;color:var(--tx3);margin-bottom:7px}
+.sc-tests{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.sc-t{background:var(--bg3);border-radius:4px;padding:3px 6px}
+.sc-tn{font-size:8px;color:var(--tx3);text-transform:uppercase}
+.sc-tv{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700}
+.sc-verd{margin-top:7px;font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;text-align:center}
+/* ALERT */
+.al2{display:flex;flex-direction:column;gap:5px}
+.ac{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:9px 12px;border-left:4px solid;transition:all .15s}
 .ac:hover{transform:translateX(3px)}
-.ai{font-size:20px;flex-shrink:0;margin-top:1px}
+.ai{font-size:18px;flex-shrink:0;margin-top:1px}
 .ab{flex:1;min-width:0}
-.at2{font-weight:700;font-size:12px;margin-bottom:2px}
-.ad2{font-size:10px;color:var(--tx2);line-height:1.4}
-.afp{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:700;flex-shrink:0;text-align:right}
+.at2{font-weight:700;font-size:11px;margin-bottom:1px}
+.ad2{font-size:10px;color:var(--tx2);line-height:1.45}
+.afp{font-family:'SF Mono','Fira Code',monospace;font-size:10px;font-weight:700;flex-shrink:0;text-align:right;min-width:90px}
+/* DEVIATIONS */
+.dev-bar-outer{height:14px;background:var(--bg3);border-radius:3px;overflow:visible;position:relative;flex:1}
+.dev-zone{position:absolute;height:100%;background:rgba(34,197,94,.12);border-radius:2px}
+.dev-fill{position:absolute;left:0;height:100%;border-radius:3px;transition:width .5s ease}
+.dev-line{position:absolute;top:-4px;width:2px;height:22px;border-radius:1px}
+/* GUIDE / СПРАВКА */
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:14px}
+.gc{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px;border-top:3px solid}
+.gc-id{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:800;margin-bottom:2px}
+.gc-name{font-size:11px;font-weight:700;color:var(--tx2);margin-bottom:6px}
+.gc-body{font-size:10px;color:var(--tx2);line-height:1.6;margin-bottom:6px}
+.gc-norm{font-size:9px;padding:4px 8px;border-radius:4px;background:rgba(255,255,255,.04);border:1px solid var(--brd);margin-bottom:5px}
+.gc-when{font-size:9px;color:var(--amb);padding:3px 7px;background:rgba(245,166,35,.08);border-radius:4px;border-left:2px solid var(--amb);margin-top:5px}
+.gc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.gct{font-size:8px;padding:2px 5px;border-radius:3px;background:rgba(255,255,255,.06);color:var(--tx3)}
+.g-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--tx3);margin:16px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--brd)}
+/* INFO BLOCKS */
+.info-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:14px;margin-bottom:12px}
+.info-title{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.info-body{font-size:11px;color:var(--tx2);line-height:1.7}
+.info-body strong{color:var(--tx)}
+.info-body ul{padding-left:16px;margin:6px 0}
+.info-body li{margin-bottom:3px}
+.step-row{display:flex;gap:10px;margin-bottom:8px}
+.step-num{width:24px;height:24px;border-radius:50%;background:rgba(62,240,175,.15);border:1px solid rgba(62,240,175,.35);color:var(--acc);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-body{flex:1;font-size:11px;color:var(--tx2);line-height:1.5}
+.step-body strong{color:var(--tx)}
+/* MACHINE DETAIL */
+.mh{padding:9px 13px;border-bottom:1px solid var(--brd);background:var(--bg2);flex-shrink:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mid{font-size:18px;font-weight:800;font-family:'SF Mono','Fira Code',monospace}
+.mbr{font-size:10px;color:var(--tx3)}
+/* CAUSE CARDS */
+.cause-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.cause-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px;border-top:3px solid}
+.cause-title{font-size:12px;font-weight:800;margin-bottom:6px}
+.cause-body{font-size:10px;color:var(--tx2);line-height:1.6}
+.cause-body ul{padding-left:14px;margin:4px 0}
+.cause-body li{margin-bottom:3px}
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
-/* INFO TOOLTIP */
-.norm-hint{font-size:9px;color:var(--tx3);padding:2px 6px;background:var(--bg3);border-radius:3px;border:1px solid var(--brd)}
-/* LEGEND */
-.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
-.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-/* SUMMARY BLOCK */
-.summ-block{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:14px;margin-bottom:14px}
-.summ-title{font-size:12px;font-weight:700;margin-bottom:10px;color:var(--tx2);display:flex;align-items:center;gap:6px}
-.summ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
-.summ-stat{text-align:center;padding:8px;background:var(--bg3);border-radius:6px}
-.summ-v{font-family:'SF Mono','Fira Code',monospace;font-size:20px;font-weight:800}
-.summ-l{font-size:9px;color:var(--tx3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
-/* MACHINE DETAIL */
-.detail-pg{display:none;flex:1;overflow:hidden;flex-direction:column}
-.detail-pg.act{display:flex}
-/* RADIAL GAUGE ROW */
-.gauge-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
-.gauge-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px 14px;min-width:120px;text-align:center;flex-shrink:0}
-.gauge-id{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;margin-bottom:6px}
-.gauge-val{font-family:'SF Mono','Fira Code',monospace;font-size:22px;font-weight:800;line-height:1}
-.gauge-unit{font-size:9px;color:var(--tx3);margin-bottom:4px}
-.gauge-ring{width:56px;height:56px;margin:0 auto 6px;position:relative}
-.gauge-ring svg{transform:rotate(-90deg)}
 </style>
 </head>
 <body>
-<div style="text-align:center;font-size:11px;color:#80868b;background:#1c2630;border-bottom:1px solid rgba(255,255,255,.07);padding:4px 10px;letter-spacing:.2px">По вопросам улучшения отчёта обращаться к <span style="color:#3ef0af;font-weight:700">Кузнецову В.Е.</span></div>
+<div style="text-align:center;font-size:11px;color:#80868b;background:#1c2630;border-bottom:1px solid rgba(255,255,255,.07);padding:4px 10px">По вопросам улучшения отчёта обращаться к <span style="color:#3ef0af;font-weight:700">Кузнецову В.Е.</span></div>
 
 <!-- TOPBAR -->
 <div class="tb">
-  <div class="logo">АО «Полюс Магадан» — Диагностика форсунок Cummins CRI<small>NTE200 · Стенд «Поток CR-2» · Анализ v1.0 · 04.06.2026</small></div>
+  <div class="logo">АО «Полюс Магадан» — Диагностика форсунок Cummins CRI<small>NTE200 · Стенд «Поток CR-2 v1.5» · v1.1 · 04.06.2026</small></div>
   <div class="sep"></div>
   <div class="ks">
-    <div><div class="kv" id="k-total">22</div><div class="kl">Форсунок</div></div>
-    <div><div class="kv" id="k-fail" style="color:var(--red)">14</div><div class="kl">Брак</div></div>
-    <div><div class="kv" id="k-crit" style="color:#ff4040">6</div><div class="kl">Критич.</div></div>
-    <div><div class="kv" id="k-ok" style="color:var(--grn)">8</div><div class="kl">Годных</div></div>
+    <div><div class="kv">22</div><div class="kl">Форсунок</div></div>
+    <div><div class="kv" style="color:var(--red)">14</div><div class="kl">Брак</div></div>
+    <div><div class="kv" style="color:#ff4040">6</div><div class="kl">Критич.</div></div>
+    <div><div class="kv" style="color:var(--grn)">8</div><div class="kl">Годных</div></div>
     <div><div class="kv" style="color:var(--amb)">64%</div><div class="kl">Отказов</div></div>
   </div>
-  <div class="tr2">
-    <div class="lbar">🔧 Тест: GR TESTING · Cummins CRI 1MV · арт. 2867147</div>
-  </div>
+  <div class="tr2" style="font-size:10px;color:var(--tx3)">🔧 GR TESTING · Cummins CRI 1MV · арт.&nbsp;2867147</div>
 </div>
 
 <div class="lay">
 <!-- SIDEBAR -->
 <div class="sb2">
-  <div class="sb-top2">
-    <div class="sb-nav2">
-      <button class="sbn2 act" onclick="showPage('overview',this)">🏠 Обзор парка</button>
-      <button class="sbn2" onclick="showPage('heatmap',this)">🌡️ Тепловая карта</button>
-      <button class="sbn2" onclick="showPage('charts',this)">📊 Графики</button>
-      <button class="sbn2" onclick="showPage('alerts',this)">🚨 Приоритеты замены</button>
-    </div>
+  <div class="sb-nav2">
+    <button class="sbn2 act" onclick="showPage('overview',this)">🏠 Обзор парка</button>
+    <button class="sbn2" onclick="showPage('heatmap',this)">🌡️ Тепловая карта</button>
+    <button class="sbn2" onclick="showPage('charts',this)">📊 Графики</button>
+    <button class="sbn2" onclick="showPage('alerts',this)">🚨 Приоритеты замены</button>
+    <button class="sbn2" onclick="showPage('causes',this)">⚠️ Причины и рекоменд.</button>
+    <button class="sbn2" onclick="showPage('guide',this)">📖 Справка / Обучение</button>
   </div>
   <div class="sbl2">
-    <div class="sb-section">Машины</div>
+    <div class="sb-sec">Машины — детально</div>
     <div id="machine-list"></div>
   </div>
 </div>
 
 <!-- MAIN -->
-<div class="mn2" id="mn">
+<div class="mn2">
 
-  <!-- OVERVIEW PAGE -->
-  <div class="pg act" id="p-overview">
-    <div class="pt2">Обзор парка форсунок NTE200</div>
-    <div class="ps2">Самосвалы АО «Полюс Магадан» · Cummins QSK60 · Стенд «Поток CR-2 v1.5» · Дата анализа: 04.06.2026</div>
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<div class="pg act" id="p-overview">
+  <div class="pt2">Обзор парка форсунок NTE200</div>
+  <div class="ps2">АО «Полюс Магадан» · Cummins QSK60 · Поток CR-2 v1.5 · 03–04.06.2026</div>
+  <div class="kpi-row">
+    <div class="kpi kpi-crit"><div class="kpi-v" style="color:var(--red)">14</div><div class="kpi-l">Бракованных</div><div class="kpi-sub">из 22 протестированных (64%)</div></div>
+    <div class="kpi kpi-crit"><div class="kpi-v" style="color:#ff4040">6</div><div class="kpi-l">Критических</div><div class="kpi-sub">Немедленная замена</div></div>
+    <div class="kpi kpi-warn"><div class="kpi-v" style="color:var(--amb)">8</div><div class="kpi-l">Замена до ТО</div><div class="kpi-sub">Неудовлетворительное состояние</div></div>
+    <div class="kpi kpi-ok"><div class="kpi-v" style="color:var(--grn)">8</div><div class="kpi-l">Годных</div><div class="kpi-sub">#73 L2, #82: 1L 2L 5L 5R 6L 6R 8L</div></div>
+    <div class="kpi kpi-blu"><div class="kpi-v" style="color:var(--blu)">3</div><div class="kpi-l">Машины</div><div class="kpi-sub">NTE200 №73, №78, №82</div></div>
+    <div class="kpi kpi-acc"><div class="kpi-v" style="color:var(--acc)">59%</div><div class="kpi-l">Отказы P04</div><div class="kpi-sub">Частичная нагрузка — главный признак</div></div>
+  </div>
+  <div class="sh"><div class="st2">🔩 Состояние всех форсунок</div><div class="ss">Кликните на карточку для детального просмотра машины</div></div>
+  <div class="status-grid" id="status-cards"></div>
+  <div class="tw">
+    <div class="th3"><div class="tt2">📈 Частота отказов по тестовым режимам</div></div>
+    <div style="overflow-x:auto"><table class="rt">
+      <thead><tr><th>Тест</th><th>Режим</th><th>Давление</th><th>Обороты</th><th>Норма подачи, см³</th><th>Отказов</th><th>% от итого</th><th>Тип износа</th></tr></thead>
+      <tbody>
+        <tr><td>Leak 200/1600</td><td>Герметичность</td><td>200 / 1600 бар</td><td>—</td><td>Обратка &lt;10 / &lt;20</td><td class="vok">0</td><td class="vok">0%</td><td style="color:var(--tx3)">—</td></tr>
+        <tr><td>P01</td><td>Полная нагрузка</td><td>1600 бар</td><td>400 об/мин</td><td>441,5 – 495,5</td><td class="vlo">1</td><td class="vlo">4,5%</td><td style="color:var(--tx2)">Перелив (игла/седло)</td></tr>
+        <tr><td>P02</td><td>Средняя нагрузка</td><td>1000 бар</td><td>400 об/мин</td><td>220,0 – 260,0</td><td class="vlo">5</td><td class="vlo">22,7%</td><td style="color:var(--tx2)">Перелив (прецизионный износ)</td></tr>
+        <tr><td>P03</td><td>Холостой ход</td><td>400 бар</td><td>1000 об/мин</td><td>16,0 – 30,0</td><td class="vhi">7</td><td class="vhi">31,8%</td><td style="color:var(--tx2)">Перелив или недолив (плунжер)</td></tr>
+        <tr><td style="color:#ff4040;font-weight:700">P04 ⚠️</td><td>Частичная нагрузка</td><td>750 бар</td><td>800 об/мин</td><td>41,0 – 51,0</td><td class="vcrit">13</td><td class="vcrit">59,1%</td><td style="color:#ff9090;font-weight:600">Оба типа — главный индикатор</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
 
-    <!-- KPI ROW -->
-    <div class="kpi-row">
-      <div class="kpi kpi-crit">
-        <div class="kpi-v" style="color:var(--red)">14</div>
-        <div class="kpi-l">Бракованных форсунок</div>
-        <div class="kpi-sub">из 22 протестированных (64%)</div>
-      </div>
-      <div class="kpi kpi-crit" style="--c:var(--red)">
-        <div class="kpi-v" style="color:#ff4040">6</div>
-        <div class="kpi-l">Критических (замена немедленно)</div>
-        <div class="kpi-sub">#73 R1, #82 2R/3R/8R, #78 6L/4R</div>
-      </div>
-      <div class="kpi kpi-warn">
-        <div class="kpi-v" style="color:var(--amb)">8</div>
-        <div class="kpi-l">Требуют замены до ТО</div>
-        <div class="kpi-sub">#82: 1R,3L,4L,4R,7L,7R · #78: 3R,6R</div>
-      </div>
-      <div class="kpi kpi-ok">
-        <div class="kpi-v" style="color:var(--grn)">8</div>
-        <div class="kpi-l">Годных форсунок</div>
-        <div class="kpi-sub">#73 L2, #82: 1L,2L,5L,5R,6L,6R,8L</div>
-      </div>
-      <div class="kpi kpi-blu">
-        <div class="kpi-v" style="color:var(--blu)">3</div>
-        <div class="kpi-l">Машины в парке</div>
-        <div class="kpi-sub">NTE200 №73, №78, №82</div>
-      </div>
-      <div class="kpi kpi-acc">
-        <div class="kpi-v" style="color:var(--acc)">59%</div>
-        <div class="kpi-l">Отказы по P04</div>
-        <div class="kpi-sub">Частичная нагрузка — главный признак</div>
+<!-- ═══════════ HEATMAP ═══════════ -->
+<div class="pg" id="p-heatmap">
+  <div class="pt2">Тепловая карта отклонений</div>
+  <div class="ps2">Подача, см³. Цвет = отклонение от нормы. Кликните ячейку для подсказки.</div>
+  <div class="legend-row">
+    <div class="leg-item"><div class="leg-dot" style="background:rgba(232,72,85,.6)"></div>Перелив (выше нормы)</div>
+    <div class="leg-item"><div class="leg-dot" style="background:rgba(245,166,35,.6)"></div>Недолив (ниже нормы)</div>
+    <div class="leg-item"><div class="leg-dot" style="background:rgba(34,197,94,.3)"></div>В норме</div>
+  </div>
+  <div id="heatmap-content"></div>
+</div>
+
+<!-- ═══════════ CHARTS ═══════════ -->
+<div class="pg" id="p-charts">
+  <div class="pt2">Графики результатов тестирования</div>
+  <div class="ps2">Подача, см³ по всем режимам. Пунктирные линии — границы допуска. Красный = перелив, жёлтый = недолив, зелёный = норма.</div>
+  <div class="chart-grid" id="chart-grid"></div>
+  <div class="tw">
+    <div class="th3"><div class="tt2">📋 Сводная таблица всех 22 форсунок</div><div class="tsb">GR TESTING · Cummins CRI 1MV 2867147</div></div>
+    <div style="overflow-x:auto"><table class="rt" id="main-table">
+      <thead><tr>
+        <th>Машина</th><th>Форсунка</th><th>Дата</th>
+        <th>P01 (441.5–495.5)</th><th>P02 (220–260)</th><th>P03 (16–30)</th><th>P04 (41–51)</th>
+        <th>Обр. P01</th><th>Статус</th>
+      </tr></thead>
+      <tbody id="table-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ═══════════ ALERTS ═══════════ -->
+<div class="pg" id="p-alerts">
+  <div class="pt2">Приоритеты замены форсунок</div>
+  <div class="ps2">Отсортировано по критичности. Артикул замены: <strong style="color:var(--acc)">2882077</strong> (подтверждён гарантийными ремонтами).</div>
+  <div class="al2" id="alert-list"></div>
+</div>
+
+<!-- ═══════════ CAUSES ═══════════ -->
+<div class="pg" id="p-causes">
+  <div class="pt2">Причины неисправностей и рекомендации</div>
+  <div class="ps2">Диагностика типов деградации по результатам стендовых испытаний</div>
+
+  <div class="sh" style="margin-top:2px"><div class="st2">⚠️ Типы неисправностей</div></div>
+  <div class="cause-grid">
+    <div class="cause-card" style="border-top-color:var(--red)">
+      <div class="cause-title" style="color:var(--red)">🔴 Тип А — Перелив (избыточная подача)</div>
+      <div class="cause-body">
+        <strong>Симптом:</strong> P03 и/или P04 <em>выше</em> верхней границы нормы<br><br>
+        <strong>Механизм:</strong>
+        <ul>
+          <li>Износ конуса иглы или седла распылителя</li>
+          <li>Игла не закрывается герметично — паразитный перелив</li>
+          <li>Эрозия посадочной поверхности от абразивных частиц</li>
+          <li>Кавитационное разрушение иглы при гидроударах</li>
+        </ul>
+        <strong>Последствия:</strong>
+        <ul>
+          <li>Переобогащение смеси → сажа, дымность выхлопа</li>
+          <li>Закоксовывание поршневых колец и распылителя</li>
+          <li>Перегрев поршня → трещины поршневой группы</li>
+          <li>Смывание масла со стенок цилиндра → ускоренный износ ЦПГ</li>
+        </ul>
+        <strong style="color:var(--red)">Форсунки:</strong> #73 R1 (P03=41,5; P04=62,1), #82 3R (P04=60,7), #78 6L (P04=54,3)
       </div>
     </div>
-
-    <!-- STATUS CARDS -->
-    <div class="sh"><div class="st2">🔩 Состояние форсунок по машинам</div><div class="ss">Клик на форсунку для детального просмотра</div></div>
-    <div class="status-grid" id="status-cards"></div>
-
-    <!-- SUMMARY STATS -->
-    <div class="summ-block">
-      <div class="summ-title">📈 Статистика отказов по тестам</div>
-      <div class="summ-grid">
-        <div class="summ-stat"><div class="summ-v" style="color:var(--grn)">0</div><div class="summ-l">Leak 200/1600</div></div>
-        <div class="summ-stat"><div class="summ-v" style="color:var(--amb)">1</div><div class="summ-l">P01 (1600 бар)</div></div>
-        <div class="summ-stat"><div class="summ-v" style="color:var(--amb)">5</div><div class="summ-l">P02 (1000 бар)</div></div>
-        <div class="summ-stat"><div class="summ-v" style="color:var(--red)">7</div><div class="summ-l">P03 (400 бар)</div></div>
-        <div class="summ-stat"><div class="summ-v" style="color:#ff4040">13</div><div class="summ-l">P04 (750 бар) ⚠️</div></div>
-      </div>
-      <div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--amb);font-size:11px;color:var(--tx2);line-height:1.6">
-        <strong style="color:var(--amb)">Главный вывод:</strong> Тест P04 (750 бар, 800 об/мин, режим частичной нагрузки) является
-        наиболее чувствительным индикатором износа — 59% всех отказов. Зафиксированы два
-        типа деградации: <span style="color:var(--red)">перелив</span> (износ иглы/седла, форсунки «текут»)
-        и <span style="color:var(--amb)">недолив</span> (износ плунжерной пары). Все leak-тесты пройдены — разрушений корпусов нет.
+    <div class="cause-card" style="border-top-color:var(--amb)">
+      <div class="cause-title" style="color:var(--amb)">🟡 Тип Б — Недолив (недостаточная подача)</div>
+      <div class="cause-body">
+        <strong>Симптом:</strong> P03 и/или P04 <em>ниже</em> нижней границы нормы<br><br>
+        <strong>Механизм:</strong>
+        <ul>
+          <li>Износ плунжерной пары (плунжер + гильза)</li>
+          <li>Увеличенный зазор → топливо перетекает мимо плунжера</li>
+          <li>Снижение создаваемого давления и КПД подачи</li>
+          <li>Загрязнение / засорение распылителя</li>
+        </ul>
+        <strong>Последствия:</strong>
+        <ul>
+          <li>Обеднение смеси → снижение мощности двигателя</li>
+          <li>Повышенный расход топлива (компенсация ЭБУ)</li>
+          <li>Детонационное горение при нехватке топлива</li>
+          <li>Ускоренный износ турбокомпрессора</li>
+        </ul>
+        <strong style="color:var(--amb)">Форсунки:</strong> #82 8R (P04=27,8), #82 2R (P04=30,7), #82 7L (P04=32,8)
       </div>
     </div>
-  </div>
-
-  <!-- HEATMAP PAGE -->
-  <div class="pg" id="p-heatmap">
-    <div class="pt2">Тепловая карта отклонений</div>
-    <div class="ps2">Подача, см³ — отклонение от нормы. Красный = перелив / выход вверх · Жёлтый = недолив / выход вниз · Зелёный = норма</div>
-    <div class="legend-row">
-      <div class="leg-item"><div class="leg-dot" style="background:rgba(232,72,85,.7)"></div>Перелив (выше нормы)</div>
-      <div class="leg-item"><div class="leg-dot" style="background:rgba(245,166,35,.7)"></div>Недолив (ниже нормы)</div>
-      <div class="leg-item"><div class="leg-dot" style="background:rgba(34,197,94,.25)"></div>В норме</div>
-      <div class="leg-item"><div class="leg-dot" style="background:rgba(62,240,175,.15)"></div>Форсунка не тестировалась</div>
+    <div class="cause-card" style="border-top-color:var(--blu)">
+      <div class="cause-title" style="color:var(--blu)">🔵 Тип В — Превышение P02 (средняя нагрузка)</div>
+      <div class="cause-body">
+        <strong>Симптом:</strong> P02 незначительно выше 260 см³<br><br>
+        <strong>Механизм:</strong>
+        <ul>
+          <li>Умеренный прецизионный износ иглы + корпуса распылителя</li>
+          <li>Характерен для форсунок с высокой наработкой</li>
+          <li>Начальная стадия перед типом А</li>
+        </ul>
+        <strong>Последствия:</strong>
+        <ul>
+          <li>Повышенный расход топлива на средних нагрузках</li>
+          <li>Неравномерная работа двигателя на переходных режимах</li>
+        </ul>
+        <strong style="color:var(--blu)">Форсунки:</strong> #78 3R (261,7), #78 4R (262,1), #78 6L (263,7)
+      </div>
     </div>
-    <div id="heatmap-content"></div>
-  </div>
-
-  <!-- CHARTS PAGE -->
-  <div class="pg" id="p-charts">
-    <div class="pt2">Графики результатов тестирования</div>
-    <div class="ps2">Подача (см³) по всем тестовым режимам. Пунктир — граница допуска.</div>
-    <div class="chart-grid" id="chart-grid"></div>
-    <div class="tw">
-      <div class="th3"><div class="tt2">📋 Сводная таблица всех форсунок</div><div class="tsb">22 форсунки · GR TESTING</div></div>
-      <div style="overflow-x:auto">
-        <table class="rt" id="main-table">
-          <thead><tr>
-            <th>Машина</th><th>Форсунка</th><th>Дата теста</th>
-            <th>P01 (441.5–495.5)</th><th>P02 (220–260)</th><th>P03 (16–30)</th><th>P04 (41–51)</th>
-            <th>Обратка P01</th><th>Статус</th>
-          </tr></thead>
-          <tbody id="table-body"></tbody>
-        </table>
+    <div class="cause-card" style="border-top-color:var(--pur)">
+      <div class="cause-title" style="color:var(--pur)">🟣 Системные причины раннего износа</div>
+      <div class="cause-body">
+        <strong>Возможные корневые причины:</strong>
+        <ul>
+          <li><strong>Качество топлива:</strong> повышенное содержание серы, воды, абразивных частиц</li>
+          <li><strong>Засорение фильтров:</strong> кавитация и гидроудары ускоряют износ</li>
+          <li><strong>Нарушение регламента ТО:</strong> несвоевременная замена топливных фильтров</li>
+          <li><strong>Перегрев двигателя:</strong> разрушение смазывающей плёнки в прецизионных парах</li>
+          <li><strong>Попадание охлаждающей жидкости в топливо</strong> через микротрещины ГБЦ</li>
+        </ul>
+        <strong>Свидетельство:</strong> Машина №72 отказала на 3700 м/ч — значительно раньше расчётного ресурса. Это указывает на внешние факторы, а не только естественный износ.
       </div>
     </div>
   </div>
 
-  <!-- ALERTS PAGE -->
-  <div class="pg" id="p-alerts">
-    <div class="pt2">Приоритеты замены форсунок</div>
-    <div class="ps2">Сортировка по критичности — от немедленной замены до планового контроля</div>
-    <div class="al2" id="alert-list"></div>
+  <div class="sh"><div class="st2">📋 Рекомендации по действиям</div></div>
+  <div class="info-card">
+    <div class="info-title" style="color:var(--red)">🔴 Немедленные действия (до ближайшей остановки)</div>
+    <div class="info-body">
+      <div class="step-row"><div class="step-num">1</div><div class="step-body"><strong>NTE200 №82:</strong> Заменить форсунки <strong>2R</strong> и <strong>8R</strong> — критический недолив угрожает перегревом ЦПГ и детонационными повреждениями поршней</div></div>
+      <div class="step-row"><div class="step-num">2</div><div class="step-body"><strong>NTE200 №82:</strong> Заменить форсунку <strong>3R</strong> — критический перелив P04=60,7 см³ (+19%), риск закоксовывания и гидроудара</div></div>
+      <div class="step-row"><div class="step-num">3</div><div class="step-body"><strong>NTE200 №73:</strong> Заменить форсунку <strong>R1</strong> — все 4 теста провалены, P03=41,5 (+38% от максимума), аварийный останов неизбежен</div></div>
+      <div class="step-row"><div class="step-num">4</div><div class="step-body"><strong>NTE200 №78:</strong> Заменить форсунки <strong>6L</strong> и <strong>4R</strong> (критическое состояние). Остальные 2 тестированных (#78 3R, 6R) заменить при ближайшей остановке</div></div>
+    </div>
+  </div>
+  <div class="info-card">
+    <div class="info-title" style="color:var(--amb)">🟡 Плановые действия (в течение 1–2 недель)</div>
+    <div class="info-body">
+      <div class="step-row"><div class="step-num">5</div><div class="step-body"><strong>NTE200 №82:</strong> Заменить форсунки <strong>1R, 3L, 4L, 4R, 7L, 7R</strong> (итого 9 форсунок на машину)</div></div>
+      <div class="step-row"><div class="step-num">6</div><div class="step-body"><strong>NTE200 №78:</strong> Провести тест оставшихся 12 форсунок. При аналогичной картине — заменить комплектом (16 шт.)</div></div>
+      <div class="step-row"><div class="step-num">7</div><div class="step-body"><strong>NTE200 №73:</strong> Протестировать оставшиеся 14 форсунок. Минимально замена R1, вероятно больше.</div></div>
+      <div class="step-row"><div class="step-num">8</div><div class="step-body"><strong>Запасные части:</strong> Артикул <strong style="color:var(--acc)">2882077</strong>. Минимальный заказ: 14 шт. Рекомендуемый: <strong>28–40 шт.</strong> на весь парк</div></div>
+    </div>
+  </div>
+  <div class="info-card">
+    <div class="info-title" style="color:var(--acc)">✅ Системные меры (профилактика)</div>
+    <div class="info-body">
+      <div class="step-row"><div class="step-num">9</div><div class="step-body"><strong>Ввести плановое стендовое тестирование</strong> форсунок каждые <strong>3 000–4 000 м/ч</strong> по всему парку NTE200 — не дожидаться аварийных отказов</div></div>
+      <div class="step-row"><div class="step-num">10</div><div class="step-body"><strong>Проверить качество топлива</strong> на содержание воды (≤ 200 ppm), механических примесей и серы. Ранний отказ №72 (3700 м/ч) указывает на загрязнение</div></div>
+      <div class="step-row"><div class="step-num">11</div><div class="step-body"><strong>Проверить топливные фильтры</strong> на всех машинах — засорение фильтров вызывает кавитацию и ускоренный износ прецизионных пар</div></div>
+      <div class="step-row"><div class="step-num">12</div><div class="step-body"><strong>Обследовать необследованные машины</strong> парка NTE200 — при 64% уровне отказов у протестированных риск аналогичного состояния остальных машин крайне высок</div></div>
+    </div>
   </div>
 
-  <!-- MACHINE DETAIL PAGE -->
-  <div class="pg" id="p-machine">
-    <div id="machine-detail-content"></div>
+  <div class="tw">
+    <div class="th3"><div class="tt2">📦 Потребность в запасных частях</div><div class="tsb">Форсунка Cummins арт. 2882077</div></div>
+    <div style="overflow-x:auto"><table class="rt">
+      <thead><tr><th>Машина</th><th>Критических</th><th>До ТО</th><th>Минимум (шт.)</th><th>Рекомендуется (шт.)</th><th>Основание</th></tr></thead>
+      <tbody>
+        <tr><td>NTE200 №82</td><td class="vcrit">3 (2R, 3R, 8R)</td><td class="vlo">6</td><td class="vhi">9</td><td class="vhi">9</td><td style="color:var(--tx2)">Полный комплект протестирован</td></tr>
+        <tr><td>NTE200 №78</td><td class="vcrit">2 (6L, 4R)</td><td class="vlo">2</td><td class="vhi">4</td><td class="vlo">16</td><td style="color:var(--tx2)">Протест. 4/16 — все бракованные</td></tr>
+        <tr><td>NTE200 №73</td><td class="vcrit">1 (R1)</td><td>0</td><td class="vhi">1</td><td class="vlo">8+</td><td style="color:var(--tx2)">Протест. 2/16, остальные неизвестны</td></tr>
+        <tr style="background:var(--bg3)"><td><strong>ИТОГО</strong></td><td class="vcrit"><strong>6</strong></td><td class="vlo"><strong>8</strong></td><td class="vhi"><strong>14</strong></td><td class="vlo" style="font-weight:800"><strong>28–40</strong></td><td style="color:var(--tx2)">Рекомендованный заказ</td></tr>
+      </tbody>
+    </table></div>
   </div>
+</div>
+
+<!-- ═══════════ GUIDE / СПРАВКА ═══════════ -->
+<div class="pg" id="p-guide">
+  <div class="pt2">📖 Справка и обучающие материалы</div>
+  <div class="ps2">Описание стенда, методики испытаний, критерии оценки и регламент технического обслуживания</div>
+
+  <!-- STAND DESCRIPTION -->
+  <div class="g-sec">⚙️ Стенд «Поток CR-2 v1.5» — описание и функции</div>
+  <div class="info-card" style="border-top:3px solid var(--acc)">
+    <div class="info-title" style="color:var(--acc)">Стенд для диагностики форсунок Common Rail</div>
+    <div class="info-body">
+      <strong>Модель:</strong> Поток CR-2 v1.5, версия ПО v.1.2.4.13, серийный номер 00604<br>
+      <strong>Производитель:</strong> Россия (специализированное диагностическое оборудование для CR-форсунок)<br>
+      <strong>Точность измерения подачи:</strong> ±1,0 мм³/ход (100/100 мм³/ч)<br><br>
+      <strong>Основные функции стенда:</strong>
+      <ul>
+        <li>Измерение цикловой подачи топлива (мм³/цикл) в различных режимах нагрузки</li>
+        <li>Тест герметичности при низком (200 бар) и высоком (1600 бар) давлении</li>
+        <li>Измерение обратного слива (Leak) — утечки топлива мимо иглы</li>
+        <li>Автоматическое сравнение результатов с допустимыми нормами (базы данных OEM)</li>
+        <li>Формирование протоколов испытаний в формате PDF</li>
+        <li>Поддержка форсунок Cummins, Bosch, Delphi, Denso и др.</li>
+      </ul>
+      <strong>Рабочие параметры:</strong> давление стенда 0–1800 бар, диапазон оборотов 200–3000 об/мин, температура тест-жидкости 38–42°C (стандарт ISO 4113)
+    </div>
+  </div>
+
+  <!-- TEST PROGRAMS -->
+  <div class="g-sec">📋 Программа испытаний GR TESTING — расшифровка</div>
+  <div class="guide-grid">
+    <div class="gc" style="border-top-color:var(--grn)">
+      <div class="gc-id">Leak test 200 / 1600</div>
+      <div class="gc-name">Тест герметичности</div>
+      <div class="gc-body">Проверка плотности посадки иглы при давлении 200 и 1600 бар. Измеряется объём топлива, просочившегося через иглу за 30 секунд без управляющего импульса.</div>
+      <div class="gc-norm">Норма обратки: <strong>&lt; 10 см³</strong> (200 бар) / <strong>&lt; 20 см³</strong> (1600 бар)</div>
+      <div class="gc-when">Превышение → игла не герметична → полное разрушение распылителя</div>
+      <div class="gc-tags"><span class="gct">Герметичность</span><span class="gct">Игла</span><span class="gct">Седло</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--blu)">
+      <div class="gc-id">P01 — Полная нагрузка</div>
+      <div class="gc-name">1600 бар · 2150 мкс · 400 об/мин</div>
+      <div class="gc-body">Режим максимальной подачи: двигатель работает под полной нагрузкой (подъём в карьере, разгон с нагрузкой). Проверяет способность форсунки обеспечить максимальный впрыск.</div>
+      <div class="gc-norm">Подача: <strong>441,5–495,5 см³</strong> · Обратка: <strong>0–130 см³</strong></div>
+      <div class="gc-when">Отказ P01 → серьёзное разрушение иглы или плунжерной пары</div>
+      <div class="gc-tags"><span class="gct">Макс. нагрузка</span><span class="gct">1600 бар</span><span class="gct">Плунжер</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--acc)">
+      <div class="gc-id">P02 — Средняя нагрузка</div>
+      <div class="gc-name">1000 бар · 1450 мкс · 400 об/мин</div>
+      <div class="gc-body">Рабочий режим: движение по трассе с частичной загрузкой кузова. Наиболее частый эксплуатационный режим. Ранние признаки износа прецизионной пары видны именно здесь.</div>
+      <div class="gc-norm">Подача: <strong>220,0–260,0 см³</strong></div>
+      <div class="gc-when">Превышение нормы → начальный прецизионный износ, переобогащение смеси</div>
+      <div class="gc-tags"><span class="gct">Рабочий режим</span><span class="gct">1000 бар</span><span class="gct">Ранний износ</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--amb)">
+      <div class="gc-id">P03 — Холостой ход</div>
+      <div class="gc-name">400 бар · 1300 мкс · 1000 об/мин</div>
+      <div class="gc-body">Работа двигателя на минимальных оборотах (холостой ход, маневрирование). При малом давлении износ плунжерной пары проявляется наиболее ярко — зазор не компенсируется давлением.</div>
+      <div class="gc-norm">Подача: <strong>16,0–30,0 см³</strong></div>
+      <div class="gc-when">Недолив → критический износ плунжера. Перелив → закоксовывание при простоях.</div>
+      <div class="gc-tags"><span class="gct">Холостой ход</span><span class="gct">400 бар</span><span class="gct">Плунжер</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--red)">
+      <div class="gc-id">P04 — Частичная нагрузка ⚠️</div>
+      <div class="gc-name">750 бар · 890 мкс · 800 об/мин</div>
+      <div class="gc-body">Наиболее диагностически значимый тест. Режим переменной нагрузки (манёвры в карьере, торможение, переключение). Выявляет оба типа износа одновременно — 59% всех отказов в этом тесте.</div>
+      <div class="gc-norm">Подача: <strong>41,0–51,0 см³</strong></div>
+      <div class="gc-when">Главный индикатор состояния форсунки. Первым выходит за допуск при износе.</div>
+      <div class="gc-tags"><span class="gct">Переменная нагрузка</span><span class="gct">750 бар</span><span class="gct">Диагностика</span><span class="gct">Критично</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--pur)">
+      <div class="gc-id">Обратный слив (Leak P01)</div>
+      <div class="gc-name">Утечка через управляющий клапан</div>
+      <div class="gc-body">Измеряется объём топлива, возвращаемого через дренажный (обратный) канал при работе форсунки. Характеризует состояние управляющего клапана (MV — magnetic valve).</div>
+      <div class="gc-norm">Норма P01: <strong>0–130 см³</strong></div>
+      <div class="gc-when">Превышение → износ управляющего клапана → снижение КПД, перегрев топлива</div>
+      <div class="gc-tags"><span class="gct">MV-клапан</span><span class="gct">Дренаж</span><span class="gct">КПД</span></div>
+    </div>
+  </div>
+
+  <!-- INJECTOR ANATOMY -->
+  <div class="g-sec">🔬 Конструкция форсунки Cummins CRI 1MV (арт. 2867147)</div>
+  <div class="info-card">
+    <div class="info-title" style="color:var(--blu)">Тип: Электромагнитная форсунка Common Rail с одним магнитным клапаном</div>
+    <div class="info-body">
+      <strong>Основные узлы и их роль в диагностике:</strong>
+      <ul>
+        <li><strong>Плунжерная пара (плунжер + гильза):</strong> создаёт давление впрыска. Износ → недолив (Тип Б). Зазор нормальный: 1–3 мкм. При зазоре &gt;5 мкм — замена обязательна.</li>
+        <li><strong>Игла распылителя + седло:</strong> открывает/закрывает впрыск. Износ → перелив (Тип А). Точность прилегания &lt;0,5 мкм.</li>
+        <li><strong>Управляющий клапан (MV — Magnetic Valve):</strong> электромагнит управляет давлением в управляющей камере. Износ → некорректное время открытия иглы.</li>
+        <li><strong>Корпус форсунки:</strong> содержит аккумулятор давления. Трещины → утечка на Leak-тесте.</li>
+        <li><strong>Пружина иглы:</strong> обеспечивает закрытие после впрыска. Усадка пружины → постоянное подтекание.</li>
+      </ul>
+      <strong>Ресурс по нормативу Cummins:</strong> 10 000–12 000 м/ч при соблюдении регламента ТО и качественном топливе (Euro-4 и выше).
+    </div>
+  </div>
+
+  <!-- MAINTENANCE ACTIONS -->
+  <div class="g-sec">🗓️ Регламент обслуживания топливной системы</div>
+  <div class="guide-grid">
+    <div class="gc" style="border-top-color:var(--acc)">
+      <div class="gc-id">ТО-1 · каждые 250 м/ч</div>
+      <div class="gc-name">Ежесменное обслуживание</div>
+      <div class="gc-body">Визуальный осмотр топливных трубопроводов и форсунок на предмет утечек. Проверка уровня топлива и его качества. Осмотр дренажного бачка (избыточный возврат = признак неисправности форсунки).</div>
+      <div class="gc-tags"><span class="gct">Визуальный осмотр</span><span class="gct">Течи</span><span class="gct">Дренаж</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--acc)">
+      <div class="gc-id">ТО-2 · каждые 500 м/ч</div>
+      <div class="gc-name">Замена топливных фильтров</div>
+      <div class="gc-body">Обязательная замена фильтра грубой и тонкой очистки топлива. Проверка водоотделителя. Несоблюдение — главная причина преждевременного износа форсунок. Чистота топлива ISO 4406: 16/14/11.</div>
+      <div class="gc-tags"><span class="gct">Топливные фильтры</span><span class="gct">Водоотделитель</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--amb)">
+      <div class="gc-id">ТО-3 · каждые 1000 м/ч</div>
+      <div class="gc-name">Диагностика топливной системы</div>
+      <div class="gc-body">Проверка давления в рампе Common Rail (норма 1800 бар на холостом ходу). Считывание кодов неисправностей ЭБУ. Проверка адаптации форсунок (параметр IMA/QR-code). Осмотр распылителей визуально.</div>
+      <div class="gc-tags"><span class="gct">Давление CR</span><span class="gct">ЭБУ</span><span class="gct">IMA-код</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--red)">
+      <div class="gc-id">ТО-4 · каждые 3 000–4 000 м/ч</div>
+      <div class="gc-name">Стендовое тестирование форсунок ⚠️</div>
+      <div class="gc-body">Обязательное снятие и тестирование форсунок на стенде «Поток CR-2» по программе GR TESTING. Форсунки, не прошедшие хотя бы 1 тест — замена. Ввести в план ТО для всего парка NTE200.</div>
+      <div class="gc-tags"><span class="gct">Стенд Поток CR-2</span><span class="gct">GR TESTING</span><span class="gct">Обязательно</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--pur)">
+      <div class="gc-id">ТО-5 · каждые 8 000 м/ч</div>
+      <div class="gc-name">Замена комплекта форсунок</div>
+      <div class="gc-body">Плановая замена всего комплекта форсунок (16 шт. на двигатель QSK60) независимо от результатов диагностики. Форсунки, снятые при стендовом ресурсе &gt;50%, отправить в сертифицированный сервис на переборку.</div>
+      <div class="gc-tags"><span class="gct">Плановая замена</span><span class="gct">16 шт.</span><span class="gct">QSK60</span></div>
+    </div>
+    <div class="gc" style="border-top-color:var(--tx3)">
+      <div class="gc-id">Внеплановое ТО</div>
+      <div class="gc-name">Признаки неисправности форсунок</div>
+      <div class="gc-body">Признаки, требующие немедленной диагностики: <br>• Чёрный/синий дым из выхлопа<br>• Нестабильная работа двигателя, вибрация<br>• Повышенный расход топлива (&gt;10% от нормы)<br>• Коды ошибок P0200–P0299 в ЭБУ<br>• Обильный возврат топлива через дренаж</div>
+      <div class="gc-tags"><span class="gct">Симптомы</span><span class="gct">Диагностика</span><span class="gct">Внеплановое</span></div>
+    </div>
+  </div>
+
+  <!-- QUALITY REQUIREMENTS -->
+  <div class="g-sec">⛽ Требования к качеству топлива</div>
+  <div class="info-card">
+    <div class="info-title" style="color:var(--grn)">Стандарты топлива для Cummins QSK60 Common Rail</div>
+    <div class="info-body">
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <tr style="border-bottom:1px solid var(--brd)"><th style="padding:5px 8px;text-align:left;color:var(--tx3);font-size:9px;text-transform:uppercase">Параметр</th><th style="padding:5px 8px;text-align:left;color:var(--tx3);font-size:9px;text-transform:uppercase">Норма</th><th style="padding:5px 8px;text-align:left;color:var(--tx3);font-size:9px;text-transform:uppercase">Последствия нарушения</th></tr>
+        <tr style="border-bottom:1px solid var(--brd)"><td style="padding:5px 8px;color:var(--tx2)">Содержание воды</td><td style="padding:5px 8px;color:var(--grn);font-family:monospace">≤ 200 ppm</td><td style="padding:5px 8px;color:var(--tx3)">Гидроудары, кавитация, коррозия иглы</td></tr>
+        <tr style="border-bottom:1px solid var(--brd)"><td style="padding:5px 8px;color:var(--tx2)">Механические примеси</td><td style="padding:5px 8px;color:var(--grn);font-family:monospace">ISO 4406: ≤ 16/14/11</td><td style="padding:5px 8px;color:var(--tx3)">Абразивный износ прецизионных пар</td></tr>
+        <tr style="border-bottom:1px solid var(--brd)"><td style="padding:5px 8px;color:var(--tx2)">Содержание серы</td><td style="padding:5px 8px;color:var(--grn);font-family:monospace">≤ 500 ppm (ULSD)</td><td style="padding:5px 8px;color:var(--tx3)">Коррозия, сажеобразование, износ ЦПГ</td></tr>
+        <tr style="border-bottom:1px solid var(--brd)"><td style="padding:5px 8px;color:var(--tx2)">Цетановое число</td><td style="padding:5px 8px;color:var(--grn);font-family:monospace">≥ 42</td><td style="padding:5px 8px;color:var(--tx3)">Жёсткое сгорание, детонация</td></tr>
+        <tr><td style="padding:5px 8px;color:var(--tx2)">Смазывающая способность</td><td style="padding:5px 8px;color:var(--grn);font-family:monospace">HFRR ≤ 460 мкм</td><td style="padding:5px 8px;color:var(--tx3)">Сухое трение в прецизионных парах</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- GLOSSARY -->
+  <div class="g-sec">📚 Термины и обозначения</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px">
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Common Rail (CR)</div>
+      <div style="font-size:10px;color:var(--tx2)">Система впрыска высокого давления с общей топливной рампой. Давление в рампе поддерживается независимо от частоты впрыска.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">CRI (Common Rail Injector)</div>
+      <div style="font-size:10px;color:var(--tx2)">Электромагнитная форсунка CR. Тип 1MV — с одним управляющим клапаном (Magnetic Valve). Используется в Cummins QSK60.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Плунжерная пара</div>
+      <div style="font-size:10px;color:var(--tx2)">Прецизионная пара плунжер+гильза. Создаёт давление впрыска. Зазор 1–3 мкм. При износе — снижение производительности (недолив).</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Игла + седло распылителя</div>
+      <div style="font-size:10px;color:var(--tx2)">Запорный элемент форсунки. При износе седла — игла не закрывается плотно → перелив. Точность прилегания &lt;0,5 мкм.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Перелив (Overflow)</div>
+      <div style="font-size:10px;color:var(--tx2)">Подача выше нормы. Признак износа иглы/седла. Последствия: дымность, закоксовывание, перегрев поршней.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Недолив (Underflow)</div>
+      <div style="font-size:10px;color:var(--tx2)">Подача ниже нормы. Признак износа плунжерной пары. Последствия: снижение мощности, перерасход топлива, детонация.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">Leak / Обратный слив</div>
+      <div style="font-size:10px;color:var(--tx2)">Количество топлива, просочившегося через иглу при закрытом состоянии. Норма &lt;10 см³ (200 бар) / &lt;20 см³ (1600 бар).</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--brd);border-radius:7px;padding:10px">
+      <div style="font-family:monospace;font-size:11px;font-weight:700;color:var(--acc);margin-bottom:3px">QSK60 / NTE200</div>
+      <div style="font-size:10px;color:var(--tx2)">QSK60 — рядный 16-цилиндровый дизель Cummins мощностью ~2500 л.с. NTE200 — самосвал Inner Mongolia North Hauler г/п ~200 т.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MACHINE DETAIL ═══════════ -->
+<div class="pg" id="p-machine">
+  <div id="machine-detail-content" style="flex:1;display:flex;flex-direction:column;overflow:hidden"></div>
+</div>
 
 </div><!-- mn2 -->
 </div><!-- lay -->
 
 <script>
-/* ============================================================
+/* ══════════════════════════════════════════════
    DATA
-   ============================================================ */
-const LIMITS = {
-  leak200:  { ret: [0, 10] },
-  leak1600: { ret: [0, 20] },
-  p01: { del: [441.5, 495.5], ret: [0, 130] },
-  p02: { del: [220, 260] },
-  p03: { del: [16, 30] },
-  p04: { del: [41, 51] }
+══════════════════════════════════════════════ */
+const LIM = {
+  p01:{del:[441.5,495.5],ret:[0,130]},
+  p02:{del:[220,260]},
+  p03:{del:[16,30]},
+  p04:{del:[41,51]}
 };
-
-// Each injector: machine, id, date, leak200_ret, leak1600_ret, p01_del, p01_ret, p02_del, p03_del, p04_del
-const INJECTORS = [
-  // NTE200 #73
-  { m:'#73', id:'L2',  date:'27.04.2026', l200:0.20, l1600:0.10, p01:487.0, p01r:75.9, p02:260.0, p03:22.6, p04:41.7 },
-  { m:'#73', id:'R1',  date:'26.04.2026', l200:0.10, l1600:0.00, p01:503.0, p01r:74.7, p02:276.1, p03:41.5, p04:62.1 },
-  // NTE200 #78
-  { m:'#78', id:'3R',  date:'22.05.2026', l200:0.10, l1600:0.00, p01:475.8, p01r:74.9, p02:261.7, p03:28.8, p04:48.6 },
-  { m:'#78', id:'6L',  date:'22.05.2026', l200:0.10, l1600:0.00, p01:479.1, p01r:73.0, p02:263.7, p03:30.1, p04:54.3 },
-  { m:'#78', id:'4R',  date:'22.05.2026', l200:0.20, l1600:0.00, p01:487.7, p01r:73.9, p02:262.1, p03:26.1, p04:53.7 },
-  { m:'#78', id:'6R',  date:'22.05.2026', l200:0.20, l1600:0.10, p01:488.5, p01r:74.5, p02:227.9, p03:28.6, p04:38.6 },
-  // NTE200 #82 (full set, 16 injectors)
-  { m:'#82', id:'1L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:467.4, p01r:72.1, p02:248.2, p03:24.8, p04:48.4 },
-  { m:'#82', id:'1R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:469.6, p01r:74.2, p02:250.5, p03:30.1, p04:51.4 },
-  { m:'#82', id:'2L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:467.9, p01r:75.8, p02:243.1, p03:22.8, p04:44.0 },
-  { m:'#82', id:'2R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:464.0, p01r:74.4, p02:239.9, p03:13.8, p04:30.7 },
-  { m:'#82', id:'3L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:465.3, p01r:73.5, p02:243.4, p03:19.4, p04:40.8 },
-  { m:'#82', id:'3R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:485.5, p01r:76.8, p02:256.4, p03:31.3, p04:60.7 },
-  { m:'#82', id:'4L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:463.3, p01r:70.9, p02:241.3, p03:18.7, p04:37.5 },
-  { m:'#82', id:'4R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:463.9, p01r:72.0, p02:241.9, p03:17.7, p04:36.9 },
-  { m:'#82', id:'5L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:459.8, p01r:73.4, p02:242.1, p03:24.0, p04:43.7 },
-  { m:'#82', id:'5R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:471.7, p01r:74.6, p02:247.2, p03:20.0, p04:42.5 },
-  { m:'#82', id:'6L',  date:'03.06.2026', l200:0.30, l1600:0.10, p01:473.9, p01r:74.6, p02:250.7, p03:24.4, p04:49.6 },
-  { m:'#82', id:'6R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:475.1, p01r:69.5, p02:247.9, p03:23.9, p04:47.5 },
-  { m:'#82', id:'7L',  date:'03.06.2026', l200:0.20, l1600:0.10, p01:463.9, p01r:73.6, p02:239.5, p03:16.2, p04:32.8 },
-  { m:'#82', id:'7R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:462.9, p01r:73.3, p02:244.1, p03:19.2, p04:39.2 },
-  { m:'#82', id:'8L',  date:'03.06.2026', l200:0.20, l1600:0.10, p01:474.3, p01r:73.7, p02:248.1, p03:23.7, p04:47.2 },
-  { m:'#82', id:'8R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:456.1, p01r:73.0, p02:236.9, p03:12.7, p04:27.8 },
+const INJ = [
+  {m:'#73',id:'L2', date:'27.04.2026',l200:0.20,l1600:0.10,p01:487.0,p01r:75.9,p02:260.0,p03:22.6,p04:41.7},
+  {m:'#73',id:'R1', date:'26.04.2026',l200:0.10,l1600:0.00,p01:503.0,p01r:74.7,p02:276.1,p03:41.5,p04:62.1},
+  {m:'#78',id:'3R', date:'22.05.2026',l200:0.10,l1600:0.00,p01:475.8,p01r:74.9,p02:261.7,p03:28.8,p04:48.6},
+  {m:'#78',id:'6L', date:'22.05.2026',l200:0.10,l1600:0.00,p01:479.1,p01r:73.0,p02:263.7,p03:30.1,p04:54.3},
+  {m:'#78',id:'4R', date:'22.05.2026',l200:0.20,l1600:0.00,p01:487.7,p01r:73.9,p02:262.1,p03:26.1,p04:53.7},
+  {m:'#78',id:'6R', date:'22.05.2026',l200:0.20,l1600:0.10,p01:488.5,p01r:74.5,p02:227.9,p03:28.6,p04:38.6},
+  {m:'#82',id:'1L', date:'03.06.2026',l200:0.20,l1600:0.00,p01:467.4,p01r:72.1,p02:248.2,p03:24.8,p04:48.4},
+  {m:'#82',id:'1R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:469.6,p01r:74.2,p02:250.5,p03:30.1,p04:51.4},
+  {m:'#82',id:'2L', date:'03.06.2026',l200:0.20,l1600:0.00,p01:467.9,p01r:75.8,p02:243.1,p03:22.8,p04:44.0},
+  {m:'#82',id:'2R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:464.0,p01r:74.4,p02:239.9,p03:13.8,p04:30.7},
+  {m:'#82',id:'3L', date:'03.06.2026',l200:0.20,l1600:0.00,p01:465.3,p01r:73.5,p02:243.4,p03:19.4,p04:40.8},
+  {m:'#82',id:'3R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:485.5,p01r:76.8,p02:256.4,p03:31.3,p04:60.7},
+  {m:'#82',id:'4L', date:'03.06.2026',l200:0.20,l1600:0.00,p01:463.3,p01r:70.9,p02:241.3,p03:18.7,p04:37.5},
+  {m:'#82',id:'4R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:463.9,p01r:72.0,p02:241.9,p03:17.7,p04:36.9},
+  {m:'#82',id:'5L', date:'03.06.2026',l200:0.20,l1600:0.00,p01:459.8,p01r:73.4,p02:242.1,p03:24.0,p04:43.7},
+  {m:'#82',id:'5R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:471.7,p01r:74.6,p02:247.2,p03:20.0,p04:42.5},
+  {m:'#82',id:'6L', date:'03.06.2026',l200:0.30,l1600:0.10,p01:473.9,p01r:74.6,p02:250.7,p03:24.4,p04:49.6},
+  {m:'#82',id:'6R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:475.1,p01r:69.5,p02:247.9,p03:23.9,p04:47.5},
+  {m:'#82',id:'7L', date:'03.06.2026',l200:0.20,l1600:0.10,p01:463.9,p01r:73.6,p02:239.5,p03:16.2,p04:32.8},
+  {m:'#82',id:'7R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:462.9,p01r:73.3,p02:244.1,p03:19.2,p04:39.2},
+  {m:'#82',id:'8L', date:'03.06.2026',l200:0.20,l1600:0.10,p01:474.3,p01r:73.7,p02:248.1,p03:23.7,p04:47.2},
+  {m:'#82',id:'8R', date:'03.06.2026',l200:0.20,l1600:0.00,p01:456.1,p01r:73.0,p02:236.9,p03:12.7,p04:27.8},
 ];
 
-/* ============================================================
-   LOGIC
-   ============================================================ */
-function checkVal(v, [lo, hi]) {
-  if (v < lo) return 'lo';
-  if (v > hi) return 'hi';
-  return 'ok';
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+function chk(v,[lo,hi]){return v<lo?'lo':v>hi?'hi':'ok'}
+function vcls(s){return s==='ok'?'vok':s==='hi'?'vhi':'vlo'}
+function devTxt(v,[lo,hi]){
+  if(v<lo) return '-'+((lo-v)/lo*100).toFixed(1)+'%';
+  if(v>hi) return '+'+((v-hi)/hi*100).toFixed(1)+'%';
+  return '✓';
 }
-
-function getStatus(inj) {
-  const p01 = checkVal(inj.p01, LIMITS.p01.del);
-  const p02 = checkVal(inj.p02, LIMITS.p02.del);
-  const p03 = checkVal(inj.p03, LIMITS.p03.del);
-  const p04 = checkVal(inj.p04, LIMITS.p04.del);
-  const fails = [p01,p02,p03,p04].filter(s=>s!=='ok').length;
-  const p03dev = Math.max(Math.abs(inj.p03-LIMITS.p03.del[0])/LIMITS.p03.del[0], Math.abs(inj.p03-LIMITS.p03.del[1])/LIMITS.p03.del[1]);
-  const p04dev = Math.max(Math.abs(inj.p04-LIMITS.p04.del[0])/LIMITS.p04.del[0], Math.abs(inj.p04-LIMITS.p04.del[1])/LIMITS.p04.del[1]);
-  const maxDev = Math.max(p03dev, p04dev);
-  if (fails===0) return 'ok';
-  if (fails>=3 || (fails>=1 && maxDev>0.1)) return 'crit';
+function getSt(inj){
+  const f=[chk(inj.p01,LIM.p01.del),chk(inj.p02,LIM.p02.del),chk(inj.p03,LIM.p03.del),chk(inj.p04,LIM.p04.del)];
+  const fails=f.filter(s=>s!=='ok').length;
+  if(fails===0) return 'ok';
+  const p3d=Math.abs(inj.p03-(inj.p03<LIM.p03.del[0]?LIM.p03.del[0]:LIM.p03.del[1]))/((LIM.p03.del[0]+LIM.p03.del[1])/2);
+  const p4d=Math.abs(inj.p04-(inj.p04<LIM.p04.del[0]?LIM.p04.del[0]:LIM.p04.del[1]))/((LIM.p04.del[0]+LIM.p04.del[1])/2);
+  if(fails>=3||(fails>=1&&Math.max(p3d,p4d)>0.09)) return 'crit';
   return 'warn';
 }
-
-function devPct(v, [lo,hi]) {
-  if (v < lo) return ((lo-v)/lo*100).toFixed(1)+'% ниже';
-  if (v > hi) return ((v-hi)/hi*100).toFixed(1)+'% выше';
-  return 'норма';
+function stColor(s){return s==='ok'?'var(--grn)':s==='crit'?'var(--red)':'var(--amb)'}
+function stLabel(s){return s==='ok'?'<span class="bg4 bo">ГОДНА</span>':s==='crit'?'<span class="bg4 bc">КРИТИЧНО</span>':'<span class="bg4 bw">ЗАМЕНА ДО ТО</span>'}
+function heatClr(v,[lo,hi]){
+  if(v===null) return {bg:'rgba(62,240,175,.07)',c:'var(--tx3)'};
+  const s=chk(v,[lo,hi]);
+  if(s==='ok'){const p=(v-lo)/(hi-lo);return{bg:`rgba(34,197,94,${0.12+p*.2})`,c:'var(--grn)'};}
+  if(s==='hi'){const a=Math.min(.75,.2+(v-hi)/hi*3);return{bg:`rgba(232,72,85,${a})`,c:'#fff'};}
+  const a=Math.min(.75,.2+(lo-v)/lo*3);return{bg:`rgba(245,166,35,${a})`,c:'#fff'};
 }
 
-function valClass(check) {
-  if (check==='ok') return 'val-ok';
-  if (check==='hi') return 'val-hi';
-  return 'val-lo';
-}
-
-function heatColor(v, [lo,hi]) {
-  if (v===null) return {bg:'rgba(62,240,175,.08)',color:'var(--tx3)'};
-  const status = checkVal(v,[lo,hi]);
-  if (status==='ok') {
-    // shade within range
-    const pct = (v-lo)/(hi-lo);
-    return {bg:`rgba(34,197,94,${0.1+pct*0.18})`, color:'var(--grn)'};
-  }
-  if (status==='hi') {
-    const over = (v-hi)/hi;
-    const alpha = Math.min(0.7, 0.2+over*2);
-    return {bg:`rgba(232,72,85,${alpha})`, color:'#fff'};
-  }
-  // lo
-  const under = (lo-v)/lo;
-  const alpha = Math.min(0.7, 0.2+under*2);
-  return {bg:`rgba(245,166,35,${alpha})`, color:'#fff'};
-}
-
-/* ============================================================
-   PAGES
-   ============================================================ */
-let currentPage = 'overview';
-function showPage(id, btn) {
+/* ══════════════════════════════════════════════
+   PAGE NAVIGATION
+══════════════════════════════════════════════ */
+let chartsReady=false;
+function showPage(id,btn){
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
   document.getElementById('p-'+id).classList.add('act');
   document.querySelectorAll('.sbn2').forEach(b=>b.classList.remove('act'));
-  if (btn) btn.classList.add('act');
-  currentPage = id;
+  if(btn) btn.classList.add('act');
+  // Build charts only when page is visible
+  if(id==='charts'){
+    setTimeout(()=>{buildCharts();},60);
+  }
 }
 
-/* ============================================================
-   MACHINE SIDEBAR
-   ============================================================ */
-function buildSidebar() {
-  const machines = ['#73','#78','#82'];
-  const info = {'#73':{date:'26-27.04.2026',tested:2,total:16},'#78':{date:'22.05.2026',tested:4,total:16},'#82':{date:'03.06.2026',tested:16,total:16}};
-  const el = document.getElementById('machine-list');
-  el.innerHTML = '';
-  machines.forEach(m=>{
-    const injs = INJECTORS.filter(i=>i.m===m);
-    const fails = injs.filter(i=>getStatus(i)!=='ok').length;
-    const crits = injs.filter(i=>getStatus(i)==='crit').length;
-    const inf = info[m];
-    const cls = crits>0?'badge-crit':fails>0?'badge-warn':'badge-ok';
-    const badge = crits>0?`🔴 ${crits} крит.`:fails>0?`🟡 ${fails} брак`:`✅ ок`;
-    el.innerHTML+=`
-    <div class="mach-item" onclick="showMachineDetail('${m}')">
+/* ══════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════ */
+function buildSidebar(){
+  const el=document.getElementById('machine-list');
+  const info={'#73':{date:'26-27.04.26',t:2},'#78':{date:'22.05.26',t:4},'#82':{date:'03.06.26',t:16}};
+  el.innerHTML='';
+  ['#73','#78','#82'].forEach(m=>{
+    const injs=INJ.filter(i=>i.m===m);
+    const crits=injs.filter(i=>getSt(i)==='crit').length;
+    const warns=injs.filter(i=>getSt(i)==='warn').length;
+    const cls=crits>0?'badge-crit':warns>0?'badge-warn':'badge-ok';
+    const badge=crits>0?`🔴 ${crits} крит.`:warns>0?`🟡 ${warns} брак`:`✅ ок`;
+    el.innerHTML+=`<div class="mach-item" onclick="showMachineDetail('${m}',this)">
       <div class="mach-num">${m}</div>
-      <div class="mach-meta">
-        <div class="mach-name">NTE200 ${m}</div>
-        <div class="mach-sub">${inf.date} · ${inf.tested}/${inf.total} цил.</div>
-      </div>
-      <div class="mach-badge ${cls}" style="font-size:9px">${badge}</div>
+      <div class="mach-meta"><div class="mach-name">NTE200 ${m}</div><div class="mach-sub">${info[m].date} · ${info[m].t}/16 цил.</div></div>
+      <div class="mb ${cls}" style="font-size:8px">${badge}</div>
     </div>`;
   });
 }
 
-/* ============================================================
-   STATUS CARDS (Overview)
-   ============================================================ */
-function buildStatusCards() {
-  const el = document.getElementById('status-cards');
-  el.innerHTML = '';
-  INJECTORS.forEach(inj=>{
-    const st = getStatus(inj);
-    const color = st==='ok'?'var(--grn)':st==='crit'?'var(--red)':'var(--amb)';
-    const label = st==='ok'?'✅ ГОДНА':st==='crit'?'🔴 КРИТИЧНО':'🟡 ЗАМЕНА ДО ТО';
-    const p03c = checkVal(inj.p03, LIMITS.p03.del);
-    const p04c = checkVal(inj.p04, LIMITS.p04.del);
-    const p02c = checkVal(inj.p02, LIMITS.p02.del);
-    const p01c = checkVal(inj.p01, LIMITS.p01.del);
-    el.innerHTML+=`
-    <div class="status-card" style="border-left-color:${color};cursor:pointer" onclick="showMachineDetail('${inj.m}')">
-      <div class="sc-id" style="color:${color}">${inj.m} · ${inj.id}</div>
-      <div class="sc-machine" style="color:var(--tx3)">${inj.date}</div>
+/* ══════════════════════════════════════════════
+   STATUS CARDS
+══════════════════════════════════════════════ */
+function buildStatusCards(){
+  const el=document.getElementById('status-cards');
+  el.innerHTML='';
+  INJ.forEach(inj=>{
+    const st=getSt(inj),c=stColor(st);
+    const p01c=chk(inj.p01,LIM.p01.del),p02c=chk(inj.p02,LIM.p02.del),p03c=chk(inj.p03,LIM.p03.del),p04c=chk(inj.p04,LIM.p04.del);
+    const lbl=st==='ok'?'✅ ГОДНА':st==='crit'?'🔴 КРИТИЧНО':'🟡 ЗАМЕНА ДО ТО';
+    el.innerHTML+=`<div class="sc" style="border-left-color:${c}" onclick="showMachineDetail('${inj.m}')">
+      <div class="sc-id" style="color:${c}">${inj.m} · ${inj.id}</div>
+      <div class="sc-date">${inj.date}</div>
       <div class="sc-tests">
-        <div class="sc-test">
-          <div class="sc-tname">P01 (1600 бар)</div>
-          <div class="sc-tval ${valClass(p01c)}">${inj.p01}</div>
-        </div>
-        <div class="sc-test">
-          <div class="sc-tname">P02 (1000 бар)</div>
-          <div class="sc-tval ${valClass(p02c)}">${inj.p02}</div>
-        </div>
-        <div class="sc-test">
-          <div class="sc-tname">P03 (400 бар)</div>
-          <div class="sc-tval ${valClass(p03c)}">${inj.p03}</div>
-        </div>
-        <div class="sc-test">
-          <div class="sc-tname">P04 (750 бар)</div>
-          <div class="sc-tval ${valClass(p04c)}">${inj.p04}</div>
-        </div>
+        <div class="sc-t"><div class="sc-tn">P01</div><div class="sc-tv ${vcls(p01c)}">${inj.p01}</div></div>
+        <div class="sc-t"><div class="sc-tn">P02</div><div class="sc-tv ${vcls(p02c)}">${inj.p02}</div></div>
+        <div class="sc-t"><div class="sc-tn">P03</div><div class="sc-tv ${vcls(p03c)}">${inj.p03}</div></div>
+        <div class="sc-t"><div class="sc-tn">P04</div><div class="sc-tv ${vcls(p04c)}">${inj.p04}</div></div>
       </div>
-      <div class="sc-verdict" style="background:${color}22;color:${color}">${label}</div>
+      <div class="sc-verd" style="background:${c}22;color:${c}">${lbl}</div>
     </div>`;
   });
 }
 
-/* ============================================================
+/* ══════════════════════════════════════════════
    HEATMAP
-   ============================================================ */
-function buildHeatmap() {
-  const el = document.getElementById('heatmap-content');
-  const machines = ['#73','#78','#82'];
-  const tests = [
-    {key:'p01', label:'P01', lim:LIMITS.p01.del, norm:'441.5–495.5 см³'},
-    {key:'p02', label:'P02', lim:LIMITS.p02.del, norm:'220–260 см³'},
-    {key:'p03', label:'P03', lim:LIMITS.p03.del, norm:'16–30 см³'},
-    {key:'p04', label:'P04', lim:LIMITS.p04.del, norm:'41–51 см³'},
+══════════════════════════════════════════════ */
+function buildHeatmap(){
+  const tests=[
+    {k:'p01',lim:LIM.p01.del,lbl:'P01',sub:'441.5–495.5'},
+    {k:'p02',lim:LIM.p02.del,lbl:'P02',sub:'220–260'},
+    {k:'p03',lim:LIM.p03.del,lbl:'P03',sub:'16–30'},
+    {k:'p04',lim:LIM.p04.del,lbl:'P04',sub:'41–51'},
   ];
-
-  let html = '';
-  machines.forEach(m=>{
-    const injs = INJECTORS.filter(i=>i.m===m);
-    html += `<div style="margin-bottom:24px">
-      <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:8px;padding:6px 10px;background:var(--card);border-radius:6px;border-left:3px solid var(--acc)">
-        NTE200 ${m} &nbsp;·&nbsp; <span style="color:var(--tx3);font-weight:400;font-size:10px">Протестировано: ${injs.length} форсунок · ${injs[0]?.date||''}</span>
-      </div>
-      <!-- header -->
-      <div class="heat-header">`;
-    injs.forEach(inj=>{ html+=`<div class="heat-hcell">${inj.id}</div>`; });
-    html += `</div>`;
+  let html='';
+  ['#73','#78','#82'].forEach(m=>{
+    const injs=INJ.filter(i=>i.m===m);
+    const info={'#73':'26–27.04.2026 · 2/16 цил.','#78':'22.05.2026 · 4/16 цил.','#82':'03.06.2026 · 16/16 цил.'};
+    html+=`<div class="heat-section"><div class="heat-machine-hdr">NTE200 ${m} &nbsp;·&nbsp; <span style="color:var(--tx3);font-weight:400;font-size:10px">${info[m]}</span></div>`;
+    html+=`<div class="heat-hdr">`;
+    injs.forEach(i=>html+=`<div class="heat-hlbl">${i.id}</div>`);
+    html+=`</div>`;
     tests.forEach(t=>{
-      html += `<div class="heat-row">
-        <div class="heat-lbl">${t.label}<div style="font-size:8px;opacity:.6">${t.norm}</div></div>
-        <div class="heat-cells">`;
-      injs.forEach(inj=>{
-        const v = inj[t.key];
-        const {bg,color} = heatColor(v, t.lim);
-        const chk = checkVal(v, t.lim);
-        const icon = chk==='ok'?'✓':chk==='hi'?'↑':'↓';
-        html+=`<div class="heat-cell" style="background:${bg};color:${color}" title="${inj.m} ${inj.id} · ${t.label}: ${v} (норма ${t.norm})">
-          <div class="heat-val">${v}</div>
-          <div class="heat-id">${icon}</div>
+      html+=`<div class="heat-row"><div class="heat-lbl">${t.lbl}<br><span style="font-size:7px">${t.sub}</span></div><div class="heat-cells">`;
+      injs.forEach(i=>{
+        const v=i[t.k],{bg,c}=heatClr(v,t.lim),s=chk(v,t.lim);
+        const arr=s==='ok'?'✓':s==='hi'?'↑':'↓';
+        const title=`${i.m} ${i.id} · ${t.lbl}=${v} (норма ${t.sub}) · ${devTxt(v,t.lim)}`;
+        html+=`<div class="heat-cell" style="background:${bg};color:${c}" title="${title}">
+          <div class="heat-v">${v}</div><div class="heat-arrow">${arr}</div>
         </div>`;
       });
-      html += `</div></div>`;
+      html+=`</div></div>`;
     });
-    html += `</div>`;
+    html+=`</div>`;
   });
-  el.innerHTML = html;
+  document.getElementById('heatmap-content').innerHTML=html;
 }
 
-/* ============================================================
-   CHARTS
-   ============================================================ */
-let chartInstances = [];
-function buildCharts() {
-  const grid = document.getElementById('chart-grid');
-  grid.innerHTML = '';
-  chartInstances.forEach(c=>c.destroy());
-  chartInstances = [];
-
-  const tests = [
-    {key:'p01', label:'P01 — Полная нагрузка (1600 бар)', lim:LIMITS.p01.del, color:'#7e83fa'},
-    {key:'p02', label:'P02 — Средняя нагрузка (1000 бар)', lim:LIMITS.p02.del, color:'#3ef0af'},
-    {key:'p03', label:'P03 — Холостой ход (400 бар)', lim:LIMITS.p03.del, color:'#f5a623'},
-    {key:'p04', label:'P04 — Частичная нагрузка (750 бар)', lim:LIMITS.p04.del, color:'#e84855'},
+/* ══════════════════════════════════════════════
+   CHARTS  — built lazily when page visible
+══════════════════════════════════════════════ */
+let chartInst=[];
+function buildCharts(){
+  const grid=document.getElementById('chart-grid');
+  chartInst.forEach(c=>c.destroy());
+  chartInst=[];
+  const tests=[
+    {k:'p01',lbl:'P01 — Полная нагрузка (1600 бар)',lim:LIM.p01.del,col:'#7e83fa'},
+    {k:'p02',lbl:'P02 — Средняя нагрузка (1000 бар)',lim:LIM.p02.del,col:'#3ef0af'},
+    {k:'p03',lbl:'P03 — Холостой ход (400 бар)',lim:LIM.p03.del,col:'#f5a623'},
+    {k:'p04',lbl:'P04 — Частичная нагрузка (750 бар) ⚠️',lim:LIM.p04.del,col:'#e84855'},
   ];
-
+  // Build HTML for all 4 charts first
+  grid.innerHTML='';
   tests.forEach(t=>{
-    const labels = INJECTORS.map(i=>`${i.m}\n${i.id}`);
-    const values = INJECTORS.map(i=>i[t.key]);
-    const bgs = values.map(v=>{
-      const s = checkVal(v, t.lim);
-      if(s==='ok') return 'rgba(34,197,94,0.55)';
-      if(s==='hi') return 'rgba(232,72,85,0.75)';
-      return 'rgba(245,166,35,0.75)';
-    });
-    const borders = values.map(v=>{
-      const s = checkVal(v, t.lim);
-      if(s==='ok') return 'rgba(34,197,94,1)';
-      if(s==='hi') return 'rgba(232,72,85,1)';
-      return 'rgba(245,166,35,1)';
-    });
-
-    const id = 'chart-'+t.key;
-    grid.innerHTML += `<div class="chart-card"><div class="chart-title">${t.label}<span class="norm-hint" style="margin-left:8px">Норма: ${t.lim[0]}–${t.lim[1]} см³</span></div><div class="chart-wrap"><canvas id="${id}"></canvas></div></div>`;
-
-    setTimeout(()=>{
-      const ctx = document.getElementById(id).getContext('2d');
-      const inst = new Chart(ctx, {
-        type:'bar',
-        data:{
-          labels,
-          datasets:[{
-            label:'Подача, см³',
-            data:values,
-            backgroundColor:bgs,
-            borderColor:borders,
-            borderWidth:1.5,
-            borderRadius:3,
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{
-            legend:{display:false},
-            tooltip:{
-              backgroundColor:'#1c2630',
-              borderColor:'rgba(255,255,255,.15)',
-              borderWidth:1,
-              titleColor:'#e8edf6',
-              bodyColor:'#b3bddc',
-              callbacks:{
-                label:ctx=>{
-                  const v = ctx.parsed.y;
-                  const s = checkVal(v, t.lim);
-                  const status = s==='ok'?'✓ Норма':s==='hi'?'↑ Перелив':'↓ Недолив';
-                  return `${v} см³  ${status}`;
-                }
-              }
-            },
-            annotation:{},
-          },
-          scales:{
-            x:{
-              ticks:{color:'#80868b',font:{size:9}},
-              grid:{color:'rgba(255,255,255,.05)'},
-            },
-            y:{
-              ticks:{color:'#80868b',font:{size:9}},
-              grid:{color:'rgba(255,255,255,.05)'},
-              min: Math.min(...values)*0.85,
-              max: Math.max(...values)*1.08,
-            }
-          },
-          animation:{duration:600}
-        },
-        plugins:[{
-          id:'limits',
-          afterDraw(chart) {
-            const {ctx, chartArea, scales} = chart;
-            if (!chartArea) return;
-            ctx.save();
-            [t.lim[0], t.lim[1]].forEach((lim,i)=>{
-              const y = scales.y.getPixelForValue(lim);
-              ctx.beginPath();
-              ctx.setLineDash([4,3]);
-              ctx.strokeStyle = i===1?'rgba(232,72,85,0.6)':'rgba(245,166,35,0.6)';
-              ctx.lineWidth = 1.5;
-              ctx.moveTo(chartArea.left, y);
-              ctx.lineTo(chartArea.right, y);
-              ctx.stroke();
-              ctx.setLineDash([]);
-              ctx.fillStyle = i===1?'rgba(232,72,85,0.8)':'rgba(245,166,35,0.8)';
-              ctx.font = '9px monospace';
-              ctx.fillText(lim+' ('+( i===1?'макс':'мин')+')', chartArea.right-70, y-3);
-            });
-            ctx.restore();
+    grid.innerHTML+=`<div class="chart-card">
+      <div class="chart-title">${t.lbl}<span class="norm-hint">Норма: ${t.lim[0]}–${t.lim[1]} см³</span></div>
+      <div class="chart-wrap"><canvas id="c-${t.k}" width="400" height="220"></canvas></div>
+    </div>`;
+  });
+  // Now draw charts
+  tests.forEach(t=>{
+    const labels=INJ.map(i=>`${i.m} ${i.id}`);
+    const vals=INJ.map(i=>i[t.k]);
+    const bgs=vals.map(v=>chk(v,t.lim)==='ok'?'rgba(34,197,94,.55)':chk(v,t.lim)==='hi'?'rgba(232,72,85,.7)':'rgba(245,166,35,.7)');
+    const brd=vals.map(v=>chk(v,t.lim)==='ok'?'#22c55e':chk(v,t.lim)==='hi'?'#e84855':'#f5a623');
+    const ctx=document.getElementById('c-'+t.k).getContext('2d');
+    const inst=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{label:'Подача, см³',data:vals,backgroundColor:bgs,borderColor:brd,borderWidth:1.5,borderRadius:3}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#1c2630',borderColor:'rgba(255,255,255,.15)',borderWidth:1,
+            titleColor:'#e8edf6',bodyColor:'#b3bddc',
+            callbacks:{label:ctx=>{
+              const v=ctx.parsed.y,s=chk(v,t.lim);
+              return `${v} см³  ${s==='ok'?'✓ Норма':s==='hi'?'↑ Перелив':'↓ Недолив'}  (${devTxt(v,t.lim)})`;
+            }}
           }
-        }]
-      });
-      chartInstances.push(inst);
-    }, 50);
+        },
+        scales:{
+          x:{ticks:{color:'#80868b',font:{size:8},maxRotation:45},grid:{color:'rgba(255,255,255,.04)'}},
+          y:{ticks:{color:'#80868b',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},
+             min:Math.min(...vals)*0.88,max:Math.max(...vals)*1.06}
+        },
+        animation:{duration:500}
+      },
+      plugins:[{
+        id:'lim',
+        afterDraw(chart){
+          const{ctx,chartArea:ca,scales}=chart;if(!ca)return;
+          ctx.save();
+          [[t.lim[0],'rgba(245,166,35,.7)','мин'],[t.lim[1],'rgba(232,72,85,.7)','макс']].forEach(([val,col,lbl])=>{
+            const y=scales.y.getPixelForValue(val);
+            ctx.beginPath();ctx.setLineDash([5,3]);ctx.strokeStyle=col;ctx.lineWidth=1.5;
+            ctx.moveTo(ca.left,y);ctx.lineTo(ca.right,y);ctx.stroke();ctx.setLineDash([]);
+            ctx.fillStyle=col;ctx.font='bold 9px monospace';
+            ctx.fillText(`${val} (${lbl})`,ca.right-72,y-3);
+          });
+          ctx.restore();
+        }
+      }]
+    });
+    chartInst.push(inst);
   });
 }
 
-/* ============================================================
+/* ══════════════════════════════════════════════
    TABLE
-   ============================================================ */
-function buildTable() {
-  const tbody = document.getElementById('table-body');
-  tbody.innerHTML = '';
-  INJECTORS.forEach((inj,idx)=>{
-    const st = getStatus(inj);
-    const stLabel = st==='ok'?'<span class="bg4 bo">ГОДНА</span>':st==='crit'?'<span class="bg4 bc">КРИТИЧНО</span>':'<span class="bg4 bw">ЗАМЕНА ДО ТО</span>';
-    const p01c=checkVal(inj.p01,LIMITS.p01.del), p02c=checkVal(inj.p02,LIMITS.p02.del), p03c=checkVal(inj.p03,LIMITS.p03.del), p04c=checkVal(inj.p04,LIMITS.p04.del);
-    tbody.innerHTML+=`<tr onclick="showMachineDetail('${inj.m}')">
+══════════════════════════════════════════════ */
+function buildTable(){
+  const tb=document.getElementById('table-body');
+  tb.innerHTML='';
+  INJ.forEach(inj=>{
+    const p01c=chk(inj.p01,LIM.p01.del),p02c=chk(inj.p02,LIM.p02.del),p03c=chk(inj.p03,LIM.p03.del),p04c=chk(inj.p04,LIM.p04.del);
+    tb.innerHTML+=`<tr onclick="showMachineDetail('${inj.m}')">
       <td>${inj.m}</td>
-      <td style="font-weight:700;color:var(--acc)">${inj.id}</td>
+      <td style="font-weight:800;color:var(--acc)">${inj.id}</td>
       <td style="color:var(--tx3)">${inj.date}</td>
-      <td class="${valClass(p01c)}">${inj.p01}</td>
-      <td class="${valClass(p02c)}">${inj.p02}</td>
-      <td class="${valClass(p03c)}">${inj.p03}</td>
-      <td class="${valClass(p04c)}">${inj.p04}</td>
+      <td class="${vcls(p01c)}">${inj.p01} <small style="color:var(--tx3)">${devTxt(inj.p01,LIM.p01.del)}</small></td>
+      <td class="${vcls(p02c)}">${inj.p02} <small style="color:var(--tx3)">${devTxt(inj.p02,LIM.p02.del)}</small></td>
+      <td class="${vcls(p03c)}">${inj.p03} <small style="color:var(--tx3)">${devTxt(inj.p03,LIM.p03.del)}</small></td>
+      <td class="${vcls(p04c)}">${inj.p04} <small style="color:var(--tx3)">${devTxt(inj.p04,LIM.p04.del)}</small></td>
       <td style="color:var(--tx2)">${inj.p01r}</td>
-      <td>${stLabel}</td>
+      <td>${stLabel(getSt(inj))}</td>
     </tr>`;
   });
 }
 
-/* ============================================================
+/* ══════════════════════════════════════════════
    ALERTS
-   ============================================================ */
-function buildAlerts() {
-  const el = document.getElementById('alert-list');
-
-  const ALERTS = [
-    {sev:'crit', icon:'🔴', machine:'NTE200 №73', inj:'R1', title:'КРИТИЧНО — Немедленная замена', detail:'Все 4 теста провалены. P03 = 41,5 см³ (+38% от макс.). P04 = 62,1 см³ (+22% от макс.). Тяжёлый износ иглы/седла.', vals:'P01: 503↑ · P02: 276↑ · P03: 41.5↑↑ · P04: 62.1↑↑', deviations:'P01: +1.5% · P02: +6.2% · P03: +38.3% · P04: +21.8%'},
-    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'8R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 12,7 см³ (-21% от мин.). P04 = 27,8 см³ (-32% от мин.). Критический износ плунжерной пары.', vals:'P03: 12.7↓↓ · P04: 27.8↓↓', deviations:'P03: -20.6% · P04: -32.2%'},
-    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'2R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 13,8 см³ (-14% от мин.). P04 = 30,7 см³ (-25% от мин.). Износ плунжерной пары.', vals:'P03: 13.8↓↓ · P04: 30.7↓↓', deviations:'P03: -13.8% · P04: -25.1%'},
-    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'3R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 31,3 см³ (+4%). P04 = 60,7 см³ (+19%). Перелив на частичной нагрузке — закоксовывание.', vals:'P03: 31.3↑ · P04: 60.7↑↑', deviations:'P03: +4.3% · P04: +18.9%'},
-    {sev:'crit', icon:'🔴', machine:'NTE200 №78', inj:'6L', title:'КРИТИЧНО — Немедленная замена', detail:'P02 = 263,7, P03 = 30,1 (граница), P04 = 54,3 (+6%). Систематический перелив.', vals:'P02: 263.7↑ · P03: 30.1↑ · P04: 54.3↑', deviations:'P02: +1.4% · P04: +6.5%'},
-    {sev:'crit', icon:'🔴', machine:'NTE200 №78', inj:'4R', title:'КРИТИЧНО — Немедленная замена', detail:'P02 = 262,1, P04 = 53,7 (+5%). Умеренный перелив на всех нагрузках.', vals:'P02: 262.1↑ · P04: 53.7↑', deviations:'P02: +0.8% · P04: +5.3%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'7L', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 32,8 см³ (-20% от мин.). Износ плунжерной пары.', vals:'P04: 32.8↓', deviations:'P04: -20.0%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'4L', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 37,5 см³ (-9% от мин.). Недолив на частичной нагрузке.', vals:'P04: 37.5↓', deviations:'P04: -8.5%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'4R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 36,9 см³ (-10%). Недолив на частичной нагрузке.', vals:'P04: 36.9↓', deviations:'P04: -10.0%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'7R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 39,2 см³ (-4% от мин.). Начальная стадия износа плунжера.', vals:'P04: 39.2↓', deviations:'P04: -4.4%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'1R', title:'Пограничное — Замена до следующего ТО', detail:'P03 = 30,1 (граница). P04 = 51,4 (граница). Риск быстрого выхода за допуск.', vals:'P03: 30.1↑ · P04: 51.4↑', deviations:'P03: +0.3% · P04: +0.8%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'3L', title:'Пограничное — Замена рекомендована', detail:'P04 = 40,8 см³ (ниже минимума 41,0). Пограничное состояние.', vals:'P04: 40.8↓', deviations:'P04: -0.5%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №78', inj:'3R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P02 = 261,7 см³. Незначительное превышение нормы.', vals:'P02: 261.7↑', deviations:'P02: +0.7%'},
-    {sev:'warn', icon:'🟡', machine:'NTE200 №78', inj:'6R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 38,6 см³ (-6% от мин.). Умеренный недолив.', vals:'P04: 38.6↓', deviations:'P04: -5.9%'},
-    {sev:'ok', icon:'✅', machine:'NTE200 №73', inj:'L2', title:'Годна — Плановый контроль', detail:'Все тесты в норме. P02 = 260 (на верхней границе) — наблюдение.', vals:'P01: 487 · P02: 260 · P03: 22.6 · P04: 41.7', deviations:'Все параметры в норме'},
-    {sev:'ok', icon:'✅', machine:'NTE200 №82', inj:'1L, 2L, 5L, 5R, 6L, 6R, 8L', title:'Годны (7 форсунок) — Плановый контроль', detail:'Все тесты в норме. Рекомендуется контрольное тестирование через 3000 м/ч.', vals:'Все в допуске', deviations:'Все параметры в норме'},
+══════════════════════════════════════════════ */
+function buildAlerts(){
+  const ALERTS=[
+    {sev:'crit',m:'NTE200 №73',id:'R1',reason:'Все 4 теста провалены. P03=41,5 (+38% от макс.) — перелив на ХХ, закоксовывание. P04=62,1 (+22%) — критический перелив.',vals:'P01:503↑ P02:276↑ P03:41.5↑↑ P04:62.1↑↑',dev:'P03:+38% P04:+22%',type:'Тип А — Перелив (износ иглы/седла)'},
+    {sev:'crit',m:'NTE200 №82',id:'8R',reason:'Критический недолив: P03=12,7 (-21% от мин.), P04=27,8 (-32%). Плунжерная пара полностью изношена. Угроза перегрева ЦПГ.',vals:'P03:12.7↓↓ P04:27.8↓↓',dev:'P03:-21% P04:-32%',type:'Тип Б — Недолив (износ плунжера)'},
+    {sev:'crit',m:'NTE200 №82',id:'2R',reason:'Критический недолив: P03=13,8 (-14% от мин.), P04=30,7 (-25%). Износ плунжерной пары.',vals:'P03:13.8↓↓ P04:30.7↓↓',dev:'P03:-14% P04:-25%',type:'Тип Б — Недолив (износ плунжера)'},
+    {sev:'crit',m:'NTE200 №82',id:'3R',reason:'Критический перелив: P04=60,7 (+19%). P03=31,3 (+4%). Износ иглы/седла. Риск закоксовывания и повреждения поршней.',vals:'P03:31.3↑ P04:60.7↑↑',dev:'P03:+4% P04:+19%',type:'Тип А — Перелив (износ иглы/седла)'},
+    {sev:'crit',m:'NTE200 №78',id:'6L',reason:'P02=263,7 (+1,4%), P03=30,1 (на границе), P04=54,3 (+6%). Систематический перелив во всех режимах.',vals:'P02:263.7↑ P03:30.1↑ P04:54.3↑',dev:'P04:+6%',type:'Тип А+В — Прецизионный износ'},
+    {sev:'crit',m:'NTE200 №78',id:'4R',reason:'P02=262,1 (+0,8%), P04=53,7 (+5%). Перелив на средней и частичной нагрузке.',vals:'P02:262.1↑ P04:53.7↑',dev:'P04:+5%',type:'Тип А+В — Прецизионный износ'},
+    {sev:'warn',m:'NTE200 №82',id:'7L',reason:'P04=32,8 (-20% от мин.). Значительный недолив на частичной нагрузке.',vals:'P04:32.8↓',dev:'P04:-20%',type:'Тип Б — Недолив (износ плунжера)'},
+    {sev:'warn',m:'NTE200 №82',id:'4L',reason:'P04=37,5 (-9%). Недолив на частичной нагрузке.',vals:'P04:37.5↓',dev:'P04:-9%',type:'Тип Б — Недолив'},
+    {sev:'warn',m:'NTE200 №82',id:'4R',reason:'P04=36,9 (-10%). Недолив на частичной нагрузке.',vals:'P04:36.9↓',dev:'P04:-10%',type:'Тип Б — Недолив'},
+    {sev:'warn',m:'NTE200 №82',id:'7R',reason:'P04=39,2 (-4%). Начальная стадия износа плунжера.',vals:'P04:39.2↓',dev:'P04:-4%',type:'Тип Б — Начальный износ'},
+    {sev:'warn',m:'NTE200 №82',id:'1R',reason:'P03=30,1 (граница), P04=51,4 (граница). Пограничное состояние — быстрый выход за допуск.',vals:'P03:30.1↑ P04:51.4↑',dev:'P03:+0,3% P04:+0,8%',type:'Тип А — Граница'},
+    {sev:'warn',m:'NTE200 №82',id:'3L',reason:'P04=40,8 (чуть ниже минимума 41,0). Пограничное состояние.',vals:'P04:40.8↓',dev:'P04:-0,5%',type:'Тип Б — Граница'},
+    {sev:'warn',m:'NTE200 №78',id:'3R',reason:'P02=261,7 (+0,7%). Незначительное превышение.',vals:'P02:261.7↑',dev:'P02:+0,7%',type:'Тип В — Умеренный износ'},
+    {sev:'warn',m:'NTE200 №78',id:'6R',reason:'P04=38,6 (-6%). Умеренный недолив.',vals:'P04:38.6↓',dev:'P04:-6%',type:'Тип Б — Умеренный износ'},
   ];
-
-  const sevColor = {crit:'var(--red)',warn:'var(--amb)',ok:'var(--grn)'};
-  el.innerHTML = '';
-
-  // Group by severity
-  ['crit','warn','ok'].forEach(sev=>{
-    const items = ALERTS.filter(a=>a.sev===sev);
-    if (!items.length) return;
-    const secTitle = sev==='crit'?'🔴 КРИТИЧЕСКИЕ — Немедленная замена':sev==='warn'?'🟡 Неудовлетворительные — Замена до ТО':'✅ Годные — Плановый контроль';
-    el.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${sevColor[sev]};margin:14px 0 6px;padding-bottom:5px;border-bottom:1px solid var(--brd)">${secTitle}</div>`;
-    items.forEach(a=>{
-      el.innerHTML+=`
-      <div class="ac" style="border-left-color:${sevColor[a.sev]}">
-        <div class="ai">${a.icon}</div>
+  const sevC={crit:'var(--red)',warn:'var(--amb)',ok:'var(--grn)'};
+  const el=document.getElementById('alert-list');
+  el.innerHTML='';
+  ['crit','warn'].forEach(sev=>{
+    const items=ALERTS.filter(a=>a.sev===sev);
+    if(!items.length)return;
+    const sec=sev==='crit'?'🔴 КРИТИЧЕСКИЕ — Немедленная замена (6 форсунок)':'🟡 Неудовлетворительные — Замена до ТО (8 форсунок)';
+    el.innerHTML+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${sevC[sev]};margin:12px 0 5px;padding-bottom:4px;border-bottom:1px solid var(--brd)">${sec}</div>`;
+    items.forEach((a,i)=>{
+      el.innerHTML+=`<div class="ac" style="border-left-color:${sevC[a.sev]}">
+        <div class="ai">${sev==='crit'?'🔴':'🟡'}</div>
         <div class="ab">
-          <div class="at2" style="color:${sevColor[a.sev]}">${a.machine} · Форсунка ${a.inj}</div>
-          <div class="at2" style="color:var(--tx);font-size:11px;margin-top:2px">${a.title}</div>
-          <div class="ad2">${a.detail}</div>
-          <div class="ad2" style="margin-top:4px;font-family:'SF Mono','Fira Code',monospace;font-size:10px;color:var(--tx3)">${a.vals}</div>
+          <div class="at2" style="color:${sevC[a.sev]}">${a.m} &nbsp;·&nbsp; Форсунка <strong>${a.id}</strong></div>
+          <div class="at2" style="color:var(--tx3);font-size:10px;margin-top:1px">${a.type}</div>
+          <div class="ad2">${a.reason}</div>
+          <div class="ad2" style="margin-top:3px;font-family:monospace;font-size:10px;color:var(--tx3)">${a.vals}</div>
         </div>
-        <div class="afp" style="color:${sevColor[a.sev]};font-size:10px;text-align:right;min-width:100px">${a.deviations}</div>
+        <div class="afp" style="color:${sevC[a.sev]}">${a.dev}</div>
       </div>`;
     });
   });
-
-  // Recommendations block
-  el.innerHTML += `
-  <div style="margin-top:24px;padding:14px;background:var(--card);border-radius:9px;border-top:3px solid var(--amb)">
-    <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--amb)">📦 Потребность в запчастях</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
-      <div style="background:var(--bg3);border-radius:6px;padding:10px">
-        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--red)">9 шт.</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №82 (минимум)</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:6px;padding:10px">
-        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--amb)">4+ шт.</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №78 (вероятно до 16)</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:6px;padding:10px">
-        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--amb)">1+ шт.</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №73 (вероятно больше)</div>
-      </div>
-      <div style="background:var(--bg3);border-radius:6px;padding:10px">
-        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--acc)">28–40 шт.</div>
-        <div style="font-size:10px;color:var(--tx3);margin-top:3px">Рекомендуемый заказ (весь парк)</div>
-      </div>
+  // OK block
+  el.innerHTML+=`<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grn);margin:12px 0 5px;padding-bottom:4px;border-bottom:1px solid var(--brd)">✅ ГОДНЫЕ — Плановый контроль (8 форсунок)</div>
+  <div class="ac" style="border-left-color:var(--grn)">
+    <div class="ai">✅</div>
+    <div class="ab">
+      <div class="at2" style="color:var(--grn)">NTE200 №73 · L2 &nbsp;|&nbsp; NTE200 №82 · 1L, 2L, 5L, 5R, 6L, 6R, 8L</div>
+      <div class="ad2">Все тесты в норме. Рекомендуется повторное тестирование через 3 000 м/ч. №73 L2: P02=260,0 — на верхней границе допуска, наблюдение.</div>
     </div>
-    <div style="margin-top:10px;font-size:11px;color:var(--tx2);padding:8px 10px;background:var(--bg3);border-radius:5px;border-left:3px solid var(--acc)">
-      <strong style="color:var(--acc)">Артикул для замены:</strong> 2882077 — подтверждён гарантийными ремонтами на машинах №72 и №85
+    <div class="afp" style="color:var(--grn)">Все ✓</div>
+  </div>`;
+
+  // Spare parts block
+  el.innerHTML+=`<div style="margin-top:18px;padding:14px;background:var(--card);border-radius:9px;border-top:3px solid var(--amb)">
+    <div style="font-size:12px;font-weight:800;margin-bottom:10px;color:var(--amb)">📦 Заказ запасных частей · Артикул <span style="color:var(--acc)">2882077</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px">
+      <div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-family:monospace;font-size:22px;font-weight:800;color:var(--red)">9 шт.</div>
+        <div style="font-size:9px;color:var(--tx3);margin-top:3px">NTE200 №82 (9 из 16)</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-family:monospace;font-size:22px;font-weight:800;color:var(--amb)">4–16 шт.</div>
+        <div style="font-size:9px;color:var(--tx3);margin-top:3px">NTE200 №78 (все протест. бракованные)</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-family:monospace;font-size:22px;font-weight:800;color:var(--amb)">1–8 шт.</div>
+        <div style="font-size:9px;color:var(--tx3);margin-top:3px">NTE200 №73 (R1 + непроверенные)</div>
+      </div>
+      <div style="background:rgba(62,240,175,.08);border-radius:6px;padding:10px;text-align:center;border:1px solid rgba(62,240,175,.2)">
+        <div style="font-family:monospace;font-size:22px;font-weight:800;color:var(--acc)">28–40 шт.</div>
+        <div style="font-size:9px;color:var(--tx3);margin-top:3px">Рекомендуемый заказ на весь парк</div>
+      </div>
     </div>
   </div>`;
 }
 
-/* ============================================================
+/* ══════════════════════════════════════════════
    MACHINE DETAIL
-   ============================================================ */
-function showMachineDetail(m) {
-  // highlight sidebar
-  document.querySelectorAll('.mach-item').forEach(el=>{
-    el.classList.toggle('act', el.onclick.toString().includes(m));
-  });
-
+══════════════════════════════════════════════ */
+function showMachineDetail(m,sideEl){
+  document.querySelectorAll('.mach-item').forEach(el=>el.classList.remove('act'));
+  if(sideEl) sideEl.classList.add('act');
+  else document.querySelectorAll('.mach-item').forEach(el=>{if(el.textContent.includes(m))el.classList.add('act');});
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
   document.getElementById('p-machine').classList.add('act');
+  document.querySelectorAll('.sbn2').forEach(b=>b.classList.remove('act'));
 
-  const injs = INJECTORS.filter(i=>i.m===m);
-  const crits = injs.filter(i=>getStatus(i)==='crit').length;
-  const warns = injs.filter(i=>getStatus(i)==='warn').length;
-  const oks = injs.filter(i=>getStatus(i)==='ok').length;
-  const dateRange = [...new Set(injs.map(i=>i.date))].join(', ');
+  const injs=INJ.filter(i=>i.m===m);
+  const crits=injs.filter(i=>getSt(i)==='crit').length;
+  const warns=injs.filter(i=>getSt(i)==='warn').length;
+  const oks=injs.filter(i=>getSt(i)==='ok').length;
+  const dates=[...new Set(injs.map(i=>i.date))].join(', ');
+  const el=document.getElementById('machine-detail-content');
 
-  const el = document.getElementById('machine-detail-content');
-
-  // header
-  let html = `
-  <div class="mh">
-    <div>
-      <div class="mid">NTE200 ${m}</div>
-      <div class="mbr">Дата теста: ${dateRange} · Форсунок: ${injs.length} · Cummins CRI арт. 2867147</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-left:auto">
-      <div style="text-align:center;padding:6px 12px;background:var(--rd);border-radius:6px">
-        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--red)">${crits}</div>
-        <div style="font-size:9px;color:var(--red);text-transform:uppercase">Критич.</div>
+  let html=`<div class="mh">
+    <div><div class="mid">NTE200 ${m}</div><div class="mbr">Дата теста: ${dates} · ${injs.length} форсунок · Cummins CRI арт. 2867147</div></div>
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <div style="text-align:center;padding:5px 11px;background:var(--rd);border-radius:6px">
+        <div style="font-family:monospace;font-size:16px;font-weight:800;color:var(--red)">${crits}</div>
+        <div style="font-size:8px;color:var(--red);text-transform:uppercase">Критич.</div>
       </div>
-      <div style="text-align:center;padding:6px 12px;background:var(--ad);border-radius:6px">
-        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--amb)">${warns}</div>
-        <div style="font-size:9px;color:var(--amb);text-transform:uppercase">Замена до ТО</div>
+      <div style="text-align:center;padding:5px 11px;background:var(--ad);border-radius:6px">
+        <div style="font-family:monospace;font-size:16px;font-weight:800;color:var(--amb)">${warns}</div>
+        <div style="font-size:8px;color:var(--amb);text-transform:uppercase">До ТО</div>
       </div>
-      <div style="text-align:center;padding:6px 12px;background:var(--gd);border-radius:6px">
-        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--grn)">${oks}</div>
-        <div style="font-size:9px;color:var(--grn);text-transform:uppercase">Годных</div>
+      <div style="text-align:center;padding:5px 11px;background:var(--gd);border-radius:6px">
+        <div style="font-family:monospace;font-size:16px;font-weight:800;color:var(--grn)">${oks}</div>
+        <div style="font-size:8px;color:var(--grn);text-transform:uppercase">Годных</div>
       </div>
     </div>
   </div>
   <div style="flex:1;overflow:auto;padding:14px">`;
 
-  // deviation bars section
-  html += `
-  <div class="sh"><div class="st2">📊 Отклонения по форсункам</div><div class="ss">Горизонтальные полосы · относительное отклонение от нормы</div></div>
-  <div class="tw" style="margin-bottom:14px">
-    <div class="th3"><div class="tt2">Сводная таблица — ${m}</div><div class="tsb">Подача, см³</div></div>
-    <div style="overflow-x:auto"><table class="rt">
-      <thead><tr>
-        <th>Форсунка</th>
-        <th>P01 <span style="color:var(--tx3);font-weight:400">(441.5–495.5)</span></th>
-        <th>P02 <span style="color:var(--tx3);font-weight:400">(220–260)</span></th>
-        <th>P03 <span style="color:var(--tx3);font-weight:400">(16–30)</span></th>
-        <th>P04 <span style="color:var(--tx3);font-weight:400">(41–51)</span></th>
-        <th>Обратка P01</th>
-        <th>Статус</th>
-      </tr></thead>
-      <tbody>`;
-
-  injs.forEach(inj=>{
-    const st = getStatus(inj);
-    const stL = st==='ok'?'<span class="bg4 bo">ГОДНА</span>':st==='crit'?'<span class="bg4 bc">КРИТИЧНО</span>':'<span class="bg4 bw">ЗАМЕНА ДО ТО</span>';
-    const p01c=checkVal(inj.p01,LIMITS.p01.del), p02c=checkVal(inj.p02,LIMITS.p02.del), p03c=checkVal(inj.p03,LIMITS.p03.del), p04c=checkVal(inj.p04,LIMITS.p04.del);
-    const idColor = st==='ok'?'var(--grn)':st==='crit'?'var(--red)':'var(--amb)';
-    html+=`<tr>
-      <td style="font-weight:800;color:${idColor}">${inj.id}</td>
-      <td class="${valClass(p01c)}">${inj.p01}</td>
-      <td class="${valClass(p02c)}">${inj.p02}</td>
-      <td class="${valClass(p03c)}">${inj.p03}</td>
-      <td class="${valClass(p04c)}">${inj.p04}</td>
-      <td style="color:var(--tx2)">${inj.p01r}</td>
-      <td>${stL}</td>
+  // Summary table
+  html+=`<div class="tw"><div class="th3"><div class="tt2">Сводная таблица — NTE200 ${m}</div><div class="tsb">см³</div></div>
+  <div style="overflow-x:auto"><table class="rt"><thead><tr>
+    <th>Форсунка</th><th>P01 (441.5–495.5)</th><th>P02 (220–260)</th><th>P03 (16–30)</th><th>P04 (41–51)</th><th>Обратка P01</th><th>Статус</th>
+  </tr></thead><tbody>`;
+  injs.forEach(i=>{
+    const p1c=chk(i.p01,LIM.p01.del),p2c=chk(i.p02,LIM.p02.del),p3c=chk(i.p03,LIM.p03.del),p4c=chk(i.p04,LIM.p04.del);
+    const sc=stColor(getSt(i));
+    html+=`<tr><td style="font-weight:800;color:${sc}">${i.id}</td>
+      <td class="${vcls(p1c)}">${i.p01}<small style="color:var(--tx3);margin-left:3px">${devTxt(i.p01,LIM.p01.del)}</small></td>
+      <td class="${vcls(p2c)}">${i.p02}<small style="color:var(--tx3);margin-left:3px">${devTxt(i.p02,LIM.p02.del)}</small></td>
+      <td class="${vcls(p3c)}">${i.p03}<small style="color:var(--tx3);margin-left:3px">${devTxt(i.p03,LIM.p03.del)}</small></td>
+      <td class="${vcls(p4c)}">${i.p04}<small style="color:var(--tx3);margin-left:3px">${devTxt(i.p04,LIM.p04.del)}</small></td>
+      <td style="color:var(--tx2)">${i.p01r}</td>
+      <td>${stLabel(getSt(i))}</td>
     </tr>`;
   });
-  html += `</tbody></table></div></div>`;
+  html+=`</tbody></table></div></div>`;
 
-  // Deviation visualization for P03 and P04
-  html += `<div class="sh" style="margin-top:4px"><div class="st2">🎯 Визуализация отклонений P03 и P04</div></div>`;
-  const tests2 = [{key:'p03',lim:[16,30],label:'P03 (400 бар, холостой ход)'},{key:'p04',lim:[41,51],label:'P04 (750 бар, частичная нагрузка)'}];
-  tests2.forEach(t=>{
-    html+=`<div class="tw" style="margin-bottom:10px">
-      <div class="th3"><div class="tt2">${t.label}</div><div class="tsb">Норма: ${t.lim[0]}–${t.lim[1]} см³</div></div>
-      <div style="padding:10px 14px">`;
-    injs.forEach(inj=>{
-      const v = inj[t.key];
-      const [lo,hi] = t.lim;
-      const status = checkVal(v,[lo,hi]);
-      const color = status==='ok'?'var(--grn)':status==='hi'?'var(--red)':'var(--amb)';
-      const idColor = getStatus(inj)==='ok'?'var(--grn)':getStatus(inj)==='crit'?'var(--red)':'var(--amb)';
-      // bar visualization: range 0..hi*1.5, needle at lo and hi
-      const rangeMax = hi*1.6;
-      const barPct = Math.min(100, v/rangeMax*100);
-      const loPct = lo/rangeMax*100;
-      const hiPct = hi/rangeMax*100;
-      const devText = devPct(v,[lo,hi]);
-      html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <div style="font-family:monospace;font-size:11px;font-weight:700;color:${idColor};width:30px">${inj.id}</div>
-        <div style="font-family:monospace;font-size:12px;font-weight:700;color:${color};width:42px">${v}</div>
-        <div style="flex:1;position:relative;height:16px;background:var(--bg3);border-radius:4px;overflow:visible">
-          <!-- normal zone -->
-          <div style="position:absolute;left:${loPct}%;width:${hiPct-loPct}%;height:100%;background:rgba(34,197,94,.15);border-radius:2px"></div>
-          <!-- value bar -->
-          <div style="position:absolute;left:0;width:${barPct}%;height:100%;background:${color};border-radius:4px;opacity:.8;transition:width .5s"></div>
-          <!-- limit lines -->
-          <div style="position:absolute;left:${loPct}%;top:-3px;width:2px;height:22px;background:rgba(245,166,35,.7)"></div>
-          <div style="position:absolute;left:${hiPct}%;top:-3px;width:2px;height:22px;background:rgba(232,72,85,.7)"></div>
+  // Deviation bars P03 / P04
+  [{k:'p03',lim:LIM.p03.del,lbl:'P03 — Холостой ход (400 бар · норма 16–30 см³)'},{k:'p04',lim:LIM.p04.del,lbl:'P04 — Частичная нагрузка (750 бар · норма 41–51 см³)'}].forEach(t=>{
+    html+=`<div class="tw" style="margin-bottom:10px"><div class="th3"><div class="tt2">${t.lbl}</div></div><div style="padding:10px 13px">`;
+    injs.forEach(i=>{
+      const v=i[t.k],[lo,hi]=t.lim,s=chk(v,t.lim);
+      const c=s==='ok'?'var(--grn)':s==='hi'?'var(--red)':'var(--amb)';
+      const sc=stColor(getSt(i));
+      const rmax=hi*1.65,fp=Math.min(99,v/rmax*100),lop=lo/rmax*100,hip=hi/rmax*100;
+      html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+        <div style="font-family:monospace;font-size:11px;font-weight:800;color:${sc};width:26px">${i.id}</div>
+        <div style="font-family:monospace;font-size:12px;font-weight:700;color:${c};width:38px">${v}</div>
+        <div style="flex:1;position:relative;height:14px;background:var(--bg3);border-radius:3px">
+          <div style="position:absolute;left:${lop}%;width:${hip-lop}%;height:100%;background:rgba(34,197,94,.12)"></div>
+          <div style="position:absolute;left:0;width:${fp}%;height:100%;background:${c};border-radius:3px;opacity:.75;transition:width .4s"></div>
+          <div style="position:absolute;left:${lop}%;top:-4px;width:2px;height:22px;background:rgba(245,166,35,.7)"></div>
+          <div style="position:absolute;left:${hip}%;top:-4px;width:2px;height:22px;background:rgba(232,72,85,.7)"></div>
         </div>
-        <div style="font-size:10px;color:${color};font-weight:600;width:110px;text-align:right">${devText}</div>
+        <div style="font-size:10px;color:${c};font-weight:600;width:60px;text-align:right">${devTxt(v,t.lim)}</div>
       </div>`;
     });
     html+=`</div></div>`;
   });
-
-  html += `</div>`; // end scroll area
-  el.innerHTML = html;
+  html+=`</div>`;
+  el.innerHTML=html;
 }
 
-/* ============================================================
+/* ══════════════════════════════════════════════
    INIT
-   ============================================================ */
-function init() {
-  buildSidebar();
-  buildStatusCards();
-  buildHeatmap();
-  buildAlerts();
-  buildCharts();
-  buildTable();
-}
-
-// Re-build charts when tab is shown (canvas must be visible)
-document.querySelector('[onclick*="charts"]')?.addEventListener('click', ()=>{
-  setTimeout(buildCharts, 100);
-});
-
-init();
+══════════════════════════════════════════════ */
+buildSidebar();
+buildStatusCards();
+buildHeatmap();
+buildTable();
+buildAlerts();
 </script>
 </body>
 </html>
