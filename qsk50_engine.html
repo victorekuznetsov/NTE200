@@ -457,11 +457,12 @@ function setStatus(msg,ok,err){
 // ═══════════════════════════════════════════════════
 function rebuildPills(){
   const row=document.getElementById('truck-row');
-  const lbl=row.querySelector('.tr-label');
-  row.innerHTML='';
-  row.appendChild(lbl);
+  // Remove only existing pill elements, keep static elements (#no-trucks, #cmp-btn, .tr-label)
+  row.querySelectorAll('.truck-pill').forEach(p=>p.remove());
   const keys=truckOrder.filter(k=>DB[k]);
-  document.getElementById('no-trucks').style.display=keys.length?'none':'';
+  const noTrucks=document.getElementById('no-trucks');
+  if(noTrucks) noTrucks.style.display=keys.length?'none':'';
+  const cmpBtn=document.getElementById('cmp-btn');
   keys.forEach((k,i)=>{
     const d=DB[k];
     const pill=document.createElement('div');
@@ -471,12 +472,11 @@ function rebuildPills(){
     const lbl2=document.createElement('span');lbl2.textContent=d.model+' №'+d.truck;
     pill.appendChild(dot);pill.appendChild(lbl2);
     pill.onclick=()=>{selectTruck(k);};
-    row.appendChild(pill);
+    // Insert before cmpBtn to keep button at the end
+    row.insertBefore(pill, cmpBtn);
   });
   if(activeTruck===null&&keys.length)activeTruck=keys[0];
-  const cmpBtn=document.getElementById('cmp-btn');
-  cmpBtn.style.display=keys.length>1?'':'none';
-  row.appendChild(cmpBtn);
+  if(cmpBtn) cmpBtn.style.display=keys.length>1?'':'none';
 }
 
 function selectTruck(key){
