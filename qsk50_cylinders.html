@@ -5227,6 +5227,13 @@ function renderCompare(){
 // ═══ FILE LOADING ════════════════════════════════════════════════════
 const RU_MON={янв:'Jan',фев:'Feb',мар:'Mar',апр:'Apr',май:'May',июн:'Jun',июл:'Jul',авг:'Aug',сен:'Sep',окт:'Oct',ноя:'Nov',дек:'Dec'};
 function ruDate2(s){for(const[r,e] of Object.entries(RU_MON))s=s.replace(r,e);return s;}
+// Convert DD.MM.YYYY → YYYY-MM-DD so browsers can parse it reliably
+function fixDate(s){
+  s=s.trim();
+  const m=/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s);
+  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  return s;
+}
 function splitCSV(line){
   const f=[];let q=false,s='';
   for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){f.push(s.trim());s='';}else s+=c;}
@@ -5274,8 +5281,8 @@ function processINSITE(text,fname){
   for(const k of Object.keys(paramCols))out.p[k]=[];
   for(let i=0;i<rows.length;i+=step){
     const r=rows[i];
-    let d=ruDate2(r[dateC]||''),t=(r[timeC]||'').substring(0,8);
-    try{const dt=new Date(d+' '+t);if(isNaN(dt))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
+    let d=fixDate(ruDate2(r[dateC]||'')),t=(r[timeC]||'').substring(0,8);
+    try{const dt=new Date(d+'T'+t);if(isNaN(dt.getTime()))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
     for(let n=1;n<=16;n++){if(!cylCols[n])continue;const v=parseFloat((r[cylCols[n]]||'').replace(',','.'));out.cyls[String(n)].push(isNaN(v)?null:Math.round(v));}
     for(const[k,c]of Object.entries(paramCols)){const raw=(r[c]||'').replace(',','.');const v=BOOL_KEYS.has(k)?boolVal(r[c]||''):parseFloat(raw);out.p[k].push(isNaN(v)?null:BOOL_KEYS.has(k)?v:Math.round(v*100)/100);}
   }
@@ -5289,7 +5296,8 @@ function processINSITE(text,fname){
   return{key,truck,model,session:{date:dateStr,ts:out.ts,cyls:out.cyls,p:out.p,file:fname}};
 }
 function loadFiles(files){
-  let loaded=0;const total=files.length;
+  let done=0,loaded=0,firstKey=null;const total=files.length;
+  const st=document.getElementById('file-status');
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=e=>{
@@ -5300,11 +5308,22 @@ function loadFiles(files){
           if(!TRUCKS[key]){TRUCKS[key]={truck,model,sessions:[session]};TRUCK_ORDER.push(key);}
           else TRUCKS[key].sessions.push(session);
           loaded++;
-          document.getElementById('file-status').textContent=`Загружено: ${loaded}/${total}`;
-          buildSidebar();
-          if(!activeTruck)selectTruck(key);
+          if(!firstKey)firstKey=key;
         }
       }catch(ex){console.warn(file.name,ex);}
+      done++;
+      st.textContent=done<total?`Парсинг: ${done}/${total}…`:`Загружено: ${loaded}/${total}${loaded<total?' (некоторые не распознаны)':''}`;
+      if(done===total){
+        // All files processed — update sidebar and refresh view
+        buildSidebar();
+        if(!activeTruck&&firstKey){
+          selectTruck(firstKey);
+        } else if(activeTruck){
+          buildDatePills(activeTruck);
+          renderCurrentTab();
+          setTimeout(attachAllSync,300);
+        }
+      }
     };
     reader.readAsText(file,'windows-1251');
   });
