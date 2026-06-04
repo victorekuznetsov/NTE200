@@ -788,6 +788,46 @@ function syncRangeToCharts(){
   });
 }
 
+// ═══ CHART RANGE SYNC (drag-to-zoom links all charts on tab) ═════
+function attachAllSync(){
+  const panel=document.querySelector('.panel.show');
+  if(!panel)return;
+  panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
+    if(typeof div.on!=='function'||div.__syncAttached)return;
+    div.__syncAttached=true;
+    div.on('plotly_relayout',function(ed){
+      if(div.__syncing)return;
+      let rng=null;
+      if(typeof ed['xaxis.range[0]']!=='undefined'){
+        rng=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
+      } else if(Array.isArray(ed['xaxis.range'])){
+        rng=ed['xaxis.range'].slice();
+      } else if(ed['xaxis.autorange']===true){
+        rng=null;
+      } else {
+        return;
+      }
+      activeRangeSec=rng?rng[1]:null;
+      // Reflect in range bar
+      document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
+      if(!rng){
+        const fb=document.querySelector('.rng-btn');if(fb)fb.classList.add('act');
+        const sl=document.getElementById('rng-slider');if(sl){sl.value=100;const rv=document.getElementById('rng-val');if(rv)rv.textContent='100%';}
+      }
+      // Sync peer charts
+      panel.querySelectorAll('div[id^="ch-"]').forEach(other=>{
+        if(other===div||other.__syncing)return;
+        other.__syncing=true;
+        try{
+          if(rng)Plotly.relayout(other,{'xaxis.range':rng});
+          else Plotly.relayout(other,{'xaxis.autorange':true});
+        }catch(e){}
+        delete other.__syncing;
+      });
+    });
+  });
+}
+
 function pl(id,data,lay){
   const L=Object.assign({},PLY_BASE,lay||{});
   if(lay&&lay.xaxis)L.xaxis=Object.assign({},PLY_BASE.xaxis,lay.xaxis);
@@ -940,6 +980,7 @@ function selectTruck(key){
   updateCal();
   renderCurrentTab();
   updateHeader();
+  setTimeout(attachAllSync,60);
 }
 
 function buildDatePills(key){
@@ -1027,6 +1068,7 @@ function showTab(name,btn){
   btn.classList.add('act');
   currentTab=name;
   renderCurrentTab();
+  setTimeout(attachAllSync,60);
 }
 function showSub(name,btn){
   document.querySelectorAll('.sub-panel').forEach(p=>p.classList.remove('show'));
@@ -1566,6 +1608,7 @@ window.addEventListener('load',function(){
     buildDatePills(activeTruck);
     updateHeader();
     renderCylinders();
+    setTimeout(attachAllSync,120);
   }
 });
 </script>
