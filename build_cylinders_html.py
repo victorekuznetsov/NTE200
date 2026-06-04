@@ -760,10 +760,21 @@ const PLY_BASE = {
 };
 
 // ═══ TIME RANGE ════════════════════════════════════════════════════
-let activeRangeSec = null;  // null = show all
+// Delta charts stay at full x-range but show a highlight rect for the selected window
+const DELTA_CHARTS = new Set(['ch-dev','ch-delta','ch-cmp-delta']);
+let activeRangeStart = 0;   // start of selected window (seconds)
+let activeRangeSec = null;  // end of selected window; null = show all
 let _syncing = false;       // global re-entrancy guard for range sync
 
+function deltaShape(x0,x1){
+  return [{type:'rect',xref:'x',yref:'paper',
+    x0:x0,x1:x1,y0:0,y1:1,
+    fillcolor:'rgba(62,240,175,0.07)',
+    line:{color:'rgba(62,240,175,0.4)',width:1.5,dash:'dot'}}];
+}
+
 function applyRange(secs, btn){
+  activeRangeStart=0;
   activeRangeSec = secs;
   document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
   if(btn) btn.classList.add('act');
@@ -771,6 +782,7 @@ function applyRange(secs, btn){
   syncRangeToCharts();
 }
 function applyRangeSlider(pct){
+  activeRangeStart=0;
   document.getElementById('rng-val').textContent=pct+'%';
   document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
   if(pct>=100){activeRangeSec=null;const rb=document.querySelector('.rng-btn');if(rb)rb.classList.add('act');syncRangeToCharts();return;}
@@ -786,20 +798,31 @@ function syncRangeToCharts(){
   _syncing=true;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     try{
-      if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
-      else Plotly.relayout(div.id,{'xaxis.range':[0,activeRangeSec]});
+      if(DELTA_CHARTS.has(div.id)){
+        // Delta charts: always full x-range, highlight selected window with a shape
+        if(activeRangeSec===null){
+          Plotly.relayout(div.id,{'shapes':[],'xaxis.autorange':true});
+        } else {
+          Plotly.relayout(div.id,{'shapes':deltaShape(activeRangeStart,activeRangeSec),'xaxis.autorange':true});
+        }
+      } else {
+        if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
+        else Plotly.relayout(div.id,{'xaxis.range':[activeRangeStart,activeRangeSec],'xaxis.autorange':false});
+      }
     }catch(e){}
   });
   // Clear flag after a tick so async plotly_relayout callbacks are also suppressed
   setTimeout(function(){_syncing=false;},100);
 }
 
-// ═══ CHART RANGE SYNC (drag-to-zoom links all charts on tab) ═════
+// ═══ CHART RANGE SYNC (drag-to-zoom links EGT charts; delta charts show highlight) ═════
 function attachAllSync(){
   const panel=document.querySelector('.panel.show');
   if(!panel)return;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     if(typeof div.on!=='function')return;
+    // Delta charts do not drive cross-chart sync (they keep full range)
+    if(DELTA_CHARTS.has(div.id))return;
     // Always re-attach: Plotly.react wipes internal event listeners on each render
     if(typeof div.removeAllListeners==='function')div.removeAllListeners('plotly_relayout');
     div.on('plotly_relayout',function(ed){
@@ -815,14 +838,15 @@ function attachAllSync(){
       } else {
         return;
       }
-      // Update shared state and reflect in range bar
+      // Update shared range state (start + end)
+      activeRangeStart=rng?rng[0]:0;
       activeRangeSec=rng?rng[1]:null;
       document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
       if(!rng){
         const fb=document.querySelector('.rng-btn');if(fb)fb.classList.add('act');
         const sl=document.getElementById('rng-slider');if(sl){sl.value=100;const rv=document.getElementById('rng-val');if(rv)rv.textContent='100%';}
       }
-      // Sync all other charts on this tab via the central function
+      // Sync all charts on this tab (zoom EGT, highlight delta)
       syncRangeToCharts();
     });
   });
@@ -833,10 +857,15 @@ function pl(id,data,lay){
   if(lay&&lay.xaxis)L.xaxis=Object.assign({},PLY_BASE.xaxis,lay.xaxis);
   if(lay&&lay.yaxis)L.yaxis=Object.assign({},PLY_BASE.yaxis,lay.yaxis);
   if(lay&&lay.yaxis2)L.yaxis2=Object.assign({showgrid:false,color:'#80868B'},lay.yaxis2);
-  if(activeRangeSec!==null){L.xaxis=L.xaxis||{};L.xaxis.range=[0,activeRangeSec];L.xaxis.autorange=false;}
+  if(DELTA_CHARTS.has(id)){
+    // Delta charts: full x-range always; add highlight shape if a range is active
+    L.xaxis=Object.assign({},L.xaxis||PLY_BASE.xaxis,{autorange:true});
+    if(activeRangeSec!==null)L.shapes=deltaShape(activeRangeStart,activeRangeSec);
+  } else {
+    if(activeRangeSec!==null){L.xaxis=L.xaxis||{};L.xaxis.range=[activeRangeStart,activeRangeSec];L.xaxis.autorange=false;}
+  }
   Plotly.react(id,data,L,PLY_CFG);
 }
-function plEmpty(id,msg,h){pl(id,[],{height:h||180,title:{text:msg||'Нет данных',font:{color:'#80868B',size:10}}});}
 
 // ═══ STATE ════════════════════════════════════════════════════════
 let activeTruck=null;
