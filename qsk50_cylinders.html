@@ -5377,9 +5377,9 @@ function loadFiles(files){
 }
 
 // ═══ INIT ════════════════════════════════════════════════════════════
-// Script is at end of <body> so DOM is ready — call directly
+// Truck list is pre-rendered as static HTML — do NOT call buildSidebar()
+// here or it will clear the list before JS finishes rebuilding it.
 function _init(){
-  buildSidebar();
   if(TRUCK_ORDER.length){
     activeTruck=TRUCK_ORDER[0];
     const el=document.getElementById('ti-'+activeTruck);if(el)el.classList.add('active');
