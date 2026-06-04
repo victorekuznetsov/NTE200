@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Диагностика форсунок Cummins CRI — NTE200</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#141c24;--bg2:#1c2630;--bg3:#242f39;
+  --card:#2a3138;--card2:#323941;
+  --brd:rgba(255,255,255,0.08);--brd2:rgba(255,255,255,0.14);
+  --tx:#e8edf6;--tx2:#b3bddc;--tx3:#80868b;
+  --acc:#3ef0af;--red:#e84855;--amb:#f5a623;--grn:#22c55e;--blu:#7e83fa;--pur:#b668e4;
+  --rd:rgba(232,72,85,.14);--ad:rgba(245,166,35,.12);--gd:rgba(34,197,94,.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:14px}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(62,240,175,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(62,240,175,.018) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.tb{display:flex;align-items:center;gap:10px;padding:0 14px;height:46px;border-bottom:1px solid var(--brd);background:rgba(10,13,18,.96);backdrop-filter:blur(12px);position:relative;z-index:50;flex-shrink:0}
+.logo{font-size:12px;font-weight:800;color:var(--acc);white-space:nowrap}
+.logo small{color:var(--tx3);font-weight:400;font-size:9px;display:block}
+.sep{width:1px;height:22px;background:var(--brd2);flex-shrink:0}
+.ks{display:flex;gap:16px}
+.kv{font-family:'SF Mono','Fira Code',monospace;font-size:14px;font-weight:700}
+.kl{font-size:9px;color:var(--tx3);text-transform:uppercase;letter-spacing:.4px}
+.tr2{margin-left:auto;display:flex;align-items:center;gap:8px}
+.lbar{font-size:10px;color:var(--acc);white-space:nowrap}
+.lay{display:flex;flex:1;overflow:hidden;position:relative;z-index:1}
+/* SIDEBAR */
+.sb2{width:230px;min-width:230px;background:var(--bg2);border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
+.sb-top2{padding:8px;border-bottom:1px solid var(--brd)}
+.sb-nav2{display:flex;flex-direction:column;gap:3px}
+.sbn2{padding:7px 10px;border:1px solid var(--brd);border-radius:6px;background:transparent;color:var(--tx2);font-size:11px;cursor:pointer;text-align:left;transition:all .15s;display:flex;align-items:center;gap:7px}
+.sbn2:hover,.sbn2.act{background:rgba(62,240,175,.1);color:var(--acc);border-color:rgba(62,240,175,.25)}
+.sb-section{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--tx3);padding:10px 4px 4px}
+.sbl2{overflow-y:auto;flex:1;padding:8px}
+/* machine list */
+.mach-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;cursor:pointer;transition:background .12s;border:1px solid transparent;margin-bottom:3px}
+.mach-item:hover{background:var(--card);border-color:var(--brd)}
+.mach-item.act{background:var(--card2);border-color:rgba(62,240,175,.3)}
+.mach-num{font-family:'SF Mono','Fira Code',monospace;font-size:13px;font-weight:800;color:var(--acc);min-width:30px}
+.mach-meta{flex:1;min-width:0}
+.mach-name{font-size:11px;font-weight:600}
+.mach-sub{font-size:9px;color:var(--tx3)}
+.mach-badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px}
+.badge-crit{background:var(--rd);color:var(--red)}
+.badge-warn{background:var(--ad);color:var(--amb)}
+.badge-ok{background:var(--gd);color:var(--grn)}
+/* MAIN */
+.mn2{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.pg{display:none;flex:1;overflow:auto;padding:16px}
+.pg.act{display:flex;flex-direction:column}
+/* OVERVIEW PAGE */
+.pt2{font-size:18px;font-weight:800;letter-spacing:-.4px;margin-bottom:2px}
+.ps2{font-size:11px;color:var(--tx3);margin-bottom:16px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px;position:relative;overflow:hidden;cursor:default}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:.8}
+.kpi-crit::after{background:var(--red)}
+.kpi-warn::after{background:var(--amb)}
+.kpi-ok::after{background:var(--grn)}
+.kpi-blu::after{background:var(--blu)}
+.kpi-acc::after{background:var(--acc)}
+.kpi-v{font-family:'SF Mono','Fira Code',monospace;font-size:28px;font-weight:800;line-height:1}
+.kpi-l{font-size:10px;color:var(--tx3);margin-top:5px;text-transform:uppercase;letter-spacing:.5px}
+.kpi-sub{font-size:9px;color:var(--tx3);margin-top:3px}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:4px}
+.st2{font-size:13px;font-weight:700}
+.ss{font-size:10px;color:var(--tx3)}
+/* MACHINE PAGE */
+.mh{padding:10px 14px;border-bottom:1px solid var(--brd);background:var(--bg2);flex-shrink:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mid{font-size:20px;font-weight:800;font-family:'SF Mono','Fira Code',monospace}
+.mbr{font-size:10px;color:var(--tx3)}
+/* TABLE */
+.tw{background:var(--card);border:1px solid var(--brd);border-radius:9px;overflow:hidden;margin-bottom:14px}
+.th3{padding:10px 13px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between}
+.tt2{font-size:12px;font-weight:700}
+.tsb{font-size:9px;color:var(--tx3)}
+.rt{width:100%;border-collapse:collapse;font-size:11px}
+.rt th{text-align:left;padding:7px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--tx3);border-bottom:1px solid var(--brd);background:var(--bg3);white-space:nowrap}
+.rt td{padding:7px 10px;border-bottom:1px solid var(--brd);white-space:nowrap;font-family:'SF Mono','Fira Code',monospace;font-size:11px}
+.rt tr:last-child td{border-bottom:none}
+.rt tr:hover td{background:var(--card2)}
+.bg4{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700;white-space:nowrap}
+.bt{background:rgba(232,72,85,.2);color:var(--red)}
+.bc{background:rgba(232,72,85,.35);color:#ff6b6b;border:1px solid rgba(232,72,85,.4)}
+.bo{background:var(--gd);color:var(--grn)}
+.bw{background:var(--ad);color:var(--amb)}
+.bb{background:rgba(126,131,250,.15);color:var(--blu)}
+/* value cells */
+.val-ok{color:var(--grn)}
+.val-hi{color:var(--red);font-weight:700}
+.val-lo{color:var(--amb);font-weight:700}
+.val-crit{color:#ff4040;font-weight:800}
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.chart-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:13px}
+.chart-title{font-size:11px;font-weight:700;margin-bottom:10px;color:var(--tx2)}
+.chart-wrap{position:relative;height:200px}
+/* HEATMAP */
+.heat-grid{display:grid;gap:6px;margin-bottom:14px}
+.heat-row{display:flex;gap:6px;align-items:center}
+.heat-lbl{font-size:10px;color:var(--tx3);width:60px;text-align:right;flex-shrink:0;font-family:'SF Mono','Fira Code',monospace}
+.heat-cells{display:flex;gap:4px;flex:1}
+.heat-cell{flex:1;height:34px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;border:1px solid transparent;min-width:38px}
+.heat-cell:hover{border-color:rgba(255,255,255,.25);transform:translateY(-1px)}
+.heat-val{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;line-height:1}
+.heat-id{font-size:8px;opacity:.7;line-height:1;margin-top:1px}
+.heat-header{display:flex;gap:4px;margin-left:66px;margin-bottom:3px}
+.heat-hcell{flex:1;text-align:center;font-size:9px;color:var(--tx3);font-weight:700;min-width:38px}
+/* STATUS CARDS */
+.status-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+.status-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px;border-left:4px solid;transition:all .15s}
+.status-card:hover{border-color:rgba(255,255,255,.2);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.sc-id{font-family:'SF Mono','Fira Code',monospace;font-size:15px;font-weight:800;margin-bottom:3px}
+.sc-machine{font-size:10px;color:var(--tx3);margin-bottom:8px}
+.sc-tests{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.sc-test{display:flex;flex-direction:column;background:var(--bg3);border-radius:4px;padding:4px 6px}
+.sc-tname{font-size:8px;color:var(--tx3);text-transform:uppercase;letter-spacing:.3px}
+.sc-tval{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:700}
+.sc-verdict{margin-top:8px;font-size:10px;font-weight:700;padding:4px 8px;border-radius:5px;text-align:center}
+/* DEVIATION BAR */
+.dev-bar-wrap{height:6px;border-radius:3px;background:var(--brd2);overflow:visible;position:relative;margin-top:4px}
+.dev-bar{height:100%;border-radius:3px;position:absolute;transition:width .4s}
+.dev-min,.dev-max{position:absolute;top:-3px;width:2px;height:12px;background:rgba(255,255,255,.3);border-radius:1px}
+/* ALERT LIST */
+.al2{display:flex;flex-direction:column;gap:6px}
+.ac{display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:10px 13px;border-left:4px solid;transition:all .15s}
+.ac:hover{transform:translateX(3px)}
+.ai{font-size:20px;flex-shrink:0;margin-top:1px}
+.ab{flex:1;min-width:0}
+.at2{font-weight:700;font-size:12px;margin-bottom:2px}
+.ad2{font-size:10px;color:var(--tx2);line-height:1.4}
+.afp{font-family:'SF Mono','Fira Code',monospace;font-size:12px;font-weight:700;flex-shrink:0;text-align:right}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:2px}
+/* INFO TOOLTIP */
+.norm-hint{font-size:9px;color:var(--tx3);padding:2px 6px;background:var(--bg3);border-radius:3px;border:1px solid var(--brd)}
+/* LEGEND */
+.legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
+.leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+/* SUMMARY BLOCK */
+.summ-block{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:14px;margin-bottom:14px}
+.summ-title{font-size:12px;font-weight:700;margin-bottom:10px;color:var(--tx2);display:flex;align-items:center;gap:6px}
+.summ-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.summ-stat{text-align:center;padding:8px;background:var(--bg3);border-radius:6px}
+.summ-v{font-family:'SF Mono','Fira Code',monospace;font-size:20px;font-weight:800}
+.summ-l{font-size:9px;color:var(--tx3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+/* MACHINE DETAIL */
+.detail-pg{display:none;flex:1;overflow:hidden;flex-direction:column}
+.detail-pg.act{display:flex}
+/* RADIAL GAUGE ROW */
+.gauge-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+.gauge-card{background:var(--card);border:1px solid var(--brd);border-radius:9px;padding:12px 14px;min-width:120px;text-align:center;flex-shrink:0}
+.gauge-id{font-family:'SF Mono','Fira Code',monospace;font-size:11px;font-weight:700;margin-bottom:6px}
+.gauge-val{font-family:'SF Mono','Fira Code',monospace;font-size:22px;font-weight:800;line-height:1}
+.gauge-unit{font-size:9px;color:var(--tx3);margin-bottom:4px}
+.gauge-ring{width:56px;height:56px;margin:0 auto 6px;position:relative}
+.gauge-ring svg{transform:rotate(-90deg)}
+</style>
+</head>
+<body>
+<div style="text-align:center;font-size:11px;color:#80868b;background:#1c2630;border-bottom:1px solid rgba(255,255,255,.07);padding:4px 10px;letter-spacing:.2px">По вопросам улучшения отчёта обращаться к <span style="color:#3ef0af;font-weight:700">Кузнецову В.Е.</span></div>
+
+<!-- TOPBAR -->
+<div class="tb">
+  <div class="logo">АО «Полюс Магадан» — Диагностика форсунок Cummins CRI<small>NTE200 · Стенд «Поток CR-2» · Анализ v1.0 · 04.06.2026</small></div>
+  <div class="sep"></div>
+  <div class="ks">
+    <div><div class="kv" id="k-total">22</div><div class="kl">Форсунок</div></div>
+    <div><div class="kv" id="k-fail" style="color:var(--red)">14</div><div class="kl">Брак</div></div>
+    <div><div class="kv" id="k-crit" style="color:#ff4040">6</div><div class="kl">Критич.</div></div>
+    <div><div class="kv" id="k-ok" style="color:var(--grn)">8</div><div class="kl">Годных</div></div>
+    <div><div class="kv" style="color:var(--amb)">64%</div><div class="kl">Отказов</div></div>
+  </div>
+  <div class="tr2">
+    <div class="lbar">🔧 Тест: GR TESTING · Cummins CRI 1MV · арт. 2867147</div>
+  </div>
+</div>
+
+<div class="lay">
+<!-- SIDEBAR -->
+<div class="sb2">
+  <div class="sb-top2">
+    <div class="sb-nav2">
+      <button class="sbn2 act" onclick="showPage('overview',this)">🏠 Обзор парка</button>
+      <button class="sbn2" onclick="showPage('heatmap',this)">🌡️ Тепловая карта</button>
+      <button class="sbn2" onclick="showPage('charts',this)">📊 Графики</button>
+      <button class="sbn2" onclick="showPage('alerts',this)">🚨 Приоритеты замены</button>
+    </div>
+  </div>
+  <div class="sbl2">
+    <div class="sb-section">Машины</div>
+    <div id="machine-list"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="mn2" id="mn">
+
+  <!-- OVERVIEW PAGE -->
+  <div class="pg act" id="p-overview">
+    <div class="pt2">Обзор парка форсунок NTE200</div>
+    <div class="ps2">Самосвалы АО «Полюс Магадан» · Cummins QSK60 · Стенд «Поток CR-2 v1.5» · Дата анализа: 04.06.2026</div>
+
+    <!-- KPI ROW -->
+    <div class="kpi-row">
+      <div class="kpi kpi-crit">
+        <div class="kpi-v" style="color:var(--red)">14</div>
+        <div class="kpi-l">Бракованных форсунок</div>
+        <div class="kpi-sub">из 22 протестированных (64%)</div>
+      </div>
+      <div class="kpi kpi-crit" style="--c:var(--red)">
+        <div class="kpi-v" style="color:#ff4040">6</div>
+        <div class="kpi-l">Критических (замена немедленно)</div>
+        <div class="kpi-sub">#73 R1, #82 2R/3R/8R, #78 6L/4R</div>
+      </div>
+      <div class="kpi kpi-warn">
+        <div class="kpi-v" style="color:var(--amb)">8</div>
+        <div class="kpi-l">Требуют замены до ТО</div>
+        <div class="kpi-sub">#82: 1R,3L,4L,4R,7L,7R · #78: 3R,6R</div>
+      </div>
+      <div class="kpi kpi-ok">
+        <div class="kpi-v" style="color:var(--grn)">8</div>
+        <div class="kpi-l">Годных форсунок</div>
+        <div class="kpi-sub">#73 L2, #82: 1L,2L,5L,5R,6L,6R,8L</div>
+      </div>
+      <div class="kpi kpi-blu">
+        <div class="kpi-v" style="color:var(--blu)">3</div>
+        <div class="kpi-l">Машины в парке</div>
+        <div class="kpi-sub">NTE200 №73, №78, №82</div>
+      </div>
+      <div class="kpi kpi-acc">
+        <div class="kpi-v" style="color:var(--acc)">59%</div>
+        <div class="kpi-l">Отказы по P04</div>
+        <div class="kpi-sub">Частичная нагрузка — главный признак</div>
+      </div>
+    </div>
+
+    <!-- STATUS CARDS -->
+    <div class="sh"><div class="st2">🔩 Состояние форсунок по машинам</div><div class="ss">Клик на форсунку для детального просмотра</div></div>
+    <div class="status-grid" id="status-cards"></div>
+
+    <!-- SUMMARY STATS -->
+    <div class="summ-block">
+      <div class="summ-title">📈 Статистика отказов по тестам</div>
+      <div class="summ-grid">
+        <div class="summ-stat"><div class="summ-v" style="color:var(--grn)">0</div><div class="summ-l">Leak 200/1600</div></div>
+        <div class="summ-stat"><div class="summ-v" style="color:var(--amb)">1</div><div class="summ-l">P01 (1600 бар)</div></div>
+        <div class="summ-stat"><div class="summ-v" style="color:var(--amb)">5</div><div class="summ-l">P02 (1000 бар)</div></div>
+        <div class="summ-stat"><div class="summ-v" style="color:var(--red)">7</div><div class="summ-l">P03 (400 бар)</div></div>
+        <div class="summ-stat"><div class="summ-v" style="color:#ff4040">13</div><div class="summ-l">P04 (750 бар) ⚠️</div></div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--amb);font-size:11px;color:var(--tx2);line-height:1.6">
+        <strong style="color:var(--amb)">Главный вывод:</strong> Тест P04 (750 бар, 800 об/мин, режим частичной нагрузки) является
+        наиболее чувствительным индикатором износа — 59% всех отказов. Зафиксированы два
+        типа деградации: <span style="color:var(--red)">перелив</span> (износ иглы/седла, форсунки «текут»)
+        и <span style="color:var(--amb)">недолив</span> (износ плунжерной пары). Все leak-тесты пройдены — разрушений корпусов нет.
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP PAGE -->
+  <div class="pg" id="p-heatmap">
+    <div class="pt2">Тепловая карта отклонений</div>
+    <div class="ps2">Подача, см³ — отклонение от нормы. Красный = перелив / выход вверх · Жёлтый = недолив / выход вниз · Зелёный = норма</div>
+    <div class="legend-row">
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(232,72,85,.7)"></div>Перелив (выше нормы)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(245,166,35,.7)"></div>Недолив (ниже нормы)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(34,197,94,.25)"></div>В норме</div>
+      <div class="leg-item"><div class="leg-dot" style="background:rgba(62,240,175,.15)"></div>Форсунка не тестировалась</div>
+    </div>
+    <div id="heatmap-content"></div>
+  </div>
+
+  <!-- CHARTS PAGE -->
+  <div class="pg" id="p-charts">
+    <div class="pt2">Графики результатов тестирования</div>
+    <div class="ps2">Подача (см³) по всем тестовым режимам. Пунктир — граница допуска.</div>
+    <div class="chart-grid" id="chart-grid"></div>
+    <div class="tw">
+      <div class="th3"><div class="tt2">📋 Сводная таблица всех форсунок</div><div class="tsb">22 форсунки · GR TESTING</div></div>
+      <div style="overflow-x:auto">
+        <table class="rt" id="main-table">
+          <thead><tr>
+            <th>Машина</th><th>Форсунка</th><th>Дата теста</th>
+            <th>P01 (441.5–495.5)</th><th>P02 (220–260)</th><th>P03 (16–30)</th><th>P04 (41–51)</th>
+            <th>Обратка P01</th><th>Статус</th>
+          </tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS PAGE -->
+  <div class="pg" id="p-alerts">
+    <div class="pt2">Приоритеты замены форсунок</div>
+    <div class="ps2">Сортировка по критичности — от немедленной замены до планового контроля</div>
+    <div class="al2" id="alert-list"></div>
+  </div>
+
+  <!-- MACHINE DETAIL PAGE -->
+  <div class="pg" id="p-machine">
+    <div id="machine-detail-content"></div>
+  </div>
+
+</div><!-- mn2 -->
+</div><!-- lay -->
+
+<script>
+/* ============================================================
+   DATA
+   ============================================================ */
+const LIMITS = {
+  leak200:  { ret: [0, 10] },
+  leak1600: { ret: [0, 20] },
+  p01: { del: [441.5, 495.5], ret: [0, 130] },
+  p02: { del: [220, 260] },
+  p03: { del: [16, 30] },
+  p04: { del: [41, 51] }
+};
+
+// Each injector: machine, id, date, leak200_ret, leak1600_ret, p01_del, p01_ret, p02_del, p03_del, p04_del
+const INJECTORS = [
+  // NTE200 #73
+  { m:'#73', id:'L2',  date:'27.04.2026', l200:0.20, l1600:0.10, p01:487.0, p01r:75.9, p02:260.0, p03:22.6, p04:41.7 },
+  { m:'#73', id:'R1',  date:'26.04.2026', l200:0.10, l1600:0.00, p01:503.0, p01r:74.7, p02:276.1, p03:41.5, p04:62.1 },
+  // NTE200 #78
+  { m:'#78', id:'3R',  date:'22.05.2026', l200:0.10, l1600:0.00, p01:475.8, p01r:74.9, p02:261.7, p03:28.8, p04:48.6 },
+  { m:'#78', id:'6L',  date:'22.05.2026', l200:0.10, l1600:0.00, p01:479.1, p01r:73.0, p02:263.7, p03:30.1, p04:54.3 },
+  { m:'#78', id:'4R',  date:'22.05.2026', l200:0.20, l1600:0.00, p01:487.7, p01r:73.9, p02:262.1, p03:26.1, p04:53.7 },
+  { m:'#78', id:'6R',  date:'22.05.2026', l200:0.20, l1600:0.10, p01:488.5, p01r:74.5, p02:227.9, p03:28.6, p04:38.6 },
+  // NTE200 #82 (full set, 16 injectors)
+  { m:'#82', id:'1L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:467.4, p01r:72.1, p02:248.2, p03:24.8, p04:48.4 },
+  { m:'#82', id:'1R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:469.6, p01r:74.2, p02:250.5, p03:30.1, p04:51.4 },
+  { m:'#82', id:'2L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:467.9, p01r:75.8, p02:243.1, p03:22.8, p04:44.0 },
+  { m:'#82', id:'2R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:464.0, p01r:74.4, p02:239.9, p03:13.8, p04:30.7 },
+  { m:'#82', id:'3L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:465.3, p01r:73.5, p02:243.4, p03:19.4, p04:40.8 },
+  { m:'#82', id:'3R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:485.5, p01r:76.8, p02:256.4, p03:31.3, p04:60.7 },
+  { m:'#82', id:'4L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:463.3, p01r:70.9, p02:241.3, p03:18.7, p04:37.5 },
+  { m:'#82', id:'4R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:463.9, p01r:72.0, p02:241.9, p03:17.7, p04:36.9 },
+  { m:'#82', id:'5L',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:459.8, p01r:73.4, p02:242.1, p03:24.0, p04:43.7 },
+  { m:'#82', id:'5R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:471.7, p01r:74.6, p02:247.2, p03:20.0, p04:42.5 },
+  { m:'#82', id:'6L',  date:'03.06.2026', l200:0.30, l1600:0.10, p01:473.9, p01r:74.6, p02:250.7, p03:24.4, p04:49.6 },
+  { m:'#82', id:'6R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:475.1, p01r:69.5, p02:247.9, p03:23.9, p04:47.5 },
+  { m:'#82', id:'7L',  date:'03.06.2026', l200:0.20, l1600:0.10, p01:463.9, p01r:73.6, p02:239.5, p03:16.2, p04:32.8 },
+  { m:'#82', id:'7R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:462.9, p01r:73.3, p02:244.1, p03:19.2, p04:39.2 },
+  { m:'#82', id:'8L',  date:'03.06.2026', l200:0.20, l1600:0.10, p01:474.3, p01r:73.7, p02:248.1, p03:23.7, p04:47.2 },
+  { m:'#82', id:'8R',  date:'03.06.2026', l200:0.20, l1600:0.00, p01:456.1, p01r:73.0, p02:236.9, p03:12.7, p04:27.8 },
+];
+
+/* ============================================================
+   LOGIC
+   ============================================================ */
+function checkVal(v, [lo, hi]) {
+  if (v < lo) return 'lo';
+  if (v > hi) return 'hi';
+  return 'ok';
+}
+
+function getStatus(inj) {
+  const p01 = checkVal(inj.p01, LIMITS.p01.del);
+  const p02 = checkVal(inj.p02, LIMITS.p02.del);
+  const p03 = checkVal(inj.p03, LIMITS.p03.del);
+  const p04 = checkVal(inj.p04, LIMITS.p04.del);
+  const fails = [p01,p02,p03,p04].filter(s=>s!=='ok').length;
+  const p03dev = Math.max(Math.abs(inj.p03-LIMITS.p03.del[0])/LIMITS.p03.del[0], Math.abs(inj.p03-LIMITS.p03.del[1])/LIMITS.p03.del[1]);
+  const p04dev = Math.max(Math.abs(inj.p04-LIMITS.p04.del[0])/LIMITS.p04.del[0], Math.abs(inj.p04-LIMITS.p04.del[1])/LIMITS.p04.del[1]);
+  const maxDev = Math.max(p03dev, p04dev);
+  if (fails===0) return 'ok';
+  if (fails>=3 || (fails>=1 && maxDev>0.1)) return 'crit';
+  return 'warn';
+}
+
+function devPct(v, [lo,hi]) {
+  if (v < lo) return ((lo-v)/lo*100).toFixed(1)+'% ниже';
+  if (v > hi) return ((v-hi)/hi*100).toFixed(1)+'% выше';
+  return 'норма';
+}
+
+function valClass(check) {
+  if (check==='ok') return 'val-ok';
+  if (check==='hi') return 'val-hi';
+  return 'val-lo';
+}
+
+function heatColor(v, [lo,hi]) {
+  if (v===null) return {bg:'rgba(62,240,175,.08)',color:'var(--tx3)'};
+  const status = checkVal(v,[lo,hi]);
+  if (status==='ok') {
+    // shade within range
+    const pct = (v-lo)/(hi-lo);
+    return {bg:`rgba(34,197,94,${0.1+pct*0.18})`, color:'var(--grn)'};
+  }
+  if (status==='hi') {
+    const over = (v-hi)/hi;
+    const alpha = Math.min(0.7, 0.2+over*2);
+    return {bg:`rgba(232,72,85,${alpha})`, color:'#fff'};
+  }
+  // lo
+  const under = (lo-v)/lo;
+  const alpha = Math.min(0.7, 0.2+under*2);
+  return {bg:`rgba(245,166,35,${alpha})`, color:'#fff'};
+}
+
+/* ============================================================
+   PAGES
+   ============================================================ */
+let currentPage = 'overview';
+function showPage(id, btn) {
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+  document.getElementById('p-'+id).classList.add('act');
+  document.querySelectorAll('.sbn2').forEach(b=>b.classList.remove('act'));
+  if (btn) btn.classList.add('act');
+  currentPage = id;
+}
+
+/* ============================================================
+   MACHINE SIDEBAR
+   ============================================================ */
+function buildSidebar() {
+  const machines = ['#73','#78','#82'];
+  const info = {'#73':{date:'26-27.04.2026',tested:2,total:16},'#78':{date:'22.05.2026',tested:4,total:16},'#82':{date:'03.06.2026',tested:16,total:16}};
+  const el = document.getElementById('machine-list');
+  el.innerHTML = '';
+  machines.forEach(m=>{
+    const injs = INJECTORS.filter(i=>i.m===m);
+    const fails = injs.filter(i=>getStatus(i)!=='ok').length;
+    const crits = injs.filter(i=>getStatus(i)==='crit').length;
+    const inf = info[m];
+    const cls = crits>0?'badge-crit':fails>0?'badge-warn':'badge-ok';
+    const badge = crits>0?`🔴 ${crits} крит.`:fails>0?`🟡 ${fails} брак`:`✅ ок`;
+    el.innerHTML+=`
+    <div class="mach-item" onclick="showMachineDetail('${m}')">
+      <div class="mach-num">${m}</div>
+      <div class="mach-meta">
+        <div class="mach-name">NTE200 ${m}</div>
+        <div class="mach-sub">${inf.date} · ${inf.tested}/${inf.total} цил.</div>
+      </div>
+      <div class="mach-badge ${cls}" style="font-size:9px">${badge}</div>
+    </div>`;
+  });
+}
+
+/* ============================================================
+   STATUS CARDS (Overview)
+   ============================================================ */
+function buildStatusCards() {
+  const el = document.getElementById('status-cards');
+  el.innerHTML = '';
+  INJECTORS.forEach(inj=>{
+    const st = getStatus(inj);
+    const color = st==='ok'?'var(--grn)':st==='crit'?'var(--red)':'var(--amb)';
+    const label = st==='ok'?'✅ ГОДНА':st==='crit'?'🔴 КРИТИЧНО':'🟡 ЗАМЕНА ДО ТО';
+    const p03c = checkVal(inj.p03, LIMITS.p03.del);
+    const p04c = checkVal(inj.p04, LIMITS.p04.del);
+    const p02c = checkVal(inj.p02, LIMITS.p02.del);
+    const p01c = checkVal(inj.p01, LIMITS.p01.del);
+    el.innerHTML+=`
+    <div class="status-card" style="border-left-color:${color};cursor:pointer" onclick="showMachineDetail('${inj.m}')">
+      <div class="sc-id" style="color:${color}">${inj.m} · ${inj.id}</div>
+      <div class="sc-machine" style="color:var(--tx3)">${inj.date}</div>
+      <div class="sc-tests">
+        <div class="sc-test">
+          <div class="sc-tname">P01 (1600 бар)</div>
+          <div class="sc-tval ${valClass(p01c)}">${inj.p01}</div>
+        </div>
+        <div class="sc-test">
+          <div class="sc-tname">P02 (1000 бар)</div>
+          <div class="sc-tval ${valClass(p02c)}">${inj.p02}</div>
+        </div>
+        <div class="sc-test">
+          <div class="sc-tname">P03 (400 бар)</div>
+          <div class="sc-tval ${valClass(p03c)}">${inj.p03}</div>
+        </div>
+        <div class="sc-test">
+          <div class="sc-tname">P04 (750 бар)</div>
+          <div class="sc-tval ${valClass(p04c)}">${inj.p04}</div>
+        </div>
+      </div>
+      <div class="sc-verdict" style="background:${color}22;color:${color}">${label}</div>
+    </div>`;
+  });
+}
+
+/* ============================================================
+   HEATMAP
+   ============================================================ */
+function buildHeatmap() {
+  const el = document.getElementById('heatmap-content');
+  const machines = ['#73','#78','#82'];
+  const tests = [
+    {key:'p01', label:'P01', lim:LIMITS.p01.del, norm:'441.5–495.5 см³'},
+    {key:'p02', label:'P02', lim:LIMITS.p02.del, norm:'220–260 см³'},
+    {key:'p03', label:'P03', lim:LIMITS.p03.del, norm:'16–30 см³'},
+    {key:'p04', label:'P04', lim:LIMITS.p04.del, norm:'41–51 см³'},
+  ];
+
+  let html = '';
+  machines.forEach(m=>{
+    const injs = INJECTORS.filter(i=>i.m===m);
+    html += `<div style="margin-bottom:24px">
+      <div style="font-size:12px;font-weight:800;color:var(--acc);margin-bottom:8px;padding:6px 10px;background:var(--card);border-radius:6px;border-left:3px solid var(--acc)">
+        NTE200 ${m} &nbsp;·&nbsp; <span style="color:var(--tx3);font-weight:400;font-size:10px">Протестировано: ${injs.length} форсунок · ${injs[0]?.date||''}</span>
+      </div>
+      <!-- header -->
+      <div class="heat-header">`;
+    injs.forEach(inj=>{ html+=`<div class="heat-hcell">${inj.id}</div>`; });
+    html += `</div>`;
+    tests.forEach(t=>{
+      html += `<div class="heat-row">
+        <div class="heat-lbl">${t.label}<div style="font-size:8px;opacity:.6">${t.norm}</div></div>
+        <div class="heat-cells">`;
+      injs.forEach(inj=>{
+        const v = inj[t.key];
+        const {bg,color} = heatColor(v, t.lim);
+        const chk = checkVal(v, t.lim);
+        const icon = chk==='ok'?'✓':chk==='hi'?'↑':'↓';
+        html+=`<div class="heat-cell" style="background:${bg};color:${color}" title="${inj.m} ${inj.id} · ${t.label}: ${v} (норма ${t.norm})">
+          <div class="heat-val">${v}</div>
+          <div class="heat-id">${icon}</div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   CHARTS
+   ============================================================ */
+let chartInstances = [];
+function buildCharts() {
+  const grid = document.getElementById('chart-grid');
+  grid.innerHTML = '';
+  chartInstances.forEach(c=>c.destroy());
+  chartInstances = [];
+
+  const tests = [
+    {key:'p01', label:'P01 — Полная нагрузка (1600 бар)', lim:LIMITS.p01.del, color:'#7e83fa'},
+    {key:'p02', label:'P02 — Средняя нагрузка (1000 бар)', lim:LIMITS.p02.del, color:'#3ef0af'},
+    {key:'p03', label:'P03 — Холостой ход (400 бар)', lim:LIMITS.p03.del, color:'#f5a623'},
+    {key:'p04', label:'P04 — Частичная нагрузка (750 бар)', lim:LIMITS.p04.del, color:'#e84855'},
+  ];
+
+  tests.forEach(t=>{
+    const labels = INJECTORS.map(i=>`${i.m}\n${i.id}`);
+    const values = INJECTORS.map(i=>i[t.key]);
+    const bgs = values.map(v=>{
+      const s = checkVal(v, t.lim);
+      if(s==='ok') return 'rgba(34,197,94,0.55)';
+      if(s==='hi') return 'rgba(232,72,85,0.75)';
+      return 'rgba(245,166,35,0.75)';
+    });
+    const borders = values.map(v=>{
+      const s = checkVal(v, t.lim);
+      if(s==='ok') return 'rgba(34,197,94,1)';
+      if(s==='hi') return 'rgba(232,72,85,1)';
+      return 'rgba(245,166,35,1)';
+    });
+
+    const id = 'chart-'+t.key;
+    grid.innerHTML += `<div class="chart-card"><div class="chart-title">${t.label}<span class="norm-hint" style="margin-left:8px">Норма: ${t.lim[0]}–${t.lim[1]} см³</span></div><div class="chart-wrap"><canvas id="${id}"></canvas></div></div>`;
+
+    setTimeout(()=>{
+      const ctx = document.getElementById(id).getContext('2d');
+      const inst = new Chart(ctx, {
+        type:'bar',
+        data:{
+          labels,
+          datasets:[{
+            label:'Подача, см³',
+            data:values,
+            backgroundColor:bgs,
+            borderColor:borders,
+            borderWidth:1.5,
+            borderRadius:3,
+          }]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{
+              backgroundColor:'#1c2630',
+              borderColor:'rgba(255,255,255,.15)',
+              borderWidth:1,
+              titleColor:'#e8edf6',
+              bodyColor:'#b3bddc',
+              callbacks:{
+                label:ctx=>{
+                  const v = ctx.parsed.y;
+                  const s = checkVal(v, t.lim);
+                  const status = s==='ok'?'✓ Норма':s==='hi'?'↑ Перелив':'↓ Недолив';
+                  return `${v} см³  ${status}`;
+                }
+              }
+            },
+            annotation:{},
+          },
+          scales:{
+            x:{
+              ticks:{color:'#80868b',font:{size:9}},
+              grid:{color:'rgba(255,255,255,.05)'},
+            },
+            y:{
+              ticks:{color:'#80868b',font:{size:9}},
+              grid:{color:'rgba(255,255,255,.05)'},
+              min: Math.min(...values)*0.85,
+              max: Math.max(...values)*1.08,
+            }
+          },
+          animation:{duration:600}
+        },
+        plugins:[{
+          id:'limits',
+          afterDraw(chart) {
+            const {ctx, chartArea, scales} = chart;
+            if (!chartArea) return;
+            ctx.save();
+            [t.lim[0], t.lim[1]].forEach((lim,i)=>{
+              const y = scales.y.getPixelForValue(lim);
+              ctx.beginPath();
+              ctx.setLineDash([4,3]);
+              ctx.strokeStyle = i===1?'rgba(232,72,85,0.6)':'rgba(245,166,35,0.6)';
+              ctx.lineWidth = 1.5;
+              ctx.moveTo(chartArea.left, y);
+              ctx.lineTo(chartArea.right, y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.fillStyle = i===1?'rgba(232,72,85,0.8)':'rgba(245,166,35,0.8)';
+              ctx.font = '9px monospace';
+              ctx.fillText(lim+' ('+( i===1?'макс':'мин')+')', chartArea.right-70, y-3);
+            });
+            ctx.restore();
+          }
+        }]
+      });
+      chartInstances.push(inst);
+    }, 50);
+  });
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+function buildTable() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  INJECTORS.forEach((inj,idx)=>{
+    const st = getStatus(inj);
+    const stLabel = st==='ok'?'<span class="bg4 bo">ГОДНА</span>':st==='crit'?'<span class="bg4 bc">КРИТИЧНО</span>':'<span class="bg4 bw">ЗАМЕНА ДО ТО</span>';
+    const p01c=checkVal(inj.p01,LIMITS.p01.del), p02c=checkVal(inj.p02,LIMITS.p02.del), p03c=checkVal(inj.p03,LIMITS.p03.del), p04c=checkVal(inj.p04,LIMITS.p04.del);
+    tbody.innerHTML+=`<tr onclick="showMachineDetail('${inj.m}')">
+      <td>${inj.m}</td>
+      <td style="font-weight:700;color:var(--acc)">${inj.id}</td>
+      <td style="color:var(--tx3)">${inj.date}</td>
+      <td class="${valClass(p01c)}">${inj.p01}</td>
+      <td class="${valClass(p02c)}">${inj.p02}</td>
+      <td class="${valClass(p03c)}">${inj.p03}</td>
+      <td class="${valClass(p04c)}">${inj.p04}</td>
+      <td style="color:var(--tx2)">${inj.p01r}</td>
+      <td>${stLabel}</td>
+    </tr>`;
+  });
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+function buildAlerts() {
+  const el = document.getElementById('alert-list');
+
+  const ALERTS = [
+    {sev:'crit', icon:'🔴', machine:'NTE200 №73', inj:'R1', title:'КРИТИЧНО — Немедленная замена', detail:'Все 4 теста провалены. P03 = 41,5 см³ (+38% от макс.). P04 = 62,1 см³ (+22% от макс.). Тяжёлый износ иглы/седла.', vals:'P01: 503↑ · P02: 276↑ · P03: 41.5↑↑ · P04: 62.1↑↑', deviations:'P01: +1.5% · P02: +6.2% · P03: +38.3% · P04: +21.8%'},
+    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'8R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 12,7 см³ (-21% от мин.). P04 = 27,8 см³ (-32% от мин.). Критический износ плунжерной пары.', vals:'P03: 12.7↓↓ · P04: 27.8↓↓', deviations:'P03: -20.6% · P04: -32.2%'},
+    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'2R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 13,8 см³ (-14% от мин.). P04 = 30,7 см³ (-25% от мин.). Износ плунжерной пары.', vals:'P03: 13.8↓↓ · P04: 30.7↓↓', deviations:'P03: -13.8% · P04: -25.1%'},
+    {sev:'crit', icon:'🔴', machine:'NTE200 №82', inj:'3R', title:'КРИТИЧНО — Немедленная замена', detail:'P03 = 31,3 см³ (+4%). P04 = 60,7 см³ (+19%). Перелив на частичной нагрузке — закоксовывание.', vals:'P03: 31.3↑ · P04: 60.7↑↑', deviations:'P03: +4.3% · P04: +18.9%'},
+    {sev:'crit', icon:'🔴', machine:'NTE200 №78', inj:'6L', title:'КРИТИЧНО — Немедленная замена', detail:'P02 = 263,7, P03 = 30,1 (граница), P04 = 54,3 (+6%). Систематический перелив.', vals:'P02: 263.7↑ · P03: 30.1↑ · P04: 54.3↑', deviations:'P02: +1.4% · P04: +6.5%'},
+    {sev:'crit', icon:'🔴', machine:'NTE200 №78', inj:'4R', title:'КРИТИЧНО — Немедленная замена', detail:'P02 = 262,1, P04 = 53,7 (+5%). Умеренный перелив на всех нагрузках.', vals:'P02: 262.1↑ · P04: 53.7↑', deviations:'P02: +0.8% · P04: +5.3%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'7L', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 32,8 см³ (-20% от мин.). Износ плунжерной пары.', vals:'P04: 32.8↓', deviations:'P04: -20.0%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'4L', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 37,5 см³ (-9% от мин.). Недолив на частичной нагрузке.', vals:'P04: 37.5↓', deviations:'P04: -8.5%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'4R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 36,9 см³ (-10%). Недолив на частичной нагрузке.', vals:'P04: 36.9↓', deviations:'P04: -10.0%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'7R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 39,2 см³ (-4% от мин.). Начальная стадия износа плунжера.', vals:'P04: 39.2↓', deviations:'P04: -4.4%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'1R', title:'Пограничное — Замена до следующего ТО', detail:'P03 = 30,1 (граница). P04 = 51,4 (граница). Риск быстрого выхода за допуск.', vals:'P03: 30.1↑ · P04: 51.4↑', deviations:'P03: +0.3% · P04: +0.8%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №82', inj:'3L', title:'Пограничное — Замена рекомендована', detail:'P04 = 40,8 см³ (ниже минимума 41,0). Пограничное состояние.', vals:'P04: 40.8↓', deviations:'P04: -0.5%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №78', inj:'3R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P02 = 261,7 см³. Незначительное превышение нормы.', vals:'P02: 261.7↑', deviations:'P02: +0.7%'},
+    {sev:'warn', icon:'🟡', machine:'NTE200 №78', inj:'6R', title:'Неудовлетворительно — Замена до следующего ТО', detail:'P04 = 38,6 см³ (-6% от мин.). Умеренный недолив.', vals:'P04: 38.6↓', deviations:'P04: -5.9%'},
+    {sev:'ok', icon:'✅', machine:'NTE200 №73', inj:'L2', title:'Годна — Плановый контроль', detail:'Все тесты в норме. P02 = 260 (на верхней границе) — наблюдение.', vals:'P01: 487 · P02: 260 · P03: 22.6 · P04: 41.7', deviations:'Все параметры в норме'},
+    {sev:'ok', icon:'✅', machine:'NTE200 №82', inj:'1L, 2L, 5L, 5R, 6L, 6R, 8L', title:'Годны (7 форсунок) — Плановый контроль', detail:'Все тесты в норме. Рекомендуется контрольное тестирование через 3000 м/ч.', vals:'Все в допуске', deviations:'Все параметры в норме'},
+  ];
+
+  const sevColor = {crit:'var(--red)',warn:'var(--amb)',ok:'var(--grn)'};
+  el.innerHTML = '';
+
+  // Group by severity
+  ['crit','warn','ok'].forEach(sev=>{
+    const items = ALERTS.filter(a=>a.sev===sev);
+    if (!items.length) return;
+    const secTitle = sev==='crit'?'🔴 КРИТИЧЕСКИЕ — Немедленная замена':sev==='warn'?'🟡 Неудовлетворительные — Замена до ТО':'✅ Годные — Плановый контроль';
+    el.innerHTML += `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${sevColor[sev]};margin:14px 0 6px;padding-bottom:5px;border-bottom:1px solid var(--brd)">${secTitle}</div>`;
+    items.forEach(a=>{
+      el.innerHTML+=`
+      <div class="ac" style="border-left-color:${sevColor[a.sev]}">
+        <div class="ai">${a.icon}</div>
+        <div class="ab">
+          <div class="at2" style="color:${sevColor[a.sev]}">${a.machine} · Форсунка ${a.inj}</div>
+          <div class="at2" style="color:var(--tx);font-size:11px;margin-top:2px">${a.title}</div>
+          <div class="ad2">${a.detail}</div>
+          <div class="ad2" style="margin-top:4px;font-family:'SF Mono','Fira Code',monospace;font-size:10px;color:var(--tx3)">${a.vals}</div>
+        </div>
+        <div class="afp" style="color:${sevColor[a.sev]};font-size:10px;text-align:right;min-width:100px">${a.deviations}</div>
+      </div>`;
+    });
+  });
+
+  // Recommendations block
+  el.innerHTML += `
+  <div style="margin-top:24px;padding:14px;background:var(--card);border-radius:9px;border-top:3px solid var(--amb)">
+    <div style="font-size:13px;font-weight:800;margin-bottom:10px;color:var(--amb)">📦 Потребность в запчастях</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">
+      <div style="background:var(--bg3);border-radius:6px;padding:10px">
+        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--red)">9 шт.</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №82 (минимум)</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:6px;padding:10px">
+        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--amb)">4+ шт.</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №78 (вероятно до 16)</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:6px;padding:10px">
+        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--amb)">1+ шт.</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:3px">NTE200 №73 (вероятно больше)</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:6px;padding:10px">
+        <div style="font-family:monospace;font-size:20px;font-weight:800;color:var(--acc)">28–40 шт.</div>
+        <div style="font-size:10px;color:var(--tx3);margin-top:3px">Рекомендуемый заказ (весь парк)</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--tx2);padding:8px 10px;background:var(--bg3);border-radius:5px;border-left:3px solid var(--acc)">
+      <strong style="color:var(--acc)">Артикул для замены:</strong> 2882077 — подтверждён гарантийными ремонтами на машинах №72 и №85
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   MACHINE DETAIL
+   ============================================================ */
+function showMachineDetail(m) {
+  // highlight sidebar
+  document.querySelectorAll('.mach-item').forEach(el=>{
+    el.classList.toggle('act', el.onclick.toString().includes(m));
+  });
+
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('act'));
+  document.getElementById('p-machine').classList.add('act');
+
+  const injs = INJECTORS.filter(i=>i.m===m);
+  const crits = injs.filter(i=>getStatus(i)==='crit').length;
+  const warns = injs.filter(i=>getStatus(i)==='warn').length;
+  const oks = injs.filter(i=>getStatus(i)==='ok').length;
+  const dateRange = [...new Set(injs.map(i=>i.date))].join(', ');
+
+  const el = document.getElementById('machine-detail-content');
+
+  // header
+  let html = `
+  <div class="mh">
+    <div>
+      <div class="mid">NTE200 ${m}</div>
+      <div class="mbr">Дата теста: ${dateRange} · Форсунок: ${injs.length} · Cummins CRI арт. 2867147</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-left:auto">
+      <div style="text-align:center;padding:6px 12px;background:var(--rd);border-radius:6px">
+        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--red)">${crits}</div>
+        <div style="font-size:9px;color:var(--red);text-transform:uppercase">Критич.</div>
+      </div>
+      <div style="text-align:center;padding:6px 12px;background:var(--ad);border-radius:6px">
+        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--amb)">${warns}</div>
+        <div style="font-size:9px;color:var(--amb);text-transform:uppercase">Замена до ТО</div>
+      </div>
+      <div style="text-align:center;padding:6px 12px;background:var(--gd);border-radius:6px">
+        <div style="font-family:monospace;font-size:18px;font-weight:800;color:var(--grn)">${oks}</div>
+        <div style="font-size:9px;color:var(--grn);text-transform:uppercase">Годных</div>
+      </div>
+    </div>
+  </div>
+  <div style="flex:1;overflow:auto;padding:14px">`;
+
+  // deviation bars section
+  html += `
+  <div class="sh"><div class="st2">📊 Отклонения по форсункам</div><div class="ss">Горизонтальные полосы · относительное отклонение от нормы</div></div>
+  <div class="tw" style="margin-bottom:14px">
+    <div class="th3"><div class="tt2">Сводная таблица — ${m}</div><div class="tsb">Подача, см³</div></div>
+    <div style="overflow-x:auto"><table class="rt">
+      <thead><tr>
+        <th>Форсунка</th>
+        <th>P01 <span style="color:var(--tx3);font-weight:400">(441.5–495.5)</span></th>
+        <th>P02 <span style="color:var(--tx3);font-weight:400">(220–260)</span></th>
+        <th>P03 <span style="color:var(--tx3);font-weight:400">(16–30)</span></th>
+        <th>P04 <span style="color:var(--tx3);font-weight:400">(41–51)</span></th>
+        <th>Обратка P01</th>
+        <th>Статус</th>
+      </tr></thead>
+      <tbody>`;
+
+  injs.forEach(inj=>{
+    const st = getStatus(inj);
+    const stL = st==='ok'?'<span class="bg4 bo">ГОДНА</span>':st==='crit'?'<span class="bg4 bc">КРИТИЧНО</span>':'<span class="bg4 bw">ЗАМЕНА ДО ТО</span>';
+    const p01c=checkVal(inj.p01,LIMITS.p01.del), p02c=checkVal(inj.p02,LIMITS.p02.del), p03c=checkVal(inj.p03,LIMITS.p03.del), p04c=checkVal(inj.p04,LIMITS.p04.del);
+    const idColor = st==='ok'?'var(--grn)':st==='crit'?'var(--red)':'var(--amb)';
+    html+=`<tr>
+      <td style="font-weight:800;color:${idColor}">${inj.id}</td>
+      <td class="${valClass(p01c)}">${inj.p01}</td>
+      <td class="${valClass(p02c)}">${inj.p02}</td>
+      <td class="${valClass(p03c)}">${inj.p03}</td>
+      <td class="${valClass(p04c)}">${inj.p04}</td>
+      <td style="color:var(--tx2)">${inj.p01r}</td>
+      <td>${stL}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  // Deviation visualization for P03 and P04
+  html += `<div class="sh" style="margin-top:4px"><div class="st2">🎯 Визуализация отклонений P03 и P04</div></div>`;
+  const tests2 = [{key:'p03',lim:[16,30],label:'P03 (400 бар, холостой ход)'},{key:'p04',lim:[41,51],label:'P04 (750 бар, частичная нагрузка)'}];
+  tests2.forEach(t=>{
+    html+=`<div class="tw" style="margin-bottom:10px">
+      <div class="th3"><div class="tt2">${t.label}</div><div class="tsb">Норма: ${t.lim[0]}–${t.lim[1]} см³</div></div>
+      <div style="padding:10px 14px">`;
+    injs.forEach(inj=>{
+      const v = inj[t.key];
+      const [lo,hi] = t.lim;
+      const status = checkVal(v,[lo,hi]);
+      const color = status==='ok'?'var(--grn)':status==='hi'?'var(--red)':'var(--amb)';
+      const idColor = getStatus(inj)==='ok'?'var(--grn)':getStatus(inj)==='crit'?'var(--red)':'var(--amb)';
+      // bar visualization: range 0..hi*1.5, needle at lo and hi
+      const rangeMax = hi*1.6;
+      const barPct = Math.min(100, v/rangeMax*100);
+      const loPct = lo/rangeMax*100;
+      const hiPct = hi/rangeMax*100;
+      const devText = devPct(v,[lo,hi]);
+      html+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-family:monospace;font-size:11px;font-weight:700;color:${idColor};width:30px">${inj.id}</div>
+        <div style="font-family:monospace;font-size:12px;font-weight:700;color:${color};width:42px">${v}</div>
+        <div style="flex:1;position:relative;height:16px;background:var(--bg3);border-radius:4px;overflow:visible">
+          <!-- normal zone -->
+          <div style="position:absolute;left:${loPct}%;width:${hiPct-loPct}%;height:100%;background:rgba(34,197,94,.15);border-radius:2px"></div>
+          <!-- value bar -->
+          <div style="position:absolute;left:0;width:${barPct}%;height:100%;background:${color};border-radius:4px;opacity:.8;transition:width .5s"></div>
+          <!-- limit lines -->
+          <div style="position:absolute;left:${loPct}%;top:-3px;width:2px;height:22px;background:rgba(245,166,35,.7)"></div>
+          <div style="position:absolute;left:${hiPct}%;top:-3px;width:2px;height:22px;background:rgba(232,72,85,.7)"></div>
+        </div>
+        <div style="font-size:10px;color:${color};font-weight:600;width:110px;text-align:right">${devText}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+
+  html += `</div>`; // end scroll area
+  el.innerHTML = html;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  buildSidebar();
+  buildStatusCards();
+  buildHeatmap();
+  buildAlerts();
+  buildCharts();
+  buildTable();
+}
+
+// Re-build charts when tab is shown (canvas must be visible)
+document.querySelector('[onclick*="charts"]')?.addEventListener('click', ()=>{
+  setTimeout(buildCharts, 100);
+});
+
+init();
+</script>
+</body>
+</html>
