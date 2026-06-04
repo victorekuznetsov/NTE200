@@ -761,6 +761,8 @@ const PLY_BASE = {
 
 // ═══ TIME RANGE ════════════════════════════════════════════════════
 let activeRangeSec = null;  // null = show all
+let _syncing = false;       // global re-entrancy guard for range sync
+
 function applyRange(secs, btn){
   activeRangeSec = secs;
   document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
@@ -778,14 +780,18 @@ function applyRangeSlider(pct){
   syncRangeToCharts();
 }
 function syncRangeToCharts(){
+  if(_syncing)return;
   const panel=document.querySelector('.panel.show');
   if(!panel)return;
+  _syncing=true;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     try{
       if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
       else Plotly.relayout(div.id,{'xaxis.range':[0,activeRangeSec]});
     }catch(e){}
   });
+  // Clear flag after a tick so async plotly_relayout callbacks are also suppressed
+  setTimeout(function(){_syncing=false;},100);
 }
 
 // ═══ CHART RANGE SYNC (drag-to-zoom links all charts on tab) ═════
@@ -794,10 +800,11 @@ function attachAllSync(){
   if(!panel)return;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     if(typeof div.on!=='function')return;
-    // Always re-attach: Plotly.react wipes internal event listeners
+    // Always re-attach: Plotly.react wipes internal event listeners on each render
     if(typeof div.removeAllListeners==='function')div.removeAllListeners('plotly_relayout');
     div.on('plotly_relayout',function(ed){
-      if(div.__syncing)return;
+      // Ignore events fired by our own syncRangeToCharts calls
+      if(_syncing)return;
       let rng=null;
       if(typeof ed['xaxis.range[0]']!=='undefined'){
         rng=[ed['xaxis.range[0]'],ed['xaxis.range[1]']];
@@ -808,23 +815,15 @@ function attachAllSync(){
       } else {
         return;
       }
+      // Update shared state and reflect in range bar
       activeRangeSec=rng?rng[1]:null;
-      // Reflect in range bar
       document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
       if(!rng){
         const fb=document.querySelector('.rng-btn');if(fb)fb.classList.add('act');
         const sl=document.getElementById('rng-slider');if(sl){sl.value=100;const rv=document.getElementById('rng-val');if(rv)rv.textContent='100%';}
       }
-      // Sync peer charts
-      panel.querySelectorAll('div[id^="ch-"]').forEach(other=>{
-        if(other===div||other.__syncing)return;
-        other.__syncing=true;
-        try{
-          if(rng)Plotly.relayout(other.id,{'xaxis.range':rng});
-          else Plotly.relayout(other.id,{'xaxis.autorange':true});
-        }catch(e){}
-        delete other.__syncing;
-      });
+      // Sync all other charts on this tab via the central function
+      syncRangeToCharts();
     });
   });
 }
