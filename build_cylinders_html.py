@@ -1633,22 +1633,6 @@ function renderCompare(){
 // ═══ FILE LOADING ════════════════════════════════════════════════════
 const RU_MON={янв:'Jan',фев:'Feb',мар:'Mar',апр:'Apr',май:'May',июн:'Jun',июл:'Jul',авг:'Aug',сен:'Sep',окт:'Oct',ноя:'Nov',дек:'Dec'};
 function ruDate2(s){for(const[r,e] of Object.entries(RU_MON))s=s.replace(r,e);return s;}
-// Normalise any common INSITE date format to YYYY-MM-DD for reliable ISO parsing
-const _MON_NUM={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-function fixDate(s){
-  s=s.trim();
-  let m;
-  // DD.MM.YYYY
-  m=/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s);
-  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
-  // DD-MonthName-YYYY  (INSITE Russian format after ruDate2: "16-May-2026")
-  m=/^(\d{1,2})-([A-Za-z]{3,})-(\d{4})$/.exec(s);
-  if(m){const mo=_MON_NUM[m[2].slice(0,1).toUpperCase()+m[2].slice(1,3).toLowerCase()];if(mo)return m[3]+'-'+mo+'-'+m[1].padStart(2,'0');}
-  // M/D/YYYY or MM/DD/YYYY  ("05/16/2026")
-  m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if(m)return m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
-  return s;  // already YYYY-MM-DD or unknown
-}
 function splitCSV(line){
   const f=[];let q=false,s='';
   for(const c of line){if(c==='"'){q=!q;}else if(c===','&&!q){f.push(s.trim());s='';}else s+=c;}
@@ -1696,10 +1680,8 @@ function processINSITE(text,fname){
   for(const k of Object.keys(paramCols))out.p[k]=[];
   for(let i=0;i<rows.length;i+=step){
     const r=rows[i];
-    let d=fixDate(ruDate2(r[dateC]||'')),t=(r[timeC]||'').substring(0,8);
-    // Use T separator only for ISO dates (YYYY-MM-DD); keep space for M/D/YYYY etc.
-    const sep=/^\d{4}-\d{2}-\d{2}$/.test(d)?'T':' ';
-    try{const dt=new Date(d+sep+t);if(isNaN(dt.getTime()))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
+    let d=ruDate2(r[dateC]||''),t=(r[timeC]||'').substring(0,8);
+    try{const dt=new Date(d+' '+t);if(isNaN(dt))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
     for(let n=1;n<=16;n++){if(!cylCols[n])continue;const v=parseFloat((r[cylCols[n]]||'').replace(',','.'));out.cyls[String(n)].push(isNaN(v)?null:Math.round(v));}
     for(const[k,c]of Object.entries(paramCols)){const raw=(r[c]||'').replace(',','.');const v=BOOL_KEYS.has(k)?boolVal(r[c]||''):parseFloat(raw);out.p[k].push(isNaN(v)?null:BOOL_KEYS.has(k)?v:Math.round(v*100)/100);}
   }
@@ -1713,41 +1695,24 @@ function processINSITE(text,fname){
   return{key,truck,model,session:{date:dateStr,ts:out.ts,cyls:out.cyls,p:out.p,file:fname}};
 }
 function loadFiles(files){
-  let done=0,loaded=0,firstKey=null;const total=files.length;
-  const st=document.getElementById('file-status');
+  let loaded=0;const total=files.length;
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=e=>{
-      let result=null;
-      // Try cp1251 first (most INSITE logs), then UTF-8, then UTF-8-BOM
-      for(const enc of['windows-1251','utf-8']){
-        try{
-          const text=new TextDecoder(enc).decode(e.target.result);
-          result=processINSITE(text,file.name);
-          if(result)break;
-        }catch(ex){console.warn(file.name,enc,ex);}
-      }
-      if(result){
-        const{key,truck,model,session}=result;
-        if(!TRUCKS[key]){TRUCKS[key]={truck,model,sessions:[session]};TRUCK_ORDER.push(key);}
-        else TRUCKS[key].sessions.push(session);
-        loaded++;
-        if(!firstKey)firstKey=key;
-      }
-      done++;
-      st.textContent=done<total?`Парсинг: ${done}/${total}…`:`Загружено: ${loaded}/${total}${loaded<total?' (некоторые не распознаны)':''}`;
-      if(done===total){
-        buildSidebar();
-        if(!activeTruck&&firstKey){
-          selectTruck(firstKey);
-        } else if(activeTruck){
-          buildDatePills(activeTruck);
-          renderCurrentTab();
-          setTimeout(attachAllSync,300);
+      try{
+        const result=processINSITE(e.target.result,file.name);
+        if(result){
+          const{key,truck,model,session}=result;
+          if(!TRUCKS[key]){TRUCKS[key]={truck,model,sessions:[session]};TRUCK_ORDER.push(key);}
+          else TRUCKS[key].sessions.push(session);
+          loaded++;
+          document.getElementById('file-status').textContent=`Загружено: ${loaded}/${total}`;
+          buildSidebar();
+          if(!activeTruck)selectTruck(key);
         }
-      }
+      }catch(ex){console.warn(file.name,ex);}
     };
-    reader.readAsArrayBuffer(file);  // read binary so TextDecoder can try multiple encodings
+    reader.readAsText(file,'windows-1251');
   });
 }
 
