@@ -764,6 +764,12 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 const TRUCKS = __DATA__;
 const TRUCK_ORDER = __ORDER__;
 
+// Capture clean template HTML before Plotly renders anything into the DOM.
+// Used by saveDashboard() so the saved file opens with a fresh layout.
+const _PAGE_TEMPLATE = (function(){
+  try{return '<!DOCTYPE html>\n'+document.documentElement.outerHTML;}catch(e){return '';}
+})();
+
 const A_CYLS = [1,3,5,7,9,11,13,15];
 const B_CYLS = [2,4,6,8,10,12,14,16];
 const COLORS_A = ['#ff7c3a','#ffb830','#e55c3a','#cc4020','#ff9860','#f0c000','#dd7060','#aa3010'];
@@ -1031,33 +1037,41 @@ function saveDashboard(){
   btns.forEach(b=>{if(b.textContent.includes('HTML')){b.textContent='⏳ Сохранение...';b.disabled=true;}});
   setTimeout(function(){
     try{
-      // Capture current DOM (includes pre-rendered + dynamically added trucks)
-      let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-      // Re-inject current runtime TRUCKS/TRUCK_ORDER so saved file has all loaded data
+      // Use the clean template captured before Plotly rendered anything.
+      // This avoids saving Plotly's inline px-sizes which break the layout on reopen.
+      let html=_PAGE_TEMPLATE||('<!DOCTYPE html>\n'+document.documentElement.outerHTML);
+
+      // Inject current runtime TRUCKS/TRUCK_ORDER (includes any CSV-loaded trucks)
       const trucksJson=JSON.stringify(TRUCKS,null,0);
       const orderJson=JSON.stringify(TRUCK_ORDER);
       const tm='const TRUCKS = ';
-      const om='const TRUCK_ORDER = ';
+      const om='\nconst TRUCK_ORDER = ';
       const ti=html.indexOf(tm);
       if(ti>-1){
-        // Find end of TRUCKS assignment: semicolon before next const/let/var statement
-        const after=html.indexOf('\nconst TRUCK_ORDER',ti);
+        const after=html.indexOf(om,ti);
         if(after>-1) html=html.substring(0,ti+tm.length)+trucksJson+';'+html.substring(after);
       }
       const oi=html.indexOf(om);
       if(oi>-1){
-        const oend=html.indexOf(';',oi);
+        const oend=html.indexOf(';',oi+om.length);
         if(oend>-1) html=html.substring(0,oi+om.length)+orderJson+html.substring(oend);
       }
-      // Also update static truck-list HTML to match current state
-      const tlRe=/id="truck-list">[^<]*([\s\S]*?)<\/div>\s*<div class="sb-section" id="date-section"/;
+
+      // Update static truck-list to reflect current trucks (including loaded ones)
       const listDiv=document.getElementById('truck-list');
       if(listDiv){
-        const newList='id="truck-list">'+listDiv.innerHTML;
-        html=html.replace(/id="truck-list">[\s\S]*?(?=<div class="sb-section" id="date-section")/,newList);
+        const marker='id="truck-list">';
+        const si=html.indexOf(marker);
+        if(si>-1){
+          // Find end of truck-list div: next sibling section
+          const ei=html.indexOf('<div class="sb-section" id="date-section"',si);
+          if(ei>-1){
+            html=html.substring(0,si+marker.length)+listDiv.innerHTML+'\n  '+html.substring(ei);
+          }
+        }
       }
-      _triggerDownload(html,'text/html;charset=utf-8',
-        'qsk50_dashboard_'+_ts()+'.html');
+
+      _triggerDownload(html,'text/html;charset=utf-8','qsk50_dashboard_'+_ts()+'.html');
     }catch(err){alert('Ошибка сохранения: '+err.message);}
     btns.forEach(b=>{if(b.disabled){b.textContent='⬇ Сохранить дашборд (HTML)';b.disabled=false;}});
   },80);
