@@ -4359,18 +4359,9 @@ const PLY_BASE = {
 };
 
 // ═══ TIME RANGE ════════════════════════════════════════════════════
-// Delta charts stay at full x-range but show a highlight rect for the selected window
-const DELTA_CHARTS = new Set(['ch-dev','ch-delta','ch-cmp-delta']);
 let activeRangeStart = 0;   // start of selected window (seconds)
 let activeRangeSec = null;  // end of selected window; null = show all
 let _syncing = false;       // global re-entrancy guard for range sync
-
-function deltaShape(x0,x1){
-  return [{type:'rect',xref:'x',yref:'paper',
-    x0:x0,x1:x1,y0:0,y1:1,
-    fillcolor:'rgba(62,240,175,0.07)',
-    line:{color:'rgba(62,240,175,0.4)',width:1.5,dash:'dot'}}];
-}
 
 function applyRange(secs, btn){
   activeRangeStart=0;
@@ -4396,36 +4387,26 @@ function syncRangeToCharts(){
   if(!panel)return;
   _syncing=true;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
+    if(div.id==='ch-dev')return;  // ch-dev is recomputed by renderCylDev, not relayouted
     try{
-      if(DELTA_CHARTS.has(div.id)){
-        // Delta charts: always full x-range, highlight selected window with a shape
-        if(activeRangeSec===null){
-          Plotly.relayout(div.id,{'shapes':[],'xaxis.autorange':true});
-        } else {
-          Plotly.relayout(div.id,{'shapes':deltaShape(activeRangeStart,activeRangeSec),'xaxis.autorange':true});
-        }
-      } else {
-        if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
-        else Plotly.relayout(div.id,{'xaxis.range':[activeRangeStart,activeRangeSec],'xaxis.autorange':false});
-      }
+      if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
+      else Plotly.relayout(div.id,{'xaxis.range':[activeRangeStart,activeRangeSec],'xaxis.autorange':false});
     }catch(e){}
   });
-  // Clear flag after a tick so async plotly_relayout callbacks are also suppressed
+  // Recompute per-cylinder deviation bars for the selected time window
+  if(currentTab==='cylinders')renderCylDev();
   setTimeout(function(){_syncing=false;},100);
 }
 
-// ═══ CHART RANGE SYNC (drag-to-zoom links EGT charts; delta charts show highlight) ═════
+// ═══ CHART RANGE SYNC (drag-to-zoom links all time-series charts on tab) ═════
 function attachAllSync(){
   const panel=document.querySelector('.panel.show');
   if(!panel)return;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     if(typeof div.on!=='function')return;
-    // Delta charts do not drive cross-chart sync (they keep full range)
-    if(DELTA_CHARTS.has(div.id))return;
-    // Always re-attach: Plotly.react wipes internal event listeners on each render
+    if(div.id==='ch-dev')return;  // categorical x-axis — not a time-series, excluded from sync
     if(typeof div.removeAllListeners==='function')div.removeAllListeners('plotly_relayout');
     div.on('plotly_relayout',function(ed){
-      // Ignore events fired by our own syncRangeToCharts calls
       if(_syncing)return;
       let rng=null;
       if(typeof ed['xaxis.range[0]']!=='undefined'){
@@ -4437,7 +4418,6 @@ function attachAllSync(){
       } else {
         return;
       }
-      // Update shared range state (start + end)
       activeRangeStart=rng?rng[0]:0;
       activeRangeSec=rng?rng[1]:null;
       document.querySelectorAll('.rng-btn').forEach(b=>b.classList.remove('act'));
@@ -4445,7 +4425,6 @@ function attachAllSync(){
         const fb=document.querySelector('.rng-btn');if(fb)fb.classList.add('act');
         const sl=document.getElementById('rng-slider');if(sl){sl.value=100;const rv=document.getElementById('rng-val');if(rv)rv.textContent='100%';}
       }
-      // Sync all charts on this tab (zoom EGT, highlight delta)
       syncRangeToCharts();
     });
   });
@@ -4456,18 +4435,13 @@ function pl(id,data,lay){
   if(lay&&lay.xaxis)L.xaxis=Object.assign({},PLY_BASE.xaxis,lay.xaxis);
   if(lay&&lay.yaxis)L.yaxis=Object.assign({},PLY_BASE.yaxis,lay.yaxis);
   if(lay&&lay.yaxis2)L.yaxis2=Object.assign({showgrid:false,color:'#80868B'},lay.yaxis2);
-  if(DELTA_CHARTS.has(id)){
-    // Delta charts: full x-range always; add highlight shape if a range is active
-    L.xaxis=Object.assign({},L.xaxis||PLY_BASE.xaxis,{autorange:true});
-    if(activeRangeSec!==null)L.shapes=deltaShape(activeRangeStart,activeRangeSec);
-  } else {
-    if(activeRangeSec!==null){L.xaxis=L.xaxis||{};L.xaxis.range=[activeRangeStart,activeRangeSec];L.xaxis.autorange=false;}
-  }
+  // ch-dev uses categorical x-axis — never apply numeric time range to it
+  if(id!=='ch-dev'&&activeRangeSec!==null){L.xaxis=L.xaxis||{};L.xaxis.range=[activeRangeStart,activeRangeSec];L.xaxis.autorange=false;}
   Plotly.react(id,data,L,PLY_CFG);
 }
+function plEmpty(id,msg,h){pl(id,[],{height:h||180,title:{text:msg||'Нет данных',font:{color:'#80868B',size:10}}});}
 
-// ═══ STATE ════════════════════════════════════════════════════════
-let activeTruck=null;
+
 let activeSession={};
 let compareMode=false;
 let compareSet=new Set();
@@ -4832,6 +4806,50 @@ function renderCylinders(){
     }],{height:185,yaxis:{title:'В−А °C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5}});
     document.getElementById('conclusion').innerHTML='<strong>Режим сравнения:</strong> выбрано '+keys.length+' самосвалов';
   }
+}
+
+// Recomputes ch-dev (per-cylinder deviation bars) for the current time window.
+// Called by syncRangeToCharts so bars update when user zooms without re-rendering everything.
+function renderCylDev(){
+  if(compareMode||!activeTruck)return;
+  const s=getSession(activeTruck);if(!s)return;
+  const{ts,cyls}=s;
+  const secs=timeSecs(ts);
+  const aCyls=A_CYLS.filter(n=>cyls[String(n)]);
+  const bCyls=B_CYLS.filter(n=>cyls[String(n)]);
+  if(!aCyls.length&&!bCyls.length)return;
+  // Indices that fall within the selected time window
+  const idxs=(activeRangeSec===null)
+    ?secs.map((_,i)=>i)
+    :secs.reduce((acc,t,i)=>{if(t>=activeRangeStart&&t<=activeRangeSec)acc.push(i);return acc;},[]);
+  if(!idxs.length)return;
+  function cylMeanFilt(n){
+    const arr=cyls[String(n)];if(!arr)return null;
+    const vals=idxs.map(i=>arr[i]).filter(v=>v!=null&&!isNaN(v));
+    return vals.length?vals.reduce((s,v)=>s+v,0)/vals.length:null;
+  }
+  const aMeans=aCyls.map(cylMeanFilt).filter(v=>v!=null);
+  const bMeans=bCyls.map(cylMeanFilt).filter(v=>v!=null);
+  const aAvgM=aMeans.length?aMeans.reduce((s,v)=>s+v,0)/aMeans.length:0;
+  const bAvgM=bMeans.length?bMeans.reduce((s,v)=>s+v,0)/bMeans.length:0;
+  const allC=[...aCyls,...bCyls].sort((a,b)=>a-b);
+  const devs=allC.map(n=>{
+    const v=cylMeanFilt(n)||0;
+    const bk=A_CYLS.includes(n)?aAvgM:bAvgM;
+    return{n,d:Math.round(v-bk),bank:A_CYLS.includes(n)?'A':'B'};
+  });
+  // Use Plotly.react directly to bypass pl()'s time-range axis logic
+  const L=Object.assign({},PLY_BASE,{
+    height:185,
+    shapes:[mkLine(30,'rgba(255,184,48,.4)'),mkLine(-30,'rgba(255,184,48,.4)'),mkLine(60,'rgba(255,64,96,.4)'),mkLine(-60,'rgba(255,64,96,.4)')],
+    yaxis:Object.assign({},PLY_BASE.yaxis,{title:'∆°C',zeroline:true,zerolinecolor:'rgba(255,255,255,.2)',zerolinewidth:1.5}),
+    xaxis:Object.assign({},PLY_BASE.xaxis,{tickfont:{size:9}}),
+    margin:{l:48,r:40,t:14,b:36}
+  });
+  Plotly.react('ch-dev',[{type:'bar',x:devs.map(d=>'Ц'+d.n),y:devs.map(d=>d.d),
+    text:devs.map(d=>(d.d>=0?'+':'')+d.d+'°'),textposition:'outside',textfont:{size:9},
+    marker:{color:devs.map(d=>{const ab=Math.abs(d.d),base=d.bank==='A'?'255,124,58':'91,143,255',op=ab>60?.95:ab>30?.7:.45;return`rgba(${base},${op})`;})},
+  }],L,PLY_CFG);
 }
 
 // ═══ TAB: PRESSURE ══════════════════════════════════════════════════
