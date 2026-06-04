@@ -782,8 +782,8 @@ function syncRangeToCharts(){
   if(!panel)return;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
     try{
-      if(activeRangeSec===null)Plotly.relayout(div,{'xaxis.autorange':true});
-      else Plotly.relayout(div,{'xaxis.range':[0,activeRangeSec]});
+      if(activeRangeSec===null)Plotly.relayout(div.id,{'xaxis.autorange':true});
+      else Plotly.relayout(div.id,{'xaxis.range':[0,activeRangeSec]});
     }catch(e){}
   });
 }
@@ -793,8 +793,9 @@ function attachAllSync(){
   const panel=document.querySelector('.panel.show');
   if(!panel)return;
   panel.querySelectorAll('div[id^="ch-"]').forEach(div=>{
-    if(typeof div.on!=='function'||div.__syncAttached)return;
-    div.__syncAttached=true;
+    if(typeof div.on!=='function')return;
+    // Always re-attach: Plotly.react wipes internal event listeners
+    if(typeof div.removeAllListeners==='function')div.removeAllListeners('plotly_relayout');
     div.on('plotly_relayout',function(ed){
       if(div.__syncing)return;
       let rng=null;
@@ -819,8 +820,8 @@ function attachAllSync(){
         if(other===div||other.__syncing)return;
         other.__syncing=true;
         try{
-          if(rng)Plotly.relayout(other,{'xaxis.range':rng});
-          else Plotly.relayout(other,{'xaxis.autorange':true});
+          if(rng)Plotly.relayout(other.id,{'xaxis.range':rng});
+          else Plotly.relayout(other.id,{'xaxis.autorange':true});
         }catch(e){}
         delete other.__syncing;
       });
@@ -980,7 +981,7 @@ function selectTruck(key){
   updateCal();
   renderCurrentTab();
   updateHeader();
-  setTimeout(attachAllSync,60);
+  setTimeout(attachAllSync,300);
 }
 
 function buildDatePills(key){
@@ -1068,7 +1069,7 @@ function showTab(name,btn){
   btn.classList.add('act');
   currentTab=name;
   renderCurrentTab();
-  setTimeout(attachAllSync,60);
+  setTimeout(attachAllSync,300);
 }
 function showSub(name,btn){
   document.querySelectorAll('.sub-panel').forEach(p=>p.classList.remove('show'));
@@ -1608,7 +1609,7 @@ window.addEventListener('load',function(){
     buildDatePills(activeTruck);
     updateHeader();
     renderCylinders();
-    setTimeout(attachAllSync,120);
+    setTimeout(attachAllSync,400);
   }
 });
 </script>
