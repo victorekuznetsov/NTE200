@@ -1688,7 +1688,9 @@ function processINSITE(text,fname){
   for(let i=0;i<rows.length;i+=step){
     const r=rows[i];
     let d=fixDate(ruDate2(r[dateC]||'')),t=(r[timeC]||'').substring(0,8);
-    try{const dt=new Date(d+'T'+t);if(isNaN(dt.getTime()))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
+    // Use T separator only for ISO dates (YYYY-MM-DD); keep space for M/D/YYYY etc.
+    const sep=/^\d{4}-\d{2}-\d{2}$/.test(d)?'T':' ';
+    try{const dt=new Date(d+sep+t);if(isNaN(dt.getTime()))continue;out.ts.push(dt.toISOString().substring(0,19));}catch{continue;}
     for(let n=1;n<=16;n++){if(!cylCols[n])continue;const v=parseFloat((r[cylCols[n]]||'').replace(',','.'));out.cyls[String(n)].push(isNaN(v)?null:Math.round(v));}
     for(const[k,c]of Object.entries(paramCols)){const raw=(r[c]||'').replace(',','.');const v=BOOL_KEYS.has(k)?boolVal(r[c]||''):parseFloat(raw);out.p[k].push(isNaN(v)?null:BOOL_KEYS.has(k)?v:Math.round(v*100)/100);}
   }
