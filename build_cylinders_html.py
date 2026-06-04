@@ -301,11 +301,15 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 
 /* HEADER */
 .hdr{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(20,27,32,0.98);border-bottom:1px solid var(--brd);z-index:10}
-.hdr-left{display:flex;flex-direction:column;gap:2px}
+.hdr-left{display:flex;flex-direction:column;gap:2px;flex-shrink:0}
 .logo{font-weight:800;font-size:14px;color:#fff;letter-spacing:-.3px;white-space:nowrap}
 .logo span{color:var(--tx3);font-weight:400;font-size:10px;margin-left:8px}
-.contact-notice{font-size:10px;color:var(--tx2);font-style:italic}
-.hdr-info{font-size:11px;color:var(--amb);font-family:'Courier New',monospace;margin-left:auto;white-space:nowrap}
+.hdr-center{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center}
+.company-name{font-weight:800;font-size:15px;color:var(--acc);letter-spacing:2px;text-transform:uppercase}
+.contact-notice{font-size:9.5px;color:var(--tx2);font-style:italic}
+.contact-notice a{color:var(--acc);text-decoration:none;opacity:.8}
+.contact-notice a:hover{opacity:1}
+.hdr-info{font-size:11px;color:var(--amb);font-family:'Courier New',monospace;white-space:nowrap;flex-shrink:0}
 
 /* RANGE BAR */
 .range-bar{display:flex;align-items:center;gap:6px;padding:5px 12px;background:var(--bg2);border-bottom:1px solid var(--brd);flex-shrink:0;flex-wrap:wrap}
@@ -337,6 +341,11 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 .truck-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .truck-date{font-size:9px;color:var(--tx3);margin-top:1px}
 .cmp-chk{width:13px;height:13px;accent-color:var(--blu);flex-shrink:0;cursor:pointer;display:none}
+.truck-del{background:none;border:none;color:rgba(255,64,96,0.4);cursor:pointer;font-size:14px;padding:0 3px;line-height:1;border-radius:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.truck-item:hover .truck-del{opacity:1}
+.truck-del:hover{color:#ff4060 !important;background:rgba(255,64,96,0.1)}
+.save-btn{width:100%;padding:7px;background:rgba(62,240,175,0.08);border:1px solid rgba(62,240,175,0.25);border-radius:6px;color:var(--acc);font-size:10px;cursor:pointer;text-align:center;transition:all .12s}
+.save-btn:hover{background:rgba(62,240,175,0.15);border-color:var(--acc)}
 .cmp-chk.show{display:block}
 
 /* Date pills */
@@ -428,7 +437,10 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 <div class="hdr">
   <div class="hdr-left">
     <div class="logo">⚙ QSK50 <span>Цилиндры · Давление · Температуры · Топливо · Режимы</span></div>
-    <div class="contact-notice">При наличии вопросов и замечаний обращаться к Кузнецову Виктору Евгеньевича</div>
+  </div>
+  <div class="hdr-center">
+    <div class="company-name">Развитие</div>
+    <div class="contact-notice">При возникновении вопросов и замечаний обращаться к Кузнецову Виктору Евгеньевичу &nbsp;<a href="mailto:kuznetsovve@industrservice.ru">kuznetsovve@industrservice.ru</a></div>
   </div>
   <div class="hdr-info" id="hdr-info">–</div>
 </div>
@@ -466,6 +478,11 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
       <div class="file-status" id="file-status"></div>
       <input type="file" id="file-in" accept=".csv" multiple style="display:none" onchange="loadFiles(this.files)">
     </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-label">💾 Экспорт</div>
+    <button class="save-btn" onclick="saveDashboard()">⬇ Сохранить дашборд (HTML)</button>
   </div>
 </div>
 
@@ -958,9 +975,57 @@ function buildSidebar(){
       if(currentTab==='compare')renderCompare();
     };
 
-    item.appendChild(dot);item.appendChild(info);item.appendChild(chk);
+    const del=document.createElement('button');
+    del.className='truck-del';del.title='Удалить';del.textContent='×';
+    del.onclick=e=>deleteTruck(key,e);
+
+    item.appendChild(dot);item.appendChild(info);item.appendChild(chk);item.appendChild(del);
     list.appendChild(item);
   });
+}
+
+function deleteTruck(key,e){
+  e.stopPropagation();
+  const idx=TRUCK_ORDER.indexOf(key);
+  if(idx===-1)return;
+  TRUCK_ORDER.splice(idx,1);
+  delete TRUCKS[key];
+  compareSet.delete(key);
+  if(activeTruck===key){
+    activeTruck=TRUCK_ORDER.length?TRUCK_ORDER[0]:null;
+    activeSession={};
+  }
+  buildSidebar();
+  if(activeTruck){
+    buildDatePills(activeTruck);
+    updateHeader();
+    renderCurrentTab();
+    setTimeout(attachAllSync,300);
+  } else {
+    document.getElementById('hdr-info').textContent='–';
+    document.getElementById('date-section').style.display='none';
+    ['ch-a','ch-b','ch-dev','ch-delta'].forEach(id=>{try{Plotly.purge(id);}catch(e){}});
+  }
+}
+
+function saveDashboard(){
+  const btn=document.querySelector('.save-btn');
+  if(btn){btn.textContent='⏳ Сохранение...';btn.disabled=true;}
+  setTimeout(function(){
+    try{
+      const html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+      const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      const ts=new Date().toISOString().slice(0,16).replace('T','_').replace(':','');
+      a.download='qsk50_dashboard_'+ts+'.html';
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }catch(err){alert('Ошибка сохранения: '+err.message);}
+    if(btn){btn.textContent='⬇ Сохранить дашборд (HTML)';btn.disabled=false;}
+  },50);
 }
 
 function toggleCmpMode(){
