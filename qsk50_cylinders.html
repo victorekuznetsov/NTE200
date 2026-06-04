@@ -3942,9 +3942,8 @@ body{font-family:Arial,system-ui,sans-serif;background:var(--bg);color:var(--tx)
 .truck-name{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .truck-date{font-size:9px;color:var(--tx3);margin-top:1px}
 .cmp-chk{width:13px;height:13px;accent-color:var(--blu);flex-shrink:0;cursor:pointer;display:none}
-.truck-del{background:none;border:none;color:rgba(255,64,96,0.4);cursor:pointer;font-size:14px;padding:0 3px;line-height:1;border-radius:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
-.truck-item:hover .truck-del{opacity:1}
-.truck-del:hover{color:#ff4060 !important;background:rgba(255,64,96,0.1)}
+.truck-del{background:none;border:none;color:rgba(255,64,96,0.35);cursor:pointer;font-size:13px;padding:2px 5px;line-height:1;border-radius:3px;flex-shrink:0;opacity:1;transition:all .15s}
+.truck-del:hover{color:#ff4060 !important;background:rgba(255,64,96,0.15);transform:scale(1.2)}
 .save-btn{width:100%;padding:7px;background:rgba(62,240,175,0.08);border:1px solid rgba(62,240,175,0.25);border-radius:6px;color:var(--acc);font-size:10px;cursor:pointer;text-align:center;transition:all .12s}
 .save-btn:hover{background:rgba(62,240,175,0.15);border-color:var(--acc)}
 .cmp-chk.show{display:block}
@@ -4601,6 +4600,9 @@ function buildSidebar(){
 
 function deleteTruck(key,e){
   e.stopPropagation();
+  const d=TRUCKS[key];
+  const label=d?d.model+' №'+d.truck:key;
+  if(!confirm('Удалить '+label+' из дашборда?'))return;
   const idx=TRUCK_ORDER.indexOf(key);
   if(idx===-1)return;
   TRUCK_ORDER.splice(idx,1);
