@@ -5232,12 +5232,21 @@ function renderCompare(){
 // ═══ FILE LOADING ════════════════════════════════════════════════════
 const RU_MON={янв:'Jan',фев:'Feb',мар:'Mar',апр:'Apr',май:'May',июн:'Jun',июл:'Jul',авг:'Aug',сен:'Sep',окт:'Oct',ноя:'Nov',дек:'Dec'};
 function ruDate2(s){for(const[r,e] of Object.entries(RU_MON))s=s.replace(r,e);return s;}
-// Convert DD.MM.YYYY → YYYY-MM-DD so browsers can parse it reliably
+// Normalise any common INSITE date format to YYYY-MM-DD for reliable ISO parsing
+const _MON_NUM={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
 function fixDate(s){
   s=s.trim();
-  const m=/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s);
+  let m;
+  // DD.MM.YYYY
+  m=/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s);
   if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
-  return s;
+  // DD-MonthName-YYYY  (INSITE Russian format after ruDate2: "16-May-2026")
+  m=/^(\d{1,2})-([A-Za-z]{3,})-(\d{4})$/.exec(s);
+  if(m){const mo=_MON_NUM[m[2].slice(0,1).toUpperCase()+m[2].slice(1,3).toLowerCase()];if(mo)return m[3]+'-'+mo+'-'+m[1].padStart(2,'0');}
+  // M/D/YYYY or MM/DD/YYYY  ("05/16/2026")
+  m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if(m)return m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+  return s;  // already YYYY-MM-DD or unknown
 }
 function splitCSV(line){
   const f=[];let q=false,s='';
@@ -5308,20 +5317,25 @@ function loadFiles(files){
   Array.from(files).forEach(file=>{
     const reader=new FileReader();
     reader.onload=e=>{
-      try{
-        const result=processINSITE(e.target.result,file.name);
-        if(result){
-          const{key,truck,model,session}=result;
-          if(!TRUCKS[key]){TRUCKS[key]={truck,model,sessions:[session]};TRUCK_ORDER.push(key);}
-          else TRUCKS[key].sessions.push(session);
-          loaded++;
-          if(!firstKey)firstKey=key;
-        }
-      }catch(ex){console.warn(file.name,ex);}
+      let result=null;
+      // Try cp1251 first (most INSITE logs), then UTF-8, then UTF-8-BOM
+      for(const enc of['windows-1251','utf-8']){
+        try{
+          const text=new TextDecoder(enc).decode(e.target.result);
+          result=processINSITE(text,file.name);
+          if(result)break;
+        }catch(ex){console.warn(file.name,enc,ex);}
+      }
+      if(result){
+        const{key,truck,model,session}=result;
+        if(!TRUCKS[key]){TRUCKS[key]={truck,model,sessions:[session]};TRUCK_ORDER.push(key);}
+        else TRUCKS[key].sessions.push(session);
+        loaded++;
+        if(!firstKey)firstKey=key;
+      }
       done++;
       st.textContent=done<total?`Парсинг: ${done}/${total}…`:`Загружено: ${loaded}/${total}${loaded<total?' (некоторые не распознаны)':''}`;
       if(done===total){
-        // All files processed — update sidebar and refresh view
         buildSidebar();
         if(!activeTruck&&firstKey){
           selectTruck(firstKey);
@@ -5332,7 +5346,7 @@ function loadFiles(files){
         }
       }
     };
-    reader.readAsText(file,'windows-1251');
+    reader.readAsArrayBuffer(file);  // read binary so TextDecoder can try multiple encodings
   });
 }
 
