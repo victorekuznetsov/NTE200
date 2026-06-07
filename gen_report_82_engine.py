@@ -560,83 +560,56 @@ story += section_title('ИНЖЕНЕРНЫЙ АНАЛИЗ ИЗНОСА КЛАП�
 story += [SP(1)]
 
 story.append(info_box(
-    'Источник: Cummins CCEC — «Отчёт об анализе износа тарелки клапана» (气门盘部磨损分析报告)\n'
-    'Номер отчёта: MS&T2026033  |  Докладчик: Tao Lang  |  Лаборатория материалов Cummins  |  2026/03/10\n'
-    'ESN: 33232926  |  Артикул: 3088389 (клапан) / 3086192 (седло клапана)  |  Наработка: 15 126 ч\n'
-    'Обстоятельства: замеренные зазоры клапанов оказались малыми — при вскрытии обнаружен '
-    'износ тарельчатых частей нескольких выпускных клапанов.',
+    'Фотофиксация: выпускные клапаны ДВС QSK50 №82 — состояние при вскрытии ГБЦ.\n'
+    'Характер повреждения: тяжёлые углеродистые отложения (нагар) на тарелке и стержне клапана, '
+    'критическая просадка рабочей фаски. Анализ типа отложений — Cummins CCEC (EDS):\n'
+    'основной компонент — зола моторного масла (Ca, Zn, P, Mg); присутствует пыль карьера (Al, Si).',
     bg_color=C['panel2'], text_color=C['text'], size=8, border_color=C['blue']
 ))
 story.append(SP(2))
 
-# Photos row 1: two worn valves + valve seat ring
-img_valves_path  = '/tmp/valve_pdf_images/p2_e0.png'
-img_seat_path    = '/tmp/valve_pdf_images/p3_e0.png'
-img_stem1_path   = '/tmp/valve_pdf_images/p3_e1.png'
-img_stem2_path   = '/tmp/valve_pdf_images/p3_e2.png'
+# Photos — actual #82 valve photos from the field
+img_v1_path = '/tmp/valve_photos_82/image-07-06-26-11-08.jpg'
+img_v2_path = '/tmp/valve_photos_82/image-07-06-26-11-08-1.jpg'
 
-photo_w1 = PW * 0.55
-photo_w2 = PW * 0.42
+photo_w = PW * 0.495
+photo_h = photo_w * 467 / 1000  # aspect ratio 1000x467
 
 try:
-    img_v = RLImage(img_valves_path, width=photo_w1, height=photo_w1 * 695/1179)
-    img_s = RLImage(img_seat_path,   width=photo_w2, height=photo_w2 * 430/522)
+    img_v1 = RLImage(img_v1_path, width=photo_w, height=photo_h)
+    img_v2 = RLImage(img_v2_path, width=photo_w, height=photo_h)
 
-    caption_v = Pc(C['sub'],
-        'Выпускные клапаны с просадкой тарелок: 1.20 мм и 1.36 мм\n'
-        '(измерения от плоскости ГБЦ до тарелки). Видна явная просадка.',
-        size=7, lead=10)
-    caption_s = Pc(C['sub'],
-        'Седло клапана: отложения на торцевой поверхности — зола моторного масла.',
-        size=7, lead=10)
+    cap_v1 = Pc(C['red'],
+        'Выпускной клапан №82 (крупный план): критический нагар на тарелке и фаске. '
+        'Потеря герметичности — причина повышенной температуры EGT.',
+        size=7.5, lead=11)
+    cap_v2 = Pc(C['red'],
+        'Два выпускных клапана №82: равномерный нагар — системная проблема '
+        '(воздушный фильтр, качество топлива или режим эксплуатации).',
+        size=7.5, lead=11)
 
-    photo_row1 = Table(
-        [[img_v, img_s],
-         [caption_v, caption_s]],
-        colWidths=[photo_w1 + 4, photo_w2 + 4]
+    photo_tbl = Table(
+        [[img_v1,  img_v2],
+         [cap_v1,  cap_v2]],
+        colWidths=[photo_w + 4, photo_w + 4]
     )
-    photo_row1.setStyle(TableStyle([
-        ('BACKGROUND',   (0, 0), (-1, -1), C['panel']),
-        ('ALIGN',        (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN',       (0, 0), (-1, 0),  'MIDDLE'),
-        ('VALIGN',       (0, 1), (-1, 1),  'TOP'),
-        ('TOPPADDING',   (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING',(0, 0), (-1, -1), 4),
+    photo_tbl.setStyle(TableStyle([
+        ('BACKGROUND',   (0, 0), (-1, 0), C['hdr']),
+        ('BACKGROUND',   (0, 1), (-1, 1), C['redbg']),
+        ('ALIGN',        (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN',       (0, 0), (-1, 0), 'MIDDLE'),
+        ('VALIGN',       (0, 1), (-1, 1), 'TOP'),
+        ('TOPPADDING',   (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING',(0, 0), (-1, -1), 5),
         ('LEFTPADDING',  (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('BOX',          (0, 0), (-1, -1), 0.5, C['border']),
+        ('BOX',          (0, 0), (-1, -1), 1.0, C['red']),
+        ('INNERGRID',    (0, 0), (-1, -1), 0.3, C['border']),
     ]))
-    story.append(photo_row1)
+    story.append(photo_tbl)
     story.append(SP(3))
 except Exception as e:
-    story.append(info_box(f'[Фото клапанов не загружено: {e}]', C['redbg'], C['red']))
-
-# Photos row 2: two macro stem photos
-try:
-    img_m1 = RLImage(img_stem1_path, width=PW * 0.45, height=PW * 0.45 * 590/444)
-    img_m2 = RLImage(img_stem2_path, width=PW * 0.45, height=PW * 0.45 * 622/552)
-    cap_m1 = Pc(C['sub'], 'Макро: стержень клапана с нагаром и отложениями (зола масла + пыль)', size=7, lead=10)
-    cap_m2 = Pc(C['sub'], 'Макро: тарелка клапана — поверхностный слой чёрный, внутри — белые отложения', size=7, lead=10)
-    photo_row2 = Table(
-        [[img_m1, img_m2],
-         [cap_m1, cap_m2]],
-        colWidths=[PW * 0.50, PW * 0.50]
-    )
-    photo_row2.setStyle(TableStyle([
-        ('BACKGROUND',   (0, 0), (-1, -1), C['panel']),
-        ('ALIGN',        (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN',       (0, 0), (-1, 0),  'MIDDLE'),
-        ('VALIGN',       (0, 1), (-1, 1),  'TOP'),
-        ('TOPPADDING',   (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING',(0, 0), (-1, -1), 4),
-        ('LEFTPADDING',  (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-        ('BOX',          (0, 0), (-1, -1), 0.5, C['border']),
-    ]))
-    story.append(photo_row2)
-    story.append(SP(3))
-except Exception as e:
-    story.append(info_box(f'[Макро фото не загружено: {e}]', C['redbg'], C['red']))
+    story.append(info_box(f'[Фото клапанов №82 не загружено: {e}]', C['redbg'], C['red']))
 
 # EDS findings summary
 story += [
