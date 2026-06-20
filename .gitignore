@@ -1,1 +1,14 @@
 .claude/
+.smart-env/
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Бинарники плагинов Obsidian (восстанавливаются из community-plugins.json)
+.obsidian/plugins/*/main.js
+.obsidian/plugins/*/styles.css
+.obsidian/plugins/*/.gitignore
+
+# Временные файлы
+*.pkl
+~$*.xlsx
+~$*.docx
