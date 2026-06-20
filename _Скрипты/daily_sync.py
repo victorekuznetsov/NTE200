@@ -148,9 +148,25 @@ def write_log(moved: list, today: str):
 
 def git_sync(moved: list, today: str):
     try:
+        # 1. Сначала тянем изменения с GitHub
+        subprocess.run(
+            ["git", "pull", "--rebase", "origin", "main"],
+            cwd=ROOT, check=True, capture_output=True
+        )
+
+        # 2. Стейджим локальные изменения
         subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True, capture_output=True)
-        msg = f"Ежедневная синхронизация {today}: {len(moved)} файлов"
-        subprocess.run(["git", "commit", "-m", msg], cwd=ROOT, check=True, capture_output=True)
+
+        # 3. Коммитим только если есть что коммитить
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=ROOT, capture_output=True
+        )
+        if result.returncode != 0:  # есть staged изменения
+            msg = f"Ежедневная синхронизация {today}: {len(moved)} файлов"
+            subprocess.run(["git", "commit", "-m", msg], cwd=ROOT, check=True, capture_output=True)
+
+        # 4. Пушим на GitHub
         subprocess.run(["git", "push", "origin", "main"], cwd=ROOT, check=True, capture_output=True)
         return True, "OK"
     except subprocess.CalledProcessError as e:
@@ -197,13 +213,13 @@ def main():
     # 5. Записать лог
     write_log(moved, today)
 
-    # 6. Git push (только если что-то изменилось)
+    # 6. Git pull + push (всегда, даже если нечего перемещать — тянем с GitHub)
+    ok, msg = git_sync(moved, today[:10])
+    status = "✓" if ok else f"✗ {msg}"
     if moved:
-        ok, msg = git_sync(moved, today[:10])
-        status = "✓" if ok else f"✗ {msg}"
         print(f"[{today}] Перемещено: {len(moved)} файлов | Git: {status}")
     else:
-        print(f"[{today}] Новых файлов в корне не обнаружено")
+        print(f"[{today}] Новых файлов нет, синхронизация с GitHub: {status}")
 
 
 if __name__ == "__main__":
