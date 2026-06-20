@@ -146,44 +146,33 @@ def write_log(moved: list, today: str):
         f.write("\n".join(lines))
 
 
-def git_sync(moved: list, today: str):
+def git_run(args: list) -> tuple:
     try:
-        # 1. Сначала тянем изменения с GitHub
-        subprocess.run(
-            ["git", "pull", "--rebase", "origin", "main"],
-            cwd=ROOT, check=True, capture_output=True
-        )
-
-        # 2. Стейджим локальные изменения
-        subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True, capture_output=True)
-
-        # 3. Коммитим только если есть что коммитить
-        result = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            cwd=ROOT, capture_output=True
-        )
-        if result.returncode != 0:  # есть staged изменения
-            msg = f"Ежедневная синхронизация {today}: {len(moved)} файлов"
-            subprocess.run(["git", "commit", "-m", msg], cwd=ROOT, check=True, capture_output=True)
-
-        # 4. Пушим на GitHub
-        subprocess.run(["git", "push", "origin", "main"], cwd=ROOT, check=True, capture_output=True)
+        subprocess.run(args, cwd=ROOT, check=True, capture_output=True)
         return True, "OK"
     except subprocess.CalledProcessError as e:
         return False, e.stderr.decode("utf-8", errors="replace") if e.stderr else str(e)
 
 
 def main():
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     today = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # 1. Pull ПЕРВЫМ — до любых изменений файлов
+    pull_ok, pull_msg = git_run(["git", "pull", "--ff-only", "origin", "main"])
+    pull_status = "OK" if pull_ok else f"FAIL: {pull_msg.strip()[:80]}"
+
     moved = []
 
-    # 1. Найти файлы в корне которые нужно разложить
+    # 2. Найти файлы в корне которые нужно разложить
     candidates = [
         f for f in ROOT.iterdir()
         if f.is_file() and not excluded(f)
     ]
 
-    # 2. Классифицировать и переместить
+    # 3. Классифицировать и переместить
     for f in candidates:
         folder, create_note = classify(f.name)
         if not folder:
@@ -192,34 +181,37 @@ def main():
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest = dest_dir / f.name
         if dest.exists():
-            # файл уже есть — пропускаем
             continue
         f.rename(dest)
         moved.append((f.name, folder, create_note))
 
-    # 3. Создать .md заметки для техотчётов
+    # 4. Создать .md заметки для техотчётов
     for name, folder, create_note in moved:
         if create_note:
             machine = extract_machine_number(name)
             create_md_note(ROOT / folder / name, machine, today[:10])
 
-    # 4. Обновить индексы затронутых папок
+    # 5. Обновить индексы затронутых папок
     seen_folders = set()
     for name, folder, _ in moved:
         if folder not in seen_folders:
             update_index(folder, name)
             seen_folders.add(folder)
 
-    # 5. Записать лог
+    # 6. Записать лог
     write_log(moved, today)
 
-    # 6. Git pull + push (всегда, даже если нечего перемещать — тянем с GitHub)
-    ok, msg = git_sync(moved, today[:10])
-    status = "✓" if ok else f"✗ {msg}"
-    if moved:
-        print(f"[{today}] Перемещено: {len(moved)} файлов | Git: {status}")
-    else:
-        print(f"[{today}] Новых файлов нет, синхронизация с GitHub: {status}")
+    # 7. Commit + Push
+    git_run(["git", "add", "-A"])
+    has_changes = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"], cwd=ROOT, capture_output=True
+    ).returncode != 0
+    if has_changes:
+        git_run(["git", "commit", "-m", f"Синхронизация {today[:10]}: {len(moved)} файлов"])
+    push_ok, push_msg = git_run(["git", "push", "origin", "main"])
+    push_status = "OK" if push_ok else f"FAIL: {push_msg.strip()[:80]}"
+
+    print(f"[{today}] pull:{pull_status} | push:{push_status} | перемещено:{len(moved)}")
 
 
 if __name__ == "__main__":
