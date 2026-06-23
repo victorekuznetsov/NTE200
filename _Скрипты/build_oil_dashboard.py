@@ -61,7 +61,23 @@ for fl in DB:
             if v: PCT[f"{fl}||{n}"][k]={'p50':pctl(v,.5),'p90':pctl(v,.9),'p95':pctl(v,.95)}
 META={'gen':datetime.date.today().isoformat(),
       'fleets':{fl:{'machines':len(DB[fl]),'probes':sum(len(DB[fl][m][n]) for m in DB[fl] for n in DB[fl][m])} for fl in DB}}
-data_json=json.dumps({'DB':DB,'PCT':PCT,'META':META,'PARAMS':PARAMS},ensure_ascii=False,separators=(',',':'))
+# Воздействия (ремонты ГБЦ/клапанов) из техотчётов — метки для графика (узел ДВС)
+EVENTS={'NTE200':{
+ '51':[['2025-07-17','Замена ГБЦ']],
+ '58':[['2025-08-10','Толкатель/клапан'],['2026-03-16','Клапан ГБЦ']],
+ '47':[['2025-08-11','Замена ГБЦ']],
+ '48':[['2025-12-17','Замена ГБЦ'],['2026-03-31','Повторный ремонт']],
+ '43':[['2026-01-21','Клапаны+форсунки']],
+ '83':[['2026-03-30','Замена ГБЦ']],
+ '55':[['2026-05-13','Клапаны']],
+ '78':[['2026-05-20','Клапаны']],
+ '69':[['2026-05-25','Клапаны']],
+ '54':[['2026-06-12','Клапаны']],
+ '89':[['2026-06-12','Клапаны']],
+ '77':[['2026-06-16','Втулка']],
+ '87':[['2026-06-18','Клапаны']],
+}}
+data_json=json.dumps({'DB':DB,'PCT':PCT,'META':META,'PARAMS':PARAMS,'EVENTS':EVENTS},ensure_ascii=False,separators=(',',':'))
 
 HTML=r'''<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
 <title>Дашборд масла — NTE200 / 730E · АО Развитие</title>
@@ -147,32 +163,49 @@ function setTab(t,b){cTab=t;document.querySelectorAll('.tabs button').forEach(x=
 function series(){if(!cM||!D.DB[cF][cM][cN])return [];return D.DB[cF][cM][cN].filter(p=>p[cP]!=null).map(p=>({x:p.dt,y:p[cP]}))}
 function pct(){return (D.PCT[cF+'||'+cN]||{})[cP]||{}}
 function critList(){let out=[];const node=cN;for(const m in D.DB[cF]){for(const p of (D.DB[cF][m][node]||[])){const pc=(D.PCT[cF+'||'+node]||{});let fl=[];for(const k of ['Fe','Cu','Si','ST','OXI']){if(pc[k]&&p[k]!=null&&p[k]>pc[k].p95)fl.push(k)}if(fl.length)out.push({m,dt:p.dt,fl,Fe:p.Fe,Si:p.Si,ST:p.ST})}}return out.sort((a,b)=>b.dt<a.dt?-1:1)}
+function evOf(){if(cF!=='NTE200'||cN!=='ДВС'||!cM)return [];return ((D.EVENTS.NTE200||{})[cM]||[])}
+function ts(d){return new Date(d).getTime()}
+function fmt(t){const z=new Date(t);return ('0'+z.getDate()).slice(-2)+'.'+('0'+(z.getMonth()+1)).slice(-2)+'.'+String(z.getFullYear()).slice(2)}
 function draw(){
  const cv=$('cv');const dpr=devicePixelRatio||1;const W=cv.clientWidth,H=340;cv.width=W*dpr;cv.height=H*dpr;
  const x=cv.getContext('2d');x.scale(dpr,dpr);x.clearRect(0,0,W,H);
  $('chTitle').textContent=cM?`№${cM} · ${cN} · ${PLBL[cP]||cP}`:'Выберите машину слева';
- const s=series();const pc=pct();
- const pad={l:44,r:12,t:12,b:24};const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+ const s=series().map(d=>({t:ts(d.x),y:d.y,dt:d.x}));const pc=pct();const ev=evOf();
+ const pad={l:46,r:14,t:14,b:46};const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
  let ys=s.map(d=>d.y);['p50','p90','p95'].forEach(k=>{if(pc[k]!=null)ys.push(pc[k])});
  if(!ys.length)ys=[0,1];let ymax=Math.max(...ys)*1.1||1,ymin=Math.min(0,...ys);
- const X=i=>pad.l+(s.length<2?pw/2:pw*i/(s.length-1));const Y=v=>pad.t+ph-ph*(v-ymin)/(ymax-ymin||1);
+ // time scale: include event dates in range
+ let tvals=s.map(d=>d.t).concat(ev.map(e=>ts(e[0])));
+ if(!tvals.length){x.fillStyle='#707880';x.font='13px Calibri';x.fillText('Нет данных по выбору',pad.l+10,pad.t+30);return}
+ let tmin=Math.min(...tvals),tmax=Math.max(...tvals);if(tmin===tmax){tmin-=864e5;tmax+=864e5}
+ const X=t=>pad.l+pw*(t-tmin)/(tmax-tmin);const Y=v=>pad.t+ph-ph*(v-ymin)/(ymax-ymin||1);
+ // axes
  x.strokeStyle='#D7DCDF';x.lineWidth=1;x.beginPath();x.moveTo(pad.l,pad.t);x.lineTo(pad.l,pad.t+ph);x.lineTo(pad.l+pw,pad.t+ph);x.stroke();
  x.fillStyle='#707880';x.font='11px Calibri';
  for(let g=0;g<=4;g++){const v=ymin+(ymax-ymin)*g/4;const yy=Y(v);x.fillText(v.toFixed(1),4,yy+3);x.strokeStyle='#EEF1F2';x.beginPath();x.moveTo(pad.l,yy);x.lineTo(pad.l+pw,yy);x.stroke()}
- const lines=[['p50','#2EA043'],['p90','#E08C2E'],['p95','#E05252']];
- lines.forEach(([k,c])=>{if(pc[k]==null)return;x.strokeStyle=c;x.setLineDash([5,4]);x.beginPath();x.moveTo(pad.l,Y(pc[k]));x.lineTo(pad.l+pw,Y(pc[k]));x.stroke();x.setLineDash([]);x.fillStyle=c;x.fillText(k.toUpperCase()+' '+pc[k],pad.l+pw-54,Y(pc[k])-3)});
- if(s.length){x.strokeStyle='#293136';x.lineWidth=2;x.beginPath();s.forEach((d,i)=>{i?x.lineTo(X(i),Y(d.y)):x.moveTo(X(i),Y(d.y))});x.stroke();
-  s.forEach((d,i)=>{const crit=pc.p95!=null&&d.y>pc.p95;x.fillStyle=crit?'#E05252':'#293136';x.beginPath();x.arc(X(i),Y(d.y),crit?4:3,0,7);x.fill()});}
+ // date ticks on X
+ x.fillStyle='#707880';x.textAlign='center';
+ for(let g=0;g<=5;g++){const t=tmin+(tmax-tmin)*g/5;const xx=X(t);x.strokeStyle='#EEF1F2';x.beginPath();x.moveTo(xx,pad.t);x.lineTo(xx,pad.t+ph);x.stroke();x.fillStyle='#707880';x.fillText(fmt(t),xx,pad.t+ph+14)}
+ x.textAlign='left';
+ // percentile lines
+ [['p50','#2EA043'],['p90','#E08C2E'],['p95','#E05252']].forEach(([k,c])=>{if(pc[k]==null)return;x.strokeStyle=c;x.setLineDash([5,4]);x.beginPath();x.moveTo(pad.l,Y(pc[k]));x.lineTo(pad.l+pw,Y(pc[k]));x.stroke();x.setLineDash([]);x.fillStyle=c;x.fillText(k.toUpperCase()+' '+pc[k],pad.l+pw-52,Y(pc[k])-3)});
+ // event markers (воздействия)
+ ev.forEach(e=>{const xx=X(ts(e[0]));x.strokeStyle='#9B59B6';x.setLineDash([3,3]);x.lineWidth=1.5;x.beginPath();x.moveTo(xx,pad.t);x.lineTo(xx,pad.t+ph);x.stroke();x.setLineDash([]);
+  x.save();x.translate(xx,pad.t+2);x.rotate(-Math.PI/2);x.fillStyle='#9B59B6';x.font='10px Calibri';x.textAlign='right';x.fillText('▲ '+e[1]+' '+fmt(ts(e[0])),-2,10);x.restore();x.textAlign='left'});
+ // series
+ if(s.length){x.strokeStyle='#293136';x.lineWidth=2;x.beginPath();s.forEach((d,i)=>{i?x.lineTo(X(d.t),Y(d.y)):x.moveTo(X(d.t),Y(d.y))});x.stroke();
+  s.forEach(d=>{const crit=pc.p95!=null&&d.y>pc.p95;x.fillStyle=crit?'#E05252':'#293136';x.beginPath();x.arc(X(d.t),Y(d.y),crit?4:3,0,7);x.fill()});}
 }
 function renderTab(){
  let h='';
  if(cTab=='tbl'){
   if(!cM){h='<div style="color:#707880">Выберите машину.</div>'}else{
-   const rows=(D.DB[cF][cM][cN]||[]).slice().reverse().slice(0,16);const pc=pct();
-   h='<table><tr><th>Дата</th><th>Масло</th><th>Fe</th><th>Cu</th><th>Si</th><th>TBN</th><th>Сажа</th><th>V100</th><th>Состояние</th></tr>';
+   const all=(D.DB[cF][cM][cN]||[]).slice().reverse();const rows=all;const pc=pct();
+   h=`<div style="font-size:12px;color:#707880;margin-bottom:4px">Все пробы (${all.length}) с начала отбора. <span style="color:#9B59B6">▲ фиолетовые метки на графике — воздействия (ремонты ГБЦ/клапанов) из техотчётов.</span></div>`;
+   h+='<div style="max-height:300px;overflow:auto"><table><tr><th>Дата</th><th>Масло</th><th>Fe</th><th>Cu</th><th>Si</th><th>TBN</th><th>Сажа</th><th>V100</th><th>Состояние</th></tr>';
    for(const p of rows){const c=(k)=>{const pcc=(D.PCT[cF+'||'+cN]||{})[k];if(pcc&&p[k]!=null&&p[k]>pcc.p95)return'crit';if(pcc&&p[k]!=null&&p[k]>pcc.p90)return'warn';return''};
     h+=`<tr><td>${p.dt}</td><td style="text-align:left">${p.oil||''}</td><td class="${c('Fe')}">${p.Fe??''}</td><td class="${c('Cu')}">${p.Cu??''}</td><td class="${c('Si')}">${p.Si??''}</td><td>${p.TBN??''}</td><td class="${c('ST')}">${p.ST??''}</td><td>${p.V100??''}</td><td style="text-align:left">${p.st||''}</td></tr>`}
-   h+='</table>'}
+   h+='</table></div>'}
  }else if(cTab=='crit'){
   const cl=critList().slice(0,40);
   h=`<div style="font-size:12px;color:#707880;margin-bottom:6px">Узел ${cN}: пробы с превышением P95 по Fe/Cu/Si/Сажа/OXI</div><table><tr><th>Маш</th><th>Дата</th><th>Превышения</th><th>Fe</th><th>Si</th><th>Сажа</th></tr>`;
