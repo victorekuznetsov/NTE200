@@ -3,6 +3,7 @@
 """Большая презентация «Анализ отказов ГБЦ QSK50 — NTE200» по шаблону (структура 100-слайдов),
 светлый фон АО Развитие (#F5F5F5 / #293136 / #3EF0AF), расширено до 200+ слайдов, data-driven."""
 import os, json, math, tempfile, glob, re, statistics, datetime, warnings; warnings.filterwarnings('ignore')
+from collections import defaultdict
 import matplotlib; matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
@@ -236,6 +237,33 @@ im=ax.imshow(M,cmap='RdYlGn_r',vmin=0,vmax=1); ax.set_xticks(range(6)); ax.set_y
 ax.set_xticklabels(labels,fontsize=7); ax.set_yticklabels(labels,fontsize=7)
 ax.set_title('Матрица связей факторов (качеств.)',color=HX(INK),weight='bold')
 CH['corr']=save(f,'corr.png')
+# переход масел по времени (NTE200 и 730E)
+OT=_j.load(open('_Данные/Аналитика/oil_timeline.json'))
+def brand_short(b):
+    if 'Газпром' in b and 'G-Profi' in b: return 'Газпромнефть G-Profi'
+    if 'TEBOIL' in b: return 'TEBOIL Super HPD'
+    if 'Shell' in b: return 'Shell Rimula'
+    if 'Komatsu' in b: return 'Komatsu EO15W40'
+    if 'Mobil' in b: return 'Mobil Delvac'
+    if 'Лукойл' in b: return 'Лукойл Авангард'
+    return b[:18]
+COLB={'Газпромнефть G-Profi':HX(ACC),'TEBOIL Super HPD':HX(ORG),'Shell Rimula':HX(GRY),'Komatsu EO15W40':HX(BLU),'Mobil Delvac':HX(RED),'Лукойл Авангард':HX(GRN)}
+f,axes=plt.subplots(2,1,figsize=(11.6,5.2),dpi=150); f.patch.set_facecolor(HX(BG))
+for ax,fl in zip(axes,['NTE200','730E']):
+    ax.set_facecolor(HX(BG)); [sp.set_color(HX(GRY)) for sp in ax.spines.values()]; ax.tick_params(colors=HX(INK),labelsize=7)
+    months=sorted(OT[fl]); agg=defaultdict(lambda: defaultdict(int))
+    for m in months:
+        for b,c in OT[fl][m].items(): agg[brand_short(b)][m]+=c
+    brands=sorted(agg, key=lambda b:-sum(agg[b].values())); bottom=[0]*len(months)
+    for b in brands:
+        vals=[agg[b].get(m,0) for m in months]
+        ax.bar(months,vals,bottom=bottom,color=COLB.get(b,HX(INK)),label=b,width=0.82)
+        bottom=[bottom[i]+vals[i] for i in range(len(months))]
+    if '2026-02' in months: ax.axvline(months.index('2026-02'),color=HX(RED),ls='--',lw=1.5)
+    ax.set_title(f'{fl} ДВС — масло по месяцам (число проб)',color=HX(INK),weight='bold',fontsize=10)
+    ax.legend(fontsize=6,ncol=3,loc='upper left')
+    for lab in ax.get_xticklabels(): lab.set_rotation(90)
+CH['oiltrans']=save(f,'oiltrans.png')
 
 # ───────── ПОСТРОЕНИЕ СЛАЙДОВ ─────────
 def content(title,kicker=None,sub=None):
@@ -358,6 +386,23 @@ rows=[["Парк","Бренд","Класс","Период"],["NTE200","Газп�
 ["NTE200","TEBOIL Super HPD Plus 15W-40","CI-4","2024–2026"],["730E","+ Komatsu/Mobil/Лукойл 15W-40","CI-4","2024–2026"]]
 table(s,0.5,1.5,12.33,[0.18,0.46,0.16,0.2],rows,fsize=12,rowh=0.55)
 panel(s,0.5,4.2,12.33,1.6,"Двигатели NTE200 и 730E работают на одинаковых маслах (преимущественно Газпромнефть G-Profi MSI Plus 15W-40, класс API CI-4). ⇒ Марка/тип масла НЕ дифференцирует парки.",ACC,13,"Вывод по брендам")
+# переход масел по времени — отдельный слайд
+s=content("Переход масел во времени: NTE200 vs 730E","МАСЛО · ПЕРЕХОД ПРОИЗВОДИТЕЛЕЙ")
+s.shapes.add_picture(CH['oiltrans'],Inches(0.4),Inches(1.4),width=Inches(8.6))
+panel(s,9.2,1.4,3.65,2.7,"NTE200:\n• 2024-02–04: Shell Rimula\n• 2024-06–2026-01: Газпромнефть G-Profi MSI Plus\n• ПЕРЕХОД фев-2026 → TEBOIL Super HPD Plus (с марта 2026 полностью)",ACC,11,"Хронология NTE200")
+panel(s,9.2,4.25,3.65,2.5,"730E:\n• 2025: Газпромнефть + Komatsu/Mobil (паралл.)\n• ПЕРЕХОД фев-2026 → TEBOIL (тот же период)\n\nОба парка перешли на TEBOIL ОДНОВРЕМЕННО.",BLU,11,"Хронология 730E")
+txt(s,0.4,6.55,8.6,0.5,"Вывод: оба парка сменили Газпромнефть→TEBOIL (оба CI-4 15W-40) в фев–март 2026. Бренд НЕ дифференцирует: отказы NTE200 есть и до, и после перехода; 730E на тех же маслах — без отказов.",11,True,GRN)
+s=content("Производители масел — сводка по паркам","МАСЛО · ПРОИЗВОДИТЕЛИ")
+rows=[["Производитель / марка","NTE200 (проб ДВС)","730E (проб ДВС)","Класс"],
+["Газпромнефть G-Profi MSI Plus 15W-40","1141","≈420","CI-4"],
+["TEBOIL Super HPD Plus 15W-40","670","≈135","CI-4"],
+["Shell Rimula 15W-40","10","—","CI-4"],
+["Komatsu EO15W40DH 15W-40","—","≈127","CI-4"],
+["Mobil Delvac MX 15W-40","—","≈31","CI-4"],
+["Лукойл Авангард 15W-40","—","≈6","CI-4"]]
+table(s,0.5,1.5,12.33,[0.46,0.22,0.22,0.1],rows,fsize=12,rowh=0.52)
+panel(s,0.5,5.3,12.33,1.0,"Все применявшиеся масла — один класс (API CI-4, SAE 15W-40). 730E имеет более широкий набор производителей, но отказов нет → набор/смена производителя масла не влияет на отказы ГБЦ.",GRN,12)
+
 s=content("Технические показатели масла ДВС","МАСЛО · ПОКАЗАТЕЛИ")
 rows=[["Показатель","NTE200","730E","Норма"],["TBN (щёлочное)","9,7","9,5","≥2,5 ✓"],["Сажа (ST)","0,3","0,4","низкая ✓"],
 ["Окисление (OXI)","0,1","0,1","низкое ✓"],["V100, cSt","15,3","15,4","12,5–16,3 ✓"],["Вода/топливо","~0","~0","✓"],["Fe P95, ppm","6","16","низкий"]]
