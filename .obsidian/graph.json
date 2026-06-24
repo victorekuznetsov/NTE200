@@ -3,12 +3,37 @@
   "search": "",
   "showTags": false,
   "showAttachments": false,
-  "hideUnresolved": false,
-  "showOrphans": true,
-  "collapse-color-groups": true,
-  "colorGroups": [],
+  "hideUnresolved": true,
+  "showOrphans": false,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "file:\"00 Главная\"",
+      "color": { "a": 1, "rgb": 2699574 }
+    },
+    {
+      "query": "path:\"05 Отчёты/Аналитические\"",
+      "color": { "a": 1, "rgb": 14701138 }
+    },
+    {
+      "query": "path:\"02 Диагностика\"",
+      "color": { "a": 1, "rgb": 4124847 }
+    },
+    {
+      "query": "path:\"07 Компоненты\"",
+      "color": { "a": 1, "rgb": 5163504 }
+    },
+    {
+      "query": "path:\"_Данные\"",
+      "color": { "a": 1, "rgb": 7370880 }
+    },
+    {
+      "query": "path:\"01 Проблемы\"",
+      "color": { "a": 1, "rgb": 14715950 }
+    }
+  ],
   "collapse-display": true,
-  "showArrow": false,
+  "showArrow": true,
   "textFadeMultiplier": 0,
   "nodeSizeMultiplier": 1,
   "lineSizeMultiplier": 1,
@@ -17,6 +42,6 @@
   "repelStrength": 10,
   "linkStrength": 1,
   "linkDistance": 250,
-  "scale": 1.4019828977760942,
+  "scale": 1.1,
   "close": true
 }
