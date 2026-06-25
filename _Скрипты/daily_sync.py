@@ -34,6 +34,14 @@ RULES = [
     (r"^ПРОГРАММА.*МАСЛ",                               "_Данные/Масло",                False),
     # Топливо
     (r"^(730|NTE200)_fuel\.xlsx$",                      "_Данные/Топливо",              False),
+    # ГЕ (General Electric привод — события Event 635)
+    (r"^GE[_\- ]",                                      "_Данные/ГЕ",                   False),
+    (r"^Ежесменный",                                    "_Данные/ГЕ",                   False),
+    # Весовая (10/10/20 нагрузка)
+    (r"^Весовая",                                       "_Данные/Весовая",              False),
+    (r"^weight",                                        "_Данные/Весовая",              False),
+    # Аналитические данные
+    (r"^verify_",                                       "_Данные/Аналитика",            False),
     # Сводные данные
     (r"^(ОТЧЕТ|Сводный_анализ|ГБЦ ремонты|ECM_Analysis|ECM_对比)", "_Данные/Сводные", False),
     # Технические отчёты (с созданием .md-заметки)
@@ -191,12 +199,9 @@ def main():
             machine = extract_machine_number(name)
             create_md_note(ROOT / folder / name, machine, today[:10])
 
-    # 5. Обновить индексы затронутых папок
-    seen_folders = set()
+    # 5. Обновить индексы затронутых папок (все файлы, а не только первый)
     for name, folder, _ in moved:
-        if folder not in seen_folders:
-            update_index(folder, name)
-            seen_folders.add(folder)
+        update_index(folder, name)
 
     # 6. Записать лог
     write_log(moved, today)
