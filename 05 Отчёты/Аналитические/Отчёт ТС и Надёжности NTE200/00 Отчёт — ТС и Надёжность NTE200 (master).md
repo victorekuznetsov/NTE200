@@ -224,6 +224,7 @@ flowchart TD
 
 ## Связанные материалы
 - [[Думающая модель — карта расследования]] · [[Анализ коренных причин ГБЦ QSK50]] · [[Анализ нагрузок QSK50]]
+- [[Calibration_Compare_730E_vs_NTE200 (Calterm)]] · [[Дерейты и тепловые защиты — 730E vs NTE200]]
 - Данные: [[verify_load_stats]] · [[ecm_params_NTE200_vs_730E]] · [[ecm_faults]] · [[ecm_machine_status]] · [[oil_brands_NTE200_730E]] · [[oil_NTE200]] · [[oil_730E]]
 
 *АО «Развитие» · QSK50 / NTE200 · Полюс Магадан · 2026 · Конфиденциально*
