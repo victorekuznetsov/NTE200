@@ -31,13 +31,11 @@
 ## Скрипты анализа
 
 - [[_Скрипты/build_kamss_analysis.py|build_kamss_analysis.py]]
-- [[_Скрипты/build_calibration_comparison.py|build_calibration_comparison.py]]
-- [[_Скрипты/build_calibration_pdf_zh.py|build_calibration_pdf_zh.py]]
 
 ## Результаты
 
-→ [[05 Отчёты/Презентации/Калибровки_ECM_NTE200_vs_730E.pptx|Калибровки NTE200 vs 730E]]
 → [[Calibration_Compare_730E_vs_NTE200 (Calterm)]] — аутентичный экспорт (топл. код, защиты, дерейты)
+→ [[Дерейты и тепловые защиты — 730E vs NTE200]] — разбор дерейтов/защит
 → [[05 Отчёты/Аналитические/Анализ_ИНСАЙТ_КАМСС_NTE200_vs_730E.pdf|Анализ ИНСАЙТ/КАМСС]]
 
 ## Связи
