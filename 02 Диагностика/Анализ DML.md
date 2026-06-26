@@ -47,7 +47,6 @@
 ## Скрипты
 
 - [[_Скрипты/analyze_dml.py|analyze_dml.py]]
-- [[_Скрипты/add_dml_slides.py|add_dml_slides.py]]
 - [[_Скрипты/build_log_analysis_presentation.py|build_log_analysis_presentation.py]]
 
 ## Результаты
