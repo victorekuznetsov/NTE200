@@ -4,3 +4,8 @@
 __pycache__/
 *.pyc
 .streamlit/secrets.toml
+
+# oil_analysis transfer artifacts (not part of nte200)
+oil_analysis_transfer.zip
+oil_analysis_docs_only.zip
+oil_analysis_bundle/
