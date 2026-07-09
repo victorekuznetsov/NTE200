@@ -4641,6 +4641,19 @@ function saveDashboard(){
         el.className='';
       });
 
+      // Normalize the save buttons before capturing. saveDashboard() sets the
+      // HTML button to "⏳ Сохранение..." / disabled, and disabled + text are
+      // reflected into outerHTML - so without this the saved file bakes in a
+      // frozen, disabled button and can never be re-saved.
+      const btnSnaps=[];
+      btns.forEach(function(bb){
+        if(bb.disabled||bb.textContent.indexOf('Сохранение')>-1){
+          btnSnaps.push({b:bb,t:bb.textContent,d:bb.disabled});
+          bb.textContent='⬇ Сохранить дашборд (HTML)';
+          bb.disabled=false;
+        }
+      });
+
       let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
 
       // Restore charts immediately so the page keeps working
@@ -4649,6 +4662,8 @@ function saveDashboard(){
         if(s.style!==null)s.el.setAttribute('style',s.style);
         s.el.className=s.cls;
       });
+      // Restore the buttons' in-progress state (re-enabled at the end anyway)
+      btnSnaps.forEach(function(s){s.b.textContent=s.t;s.b.disabled=s.d;});
 
       // Inject current runtime TRUCKS/TRUCK_ORDER (includes any CSV-loaded trucks)
       const trucksJson=JSON.stringify(TRUCKS,null,0);
