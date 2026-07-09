@@ -452,20 +452,36 @@
     renderAll();
   }
 
-  // ---------- wire up ----------
-  el('btn-load').onclick = function () { el('file-xlsx').click(); };
-  el('file-xlsx').onchange = function (e) { ingestFiles(e.target.files); e.target.value = ''; };
-  el('btn-save').onclick = saveJSON;
-  el('btn-open').onclick = function () { el('file-json').click(); };
-  el('file-json').onchange = function (e) { if (e.target.files[0]) openJSON(e.target.files[0]); e.target.value = ''; };
-  el('btn-reset').onclick = resetData;
-  el('btn-theme').onclick = toggleTheme;
-  el('month-all').onclick = function () { state.selMonths = null; renderFilters(); renderAll(); };
-  el('truck-all').onclick = function () { state.selTrucks = null; renderFilters(); renderAll(); };
-  window.addEventListener('mousemove', function (e) { if (tip.classList.contains('on')) moveTip(e); });
-  var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(renderAll, 150); });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+  function on(id, ev, fn) { var e = el(id); if (e) e.addEventListener(ev, fn); }
 
-  renderFilters();
-  renderAll();
+  // ---------- РЕНДЕР ПЕРВЫМ (чтобы сбой навешивания слушателей не оставлял пустой экран) ----------
+  try {
+    renderFilters();
+    renderAll();
+  } catch (err) {
+    var st = el('status');
+    if (st) st.innerHTML = '<span style="color:var(--bad)">Ошибка отрисовки: ' + (err && err.message ? err.message : err) + '</span>';
+  }
+
+  // ---------- wire up (после рендера, с защитой) ----------
+  try {
+    on('btn-load', 'click', function () { el('file-xlsx').click(); });
+    on('file-xlsx', 'change', function (e) { ingestFiles(e.target.files); e.target.value = ''; });
+    on('btn-save', 'click', saveJSON);
+    on('btn-open', 'click', function () { el('file-json').click(); });
+    on('file-json', 'change', function (e) { if (e.target.files[0]) openJSON(e.target.files[0]); e.target.value = ''; });
+    on('btn-reset', 'click', resetData);
+    on('btn-theme', 'click', toggleTheme);
+    on('month-all', 'click', function () { state.selMonths = null; renderFilters(); renderAll(); });
+    on('truck-all', 'click', function () { state.selTrucks = null; renderFilters(); renderAll(); });
+
+    window.addEventListener('mousemove', function (e) { if (tip.classList.contains('on')) moveTip(e); });
+    var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(renderAll, 150); });
+
+    var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (mq) {
+      if (mq.addEventListener) mq.addEventListener('change', renderAll);
+      else if (mq.addListener) mq.addListener(renderAll); // старые Safari/iOS
+    }
+  } catch (err) { /* слушатели не критичны для отображения */ }
 })();
