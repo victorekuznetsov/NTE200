@@ -970,7 +970,10 @@ function buildSidebar(){
     const item=document.createElement('div');
     item.className='truck-item'+(activeTruck===key?' active':'')+(compareSet.has(key)?' cmp-sel':'');
     item.id='ti-'+key;
-    item.onclick=e=>{if(e.target.tagName==='INPUT')return;selectTruck(key);};
+    // Use inline-attribute handlers (not JS properties) so the list survives
+    // innerHTML serialization when the dashboard is saved — otherwise reopened
+    // saved files have no click handlers and no truck can be selected.
+    item.setAttribute('onclick',"_truckClick(event,'"+key+"')");
 
     const dot=document.createElement('span');
     dot.className='truck-dot';dot.style.background=TC[i%TC.length];
@@ -985,15 +988,11 @@ function buildSidebar(){
     const chk=document.createElement('input');
     chk.type='checkbox';chk.className='cmp-chk'+(compareMode?' show':'');
     chk.checked=compareSet.has(key);
-    chk.onchange=()=>{
-      if(chk.checked)compareSet.add(key);else compareSet.delete(key);
-      item.className='truck-item'+(activeTruck===key?' active':'')+(compareSet.has(key)?' cmp-sel':'');
-      if(currentTab==='compare')renderCompare();
-    };
+    chk.setAttribute('onchange',"_cmpChk(this,'"+key+"')");
 
     const del=document.createElement('button');
     del.className='truck-del';del.title='Удалить';del.textContent='×';
-    del.onclick=e=>deleteTruck(key,e);
+    del.setAttribute('onclick',"_delTruck('"+key+"',event)");
 
     item.appendChild(dot);item.appendChild(info);item.appendChild(chk);item.appendChild(del);
     list.appendChild(item);
