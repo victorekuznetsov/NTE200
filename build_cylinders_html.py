@@ -1031,14 +1031,16 @@ function saveDashboard(){
   btns.forEach(b=>{if(b.textContent.includes('HTML')){b.textContent='⏳ Сохранение...';b.disabled=true;}});
   setTimeout(function(){
     try{
-      // Strip Plotly's runtime inline styles/content before capturing HTML.
-      // Plotly adds style="width:Xpx;height:Ypx" and class="js-plotly-plot" which
-      // freeze the layout when the saved file is reopened.
-      const chartIds=['ch-a','ch-b','ch-dev','ch-delta'];
+      // Strip ALL Plotly chart containers (every id="ch-*") before capturing.
+      // Two reasons: (1) Plotly bakes style="width/height" + js-plotly-plot
+      // that freeze the layout; (2) charts use WebGL (scattergl) whose canvas
+      // pixels are NOT serialized into outerHTML — a file saved while another
+      // tab was open would reopen with empty charts ("data disappeared").
+      // Clearing them all lets every tab render fresh on reopen / tab switch
+      // and greatly shrinks the saved file.
+      const chartEls=document.querySelectorAll('[id^="ch-"]');
       const snaps=[];
-      chartIds.forEach(function(id){
-        const el=document.getElementById(id);
-        if(!el)return;
+      chartEls.forEach(function(el){
         snaps.push({el:el,html:el.innerHTML,style:el.getAttribute('style'),cls:el.className});
         el.innerHTML='';
         el.removeAttribute('style');
@@ -1831,6 +1833,15 @@ function _init(){
   if(TRUCK_ORDER.length){
     activeTruck=TRUCK_ORDER[0];
     const el=document.getElementById('ti-'+activeTruck);if(el)el.classList.add('active');
+    // The saved DOM may have baked in a different active tab (whose WebGL
+    // charts don't survive serialization). Force a consistent view: reset to
+    // the cylinders tab so currentTab matches the visible panel and the
+    // charts are rendered fresh. Other tabs render on demand via showTab().
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+    document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('act'));
+    const cp=document.getElementById('tab-cylinders');if(cp)cp.classList.add('show');
+    const cb=document.querySelectorAll('.tbtn')[0];if(cb)cb.classList.add('act');
+    currentTab='cylinders';
     buildDatePills(activeTruck);
     updateHeader();
     renderCylinders();
