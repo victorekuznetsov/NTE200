@@ -55,7 +55,8 @@
           t: truck, m: ym, c: 0, sp: 0,
           z: [0, 0, 0, 0], h: {},
           ct: [0, 0, 0, 0, 0, 0],
-          dl: 0, de: 0, ls: 0, es: 0, lr: 0, rr: 0, f: 0
+          dl: 0, de: 0, ls: 0, es: 0,
+          lf: 0, rf: 0, lr: 0, rr: 0, cb: 0, f: 0
         };
       }
       var pt = fp / 10; // тонны
@@ -77,8 +78,11 @@
       p.de += num(row[idx.DistanceEmpty]);
       p.ls += num(row[idx.LdMaxSpeed]) / 1000;
       p.es += num(row[idx.EmMaxSpeed]) / 1000;
+      p.lf += num(row[idx.LF_TKPH]) / 10;
+      p.rf += num(row[idx.RF_TKPH]) / 10;
       p.lr += num(row[idx.LR_TKPH]) / 10;
       p.rr += num(row[idx.RR_TKPH]) / 10;
+      if (num(row[idx.Carryback]) > 0) p.cb++;
       p.f += num(row[idx.FuelLevel]);
     }
     return added;
@@ -95,6 +99,7 @@
       for (var i = 0; i < p.ct.length; i++) p.ct[i] = Math.round(p.ct[i]);
       p.dl = Math.round(p.dl); p.de = Math.round(p.de);
       p.ls = round(p.ls, 1); p.es = round(p.es, 1);
+      p.lf = round(p.lf, 1); p.rf = round(p.rf, 1);
       p.lr = round(p.lr, 1); p.rr = round(p.rr, 1); p.f = round(p.f, 1);
     });
     out.sort(function (a, b) {

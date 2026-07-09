@@ -139,6 +139,53 @@
   .toplist .r .bar span{position:absolute;left:0;top:0;bottom:0;border-radius:3px;}
   .toplist .r .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
 
+  /* tabs (CSS-only, работают без JS) */
+  .tabradio{position:absolute;width:0;height:0;opacity:0;pointer-events:none;}
+  .tabbar{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:2px;flex-wrap:wrap;}
+  .tabbar label{padding:9px 15px;font-weight:700;font-size:13px;cursor:pointer;color:var(--ink-mute);
+    border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .12s;}
+  .tabbar label:hover{color:var(--ink-2);}
+  #tab-load:checked ~ .tabbar label[for="tab-load"],
+  #tab-perf:checked ~ .tabbar label[for="tab-perf"]{color:var(--ink);border-bottom-color:var(--gold);}
+  #tab-load:focus-visible ~ .tabbar label[for="tab-load"],
+  #tab-perf:focus-visible ~ .tabbar label[for="tab-perf"]{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
+  .tabpane{display:none;}
+  #tab-load:checked ~ #pane-load,
+  #tab-perf:checked ~ #pane-perf{display:flex;flex-direction:column;gap:12px;}
+
+  /* performance tab */
+  .perf-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;}
+  @media (max-width:900px){ .perf-grid{grid-template-columns:1fr;} }
+  .cycle-table{display:flex;flex-direction:column;gap:0;margin-top:10px;}
+  .cyc-row{display:grid;grid-template-columns:12px 1fr auto auto;align-items:center;gap:9px;padding:6px 0;border-top:1px solid var(--border-2);font-size:11.5px;}
+  .cyc-row:first-child{border-top:none;}
+  .cyc-row .sw{width:11px;height:11px;border-radius:3px;}
+  .cyc-row .nm{color:var(--ink-2);}
+  .cyc-row .mn{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;text-align:right;}
+  .cyc-row .pc{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-mute);text-align:right;min-width:38px;}
+  .cyc-group{margin-top:9px;padding-top:9px;border-top:1.5px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:9px;align-items:center;font-size:12px;}
+  .cyc-group .gname{font-weight:800;display:flex;align-items:center;gap:7px;}
+  .cyc-group .gname .sw{width:11px;height:11px;border-radius:3px;}
+  .cyc-group .gmn{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:800;}
+  .cyc-group .gpc{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-mute);min-width:38px;text-align:right;}
+  .callout{display:flex;gap:9px;align-items:flex-start;background:var(--gold-soft);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-top:12px;font-size:11.5px;line-height:1.5;color:var(--ink-2);}
+  .callout .ic{flex:none;width:18px;height:18px;color:var(--gold-deep);}
+  .callout b{color:var(--ink);}
+  .speedbars{display:flex;flex-direction:column;gap:11px;margin-top:4px;}
+  .sb{display:grid;grid-template-columns:74px 1fr auto;gap:9px;align-items:center;font-size:11.5px;}
+  .sb .nm{color:var(--ink-2);}
+  .sb .track{height:10px;border-radius:5px;background:var(--grid);position:relative;overflow:hidden;}
+  .sb .track span{position:absolute;left:0;top:0;bottom:0;border-radius:5px;}
+  .sb .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;}
+  .tkph-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  .tkph-cell{background:var(--surface-2);border:1px solid var(--border-2);border-radius:9px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;}
+  .tkph-cell .pos{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mute);}
+  .tkph-cell .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:16px;}
+  .tkph-cell.hot .v{color:var(--accept);}
+  .tkph-cell.max .v{color:var(--crit);}
+  .compare-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:680px){ .compare-2{grid-template-columns:1fr;} }
+
   svg text{font-family:var(--sans);}
   .ax{fill:var(--ink-mute);font-size:9.5px;}
   .axb{fill:var(--ink-mute);font-size:9.5px;font-weight:700;}
@@ -209,51 +256,111 @@
     </div>
   </div>
 
-  <div class="grid">
-    <div class="panel">
-      <h2>Гистограмма распределения загрузки</h2>
-      <p class="cap" id="hist-cap">Зоны по политике 10/10/20 от номинала 180 т · кривая нормального распределения</p>
-      <svg id="hist" width="100%" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
-      <div class="zonegrid" id="hist-legend" style="margin-top:6px;"></div>
-    </div>
-
-    <div class="rightcol">
-      <div class="kpi-row">
-        <div class="kpi"><div class="lbl">Ср. загрузка</div><div class="val big" id="k-mean">—<span class="u">т</span></div></div>
-        <div class="kpi"><div class="lbl">Кол-во загрузок</div><div class="val" id="k-cycles">—</div></div>
-        <div class="kpi"><div class="lbl">Перевезено</div><div class="val" id="k-tonnage">—<span class="u">млн т</span></div></div>
-      </div>
-
-      <div class="panel policy">
-        <div class="head">
-          <h2 style="margin:0;">Политика 10/10/20</h2>
-          <span class="badge-all" id="policy-all">—</span>
-        </div>
-        <div id="policy-rows"></div>
-      </div>
-
-      <div class="panel">
-        <h2>Ранжирование загрузки</h2>
-        <p class="cap">доля циклов по зонам</p>
-        <div class="donut-wrap">
-          <svg id="donut" width="128" height="128" viewBox="0 0 128 128"></svg>
-          <div class="legend" id="donut-legend" style="flex:1;"></div>
-        </div>
-      </div>
-    </div>
+  <input type="radio" name="tab" id="tab-load" class="tabradio" checked>
+  <input type="radio" name="tab" id="tab-perf" class="tabradio">
+  <div class="tabbar" role="tablist">
+    <label for="tab-load" tabindex="0" role="tab">Загрузка · политика 10/10/20</label>
+    <label for="tab-perf" tabindex="0" role="tab">Производительность и анализ цикла</label>
   </div>
 
-  <div class="strip">
+  <!-- ВКЛАДКА 1: ЗАГРУЗКА -->
+  <div class="tabpane" id="pane-load">
+    <div class="grid">
+      <div class="panel">
+        <h2>Гистограмма распределения загрузки</h2>
+        <p class="cap" id="hist-cap">Зоны по политике 10/10/20 от номинала 180 т · кривая нормального распределения</p>
+        <svg id="hist" width="100%" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="zonegrid" id="hist-legend" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="rightcol">
+        <div class="kpi-row">
+          <div class="kpi"><div class="lbl">Ср. загрузка</div><div class="val big" id="k-mean">—<span class="u">т</span></div></div>
+          <div class="kpi"><div class="lbl">Кол-во загрузок</div><div class="val" id="k-cycles">—</div></div>
+          <div class="kpi"><div class="lbl">Перевезено</div><div class="val" id="k-tonnage">—<span class="u">млн т</span></div></div>
+        </div>
+
+        <div class="panel policy">
+          <div class="head">
+            <h2 style="margin:0;">Политика 10/10/20</h2>
+            <span class="badge-all" id="policy-all">—</span>
+          </div>
+          <div id="policy-rows"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Ранжирование загрузки</h2>
+          <p class="cap">доля циклов по зонам</p>
+          <div class="donut-wrap">
+            <svg id="donut" width="128" height="128" viewBox="0 0 128 128"></svg>
+            <div class="legend" id="donut-legend" style="flex:1;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="panel">
       <h2>Динамика по месяцам</h2>
       <p class="cap">циклы (столбцы) и средняя загрузка, % номинала (линия · пунктир = 100%)</p>
       <svg id="trend" width="100%" viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
-    <div class="panel">
-      <h2 style="margin-bottom:8px;">Производительность и цикл</h2>
-      <div class="metricline" id="prod-metrics" style="margin-bottom:12px;"></div>
-      <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:6px;">Лидеры перегруза &gt;110% (198 т)</div>
-      <div class="toplist" id="toplist"></div>
+  </div>
+
+  <!-- ВКЛАДКА 2: ПРОИЗВОДИТЕЛЬНОСТЬ -->
+  <div class="tabpane" id="pane-perf">
+    <div class="kpi-row" id="perf-kpis" style="grid-template-columns:repeat(5,1fr);"></div>
+
+    <div class="perf-grid">
+      <div class="panel">
+        <h2>Анализ цикла</h2>
+        <p class="cap">структура среднего цикла по фазам · продуктивное время против ожидания</p>
+        <svg id="cycle-bar" width="100%" viewBox="0 0 560 44" preserveAspectRatio="none" style="height:44px;"></svg>
+        <div class="cycle-table" id="cycle-table"></div>
+        <div class="callout" id="cycle-callout"></div>
+      </div>
+
+      <div class="rightcol">
+        <div class="panel">
+          <h2>Продуктивное / ожидание</h2>
+          <p class="cap">доля времени цикла</p>
+          <div class="donut-wrap">
+            <svg id="util-donut" width="120" height="120" viewBox="0 0 120 120"></svg>
+            <div class="legend" id="util-legend" style="flex:1;"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Скорости движения</h2>
+          <p class="cap">средняя ходовая (дистанция ÷ время) и максимальная</p>
+          <div class="speedbars" id="speedbars"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="perf-grid">
+      <div class="panel">
+        <h2>Нагрузка на шины · TKPH по колёсам</h2>
+        <p class="cap">тонно-км/ч на колесо · выше нагрузка → выше нагрев шины (лучшая практика — контроль по паспорту шины)</p>
+        <div class="tkph-grid" id="tkph-grid"></div>
+        <div class="callout" id="tkph-callout"></div>
+      </div>
+      <div class="panel">
+        <h2>Дистанция и рейсы</h2>
+        <p class="cap">средние по выборке</p>
+        <div class="metricline" id="haul-metrics"></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mute);margin:14px 0 6px;">Плечо гружёный / порожний</div>
+        <div class="speedbars" id="distbars"></div>
+      </div>
+    </div>
+
+    <div class="compare-2">
+      <div class="panel">
+        <h2 style="margin-bottom:8px;">Лидеры производительности, т/ч</h2>
+        <div class="toplist" id="prodtop"></div>
+      </div>
+      <div class="panel">
+        <h2 style="margin-bottom:8px;">Наибольшее ожидание у экскаватора, мин</h2>
+        <div class="toplist" id="queuetop"></div>
+      </div>
     </div>
   </div>
 

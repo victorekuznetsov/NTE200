@@ -62,15 +62,17 @@
 
   // сложение партиций -> сводка
   function summarize(parts) {
-    var c = 0, sp = 0, z = [0, 0, 0, 0], h = {}, ct = [0, 0, 0, 0, 0, 0], dl = 0, de = 0, ls = 0, es = 0, lr = 0, rr = 0, f = 0;
+    var c = 0, sp = 0, z = [0, 0, 0, 0], h = {}, ct = [0, 0, 0, 0, 0, 0],
+        dl = 0, de = 0, ls = 0, es = 0, lf = 0, rf = 0, lr = 0, rr = 0, cb = 0, f = 0;
     parts.forEach(function (p) {
       c += p.c; sp += p.sp;
       for (var i = 0; i < 4; i++) z[i] += p.z[i];
       for (var b in p.h) h[b] = (h[b] || 0) + p.h[b];
       for (var j = 0; j < 6; j++) ct[j] += p.ct[j];
-      dl += p.dl; de += p.de; ls += p.ls; es += p.es; lr += p.lr; rr += p.rr; f += p.f;
+      dl += p.dl; de += p.de; ls += p.ls; es += p.es;
+      lf += (p.lf || 0); rf += (p.rf || 0); lr += p.lr; rr += p.rr; cb += (p.cb || 0); f += p.f;
     });
-    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lr: lr, rr: rr, f: f };
+    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lf: lf, rf: rf, lr: lr, rr: rr, cb: cb, f: f };
   }
 
   function allTrucks() {
@@ -265,44 +267,194 @@
     el('k-tonnage').innerHTML = fmt2(sum.sp / 1e6) + '<span class="u">млн т</span>';
   }
 
-  // ---------- productivity metrics ----------
-  function renderProd(sum) {
+  // ---------- ПРОИЗВОДИТЕЛЬНОСТЬ: вспомогательные ----------
+  // фазы цикла (секунды-суммы в ct): 0 стоянка гружёный, 1 ход гружёный, 2 ход порожний,
+  // 3 стоянка порожний (очередь), 4 погрузка, 5 разгрузка
+  var CYC_LABELS = ['Стоянка гружёным', 'Ход гружёным', 'Ход порожним', 'Ожидание у экскаватора', 'Погрузка', 'Разгрузка'];
+  var CYC_COLORS = ['var(--ink-mute)', 'var(--target)', 'var(--under)', 'var(--crit)', 'var(--gold)', 'var(--accept)'];
+  var CYC_ORDER = [4, 0, 1, 5, 2, 3]; // порядок операций в реальном цикле
+  // группы: продуктивное (ход) / операции (погр+разгр) / ожидание (очередь+стоянка гружёным)
+  function cycGroups(ctMin) {
+    return [
+      { name: 'Продуктивное (движение)', color: 'var(--target)', idx: [1, 2] },
+      { name: 'Операции (погрузка/разгрузка)', color: 'var(--gold)', idx: [4, 5] },
+      { name: 'Ожидание (очередь + простой)', color: 'var(--crit)', idx: [3, 0] }
+    ].map(function (g) {
+      var m = g.idx.reduce(function (s, i) { return s + ctMin[i]; }, 0);
+      return { name: g.name, color: g.color, min: m };
+    });
+  }
+
+  function renderPerfKPIs(sum) {
     var c = sum.c;
-    var cycMin = sum.ct.reduce(function (s, v) { return s + v; }, 0) / c / 60;
+    var ctMin = sum.ct.map(function (v) { return v / c / 60; });
+    var cycMin = ctMin.reduce(function (s, v) { return s + v; }, 0);
     var mean = sum.sp / c;
     var prod = cycMin ? mean / (cycMin / 60) : 0;
-    var metrics = [
-      { l: 'Производ.', v: fmt1(prod), u: 'т/ч' },
-      { l: 'Цикл', v: fmt1(cycMin), u: 'мин' },
-      { l: 'TKPH задн.', v: fmt1(sum.rr / c), u: '' },
-      { l: 'Топливо', v: fmt1(sum.f / c), u: '%' }
+    var perShift = cycMin ? (12 * 60 / cycMin) : 0; // рейсов за 12-часовую смену (теор., без простоев смены)
+    var queue = ctMin[3];
+    var tiles = [
+      { l: 'Производительность', v: fmt1(prod), u: 'т/ч', big: true },
+      { l: 'Время цикла', v: fmt1(cycMin), u: 'мин', big: true },
+      { l: 'Рейсов за 12 ч', v: fmt1(perShift), u: 'ед.' },
+      { l: 'Масса за цикл', v: fmt1(mean), u: 'т' },
+      { l: 'Очередь у экск.', v: fmt1(queue), u: 'мин' }
     ];
-    el('prod-metrics').innerHTML = metrics.map(function (mm) {
-      return '<div class="m"><span class="l">' + mm.l + '</span><span class="v">' + mm.v + (mm.u ? ' <span style="font-size:9.5px;color:var(--ink-mute);font-weight:600">' + mm.u + '</span>' : '') + '</span></div>';
+    el('perf-kpis').innerHTML = tiles.map(function (t) {
+      return '<div class="kpi"><div class="lbl">' + t.l + '</div><div class="val' + (t.big ? ' big' : '') + '">' + t.v + '<span class="u">' + t.u + '</span></div></div>';
     }).join('');
   }
 
-  // ---------- top overload list ----------
-  function renderTop() {
-    var parts = activeParts();
-    var byTruck = {};
-    parts.forEach(function (p) {
-      var a = byTruck[p.t] || (byTruck[p.t] = { c: 0, o: 0 });
-      a.c += p.c; a.o += p.z[2] + p.z[3];
+  // горизонтальная лента фаз цикла
+  function renderCycleBar(sum) {
+    var s = el('cycle-bar'); s.innerHTML = '';
+    var c = sum.c, ctMin = sum.ct.map(function (v) { return v / c / 60; });
+    var total = ctMin.reduce(function (a, b) { return a + b; }, 0);
+    var W = 560, H = 44, x = 0, barH = 30;
+    var g = svg('g', {}); s.appendChild(g);
+    CYC_ORDER.forEach(function (i) {
+      var w = ctMin[i] / total * W;
+      var r = svg('rect', { x: x, y: 7, width: Math.max(w - 1.5, 0), height: barH, rx: 3, fill: CYC_COLORS[i] });
+      r.addEventListener('mousemove', function (e) { showTip('<b>' + CYC_LABELS[i] + '</b><br>' + fmt1(ctMin[i]) + ' мин · ' + Math.round(ctMin[i] / total * 100) + '% цикла', e); });
+      r.addEventListener('mouseleave', hideTip);
+      g.appendChild(r); x += w;
     });
-    var rows = Object.keys(byTruck).map(function (t) { return { t: t, pct: byTruck[t].o / byTruck[t].c * 100, c: byTruck[t].c }; })
-      .filter(function (r) { return r.c >= 200; })
-      .sort(function (a, b) { return b.pct - a.pct; }).slice(0, 6);
-    var mx = rows.length ? rows[0].pct : 1;
-    el('toplist').innerHTML = rows.map(function (r) {
-      var col = r.pct > 10 ? 'var(--bad)' : r.pct > 6 ? 'var(--accept)' : 'var(--good)';
+  }
+
+  function renderCycleTable(sum) {
+    var c = sum.c, ctMin = sum.ct.map(function (v) { return v / c / 60; });
+    var total = ctMin.reduce(function (a, b) { return a + b; }, 0);
+    var rows = CYC_ORDER.map(function (i) {
+      return '<div class="cyc-row"><span class="sw" style="background:' + CYC_COLORS[i] + '"></span>' +
+        '<span class="nm">' + CYC_LABELS[i] + '</span>' +
+        '<span class="mn">' + fmt1(ctMin[i]) + ' мин</span>' +
+        '<span class="pc">' + Math.round(ctMin[i] / total * 100) + '%</span></div>';
+    }).join('');
+    var groups = cycGroups(ctMin).map(function (g) {
+      return '<div class="cyc-group"><span class="gname"><span class="sw" style="background:' + g.color + '"></span>' + g.name + '</span>' +
+        '<span class="gmn">' + fmt1(g.min) + ' мин</span><span class="gpc">' + Math.round(g.min / total * 100) + '%</span></div>';
+    }).join('');
+    el('cycle-table').innerHTML = rows + groups +
+      '<div class="cyc-group" style="border-top-width:1px;"><span class="gname">Итого цикл</span><span class="gmn">' + fmt1(total) + ' мин</span><span class="gpc"></span></div>';
+
+    var queue = ctMin[3] + ctMin[0];
+    var queuePct = Math.round(queue / total * 100);
+    el('cycle-callout').innerHTML =
+      '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' +
+      '<div>Ожидание составляет <b>' + fmt1(queue) + ' мин (' + queuePct + '% цикла)</b>, из них очередь у экскаватора — <b>' + fmt1(ctMin[3]) + ' мин</b>. ' +
+      'Это главный резерв производительности: сокращение простоя в очереди напрямую поднимает т/ч без роста нагрузки на технику (лучшая практика — согласование числа самосвалов с производительностью экскаватора).</div>';
+  }
+
+  // донат: продуктивное / операции / ожидание
+  function renderUtilDonut(sum) {
+    var s = el('util-donut'); s.innerHTML = '';
+    var c = sum.c, ctMin = sum.ct.map(function (v) { return v / c / 60; });
+    var total = ctMin.reduce(function (a, b) { return a + b; }, 0);
+    var groups = cycGroups(ctMin);
+    var cx = 60, cy = 60, r = 48, rin = 30, ang = -Math.PI / 2;
+    var g = svg('g', {}); s.appendChild(g);
+    groups.forEach(function (gr) {
+      if (gr.min <= 0) return;
+      var a2 = ang + gr.min / total * Math.PI * 2, large = (a2 - ang) > Math.PI ? 1 : 0;
+      var x1 = cx + r * Math.cos(ang), y1 = cy + r * Math.sin(ang), x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+      var xi1 = cx + rin * Math.cos(a2), yi1 = cy + rin * Math.sin(a2), xi2 = cx + rin * Math.cos(ang), yi2 = cy + rin * Math.sin(ang);
+      var d = 'M' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x2 + ',' + y2 + ' L' + xi1 + ',' + yi1 + ' A' + rin + ',' + rin + ' 0 ' + large + ' 0 ' + xi2 + ',' + yi2 + ' Z';
+      var p = svg('path', { d: d, fill: gr.color, stroke: 'var(--surface)', 'stroke-width': 1.5 });
+      p.addEventListener('mousemove', function (e) { showTip('<b>' + fmt1(gr.min / total * 100) + '%</b> · ' + fmt1(gr.min) + ' мин<br>' + gr.name, e); });
+      p.addEventListener('mouseleave', hideTip);
+      g.appendChild(p); ang = a2;
+    });
+    var prodPct = (groups[0].min) / total * 100;
+    g.appendChild(svg('text', { x: cx, y: cy - 1, 'text-anchor': 'middle', 'font-family': 'var(--mono)', 'font-weight': '800', 'font-size': '17', fill: 'var(--ink)' })).textContent = Math.round(prodPct) + '%';
+    g.appendChild(svg('text', { x: cx, y: cy + 12, 'text-anchor': 'middle', 'font-size': '8', fill: 'var(--ink-mute)' })).textContent = 'движение';
+    el('util-legend').innerHTML = groups.map(function (gr) {
+      return '<div class="item"><span class="sw" style="background:' + gr.color + '"></span><span class="nm">' + gr.name.replace(/ \(.*/, '') + '</span><span class="pc">' + Math.round(gr.min / total * 100) + '%</span></div>';
+    }).join('');
+  }
+
+  // скорости: средняя ходовая (дистанция/время) и максимальная
+  function renderSpeeds(sum) {
+    var c = sum.c;
+    var avgLoaded = sum.ct[1] > 0 ? sum.dl / sum.ct[1] * 3.6 : 0; // м / с → км/ч
+    var avgEmpty = sum.ct[2] > 0 ? sum.de / sum.ct[2] * 3.6 : 0;
+    var maxLoaded = sum.ls / c, maxEmpty = sum.es / c;
+    var mx = Math.max(maxLoaded, maxEmpty, 1);
+    var bars = [
+      { nm: 'Гружёный ср.', v: avgLoaded, col: 'var(--target)' },
+      { nm: 'Гружёный макс', v: maxLoaded, col: 'var(--target)', faint: true },
+      { nm: 'Порожний ср.', v: avgEmpty, col: 'var(--under)' },
+      { nm: 'Порожний макс', v: maxEmpty, col: 'var(--under)', faint: true }
+    ];
+    el('speedbars').innerHTML = bars.map(function (b) {
+      return '<div class="sb"><span class="nm">' + b.nm + '</span>' +
+        '<span class="track"><span style="width:' + (b.v / mx * 100).toFixed(0) + '%;background:' + b.col + (b.faint ? ';opacity:.45' : '') + '"></span></span>' +
+        '<span class="vv">' + fmt1(b.v) + ' км/ч</span></div>';
+    }).join('');
+  }
+
+  // TKPH по 4 колёсам
+  function renderTKPH(sum) {
+    var c = sum.c;
+    var vals = { 'Лев. перед.': sum.lf / c, 'Прав. перед.': sum.rf / c, 'Лев. задн.': sum.lr / c, 'Прав. задн.': sum.rr / c };
+    var arr = Object.keys(vals).map(function (k) { return { k: k, v: vals[k] }; });
+    var mxv = Math.max.apply(null, arr.map(function (a) { return a.v; }));
+    el('tkph-grid').innerHTML = arr.map(function (a) {
+      var cls = a.v === mxv ? 'max' : a.v > mxv * 0.9 ? 'hot' : '';
+      return '<div class="tkph-cell ' + cls + '"><span class="pos">' + a.k + '</span><span class="v">' + fmt1(a.v) + '</span></div>';
+    }).join('');
+    var rear = (vals['Лев. задн.'] + vals['Прав. задн.']) / 2, front = (vals['Лев. перед.'] + vals['Прав. перед.']) / 2;
+    var ratio = front > 0 ? rear / front : 0;
+    el('tkph-callout').innerHTML =
+      '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>' +
+      '<div>Задняя ось нагружена в <b>' + fmt1(ratio) + '×</b> сильнее передней — норма для самосвала (груз над задней осью). Наибольший TKPH — <b>' + fmt1(mxv) + '</b> (правое заднее колесо): именно оно ближе всего к температурному пределу шины, контролировать в первую очередь.</div>';
+  }
+
+  function renderHaul(sum) {
+    var c = sum.c;
+    var dl = sum.dl / c / 1000, de = sum.de / c / 1000;
+    var cbPct = 0; // доля циклов с налипанием
+    var carry = sum.cb || 0;
+    cbPct = carry / c * 100;
+    el('haul-metrics').innerHTML =
+      '<div class="m"><span class="l">Плечо гружёный</span><span class="v">' + fmt1(dl) + ' <span style="font-size:9.5px;color:var(--ink-mute);font-weight:600">км</span></span></div>' +
+      '<div class="m"><span class="l">Плечо порожний</span><span class="v">' + fmt1(de) + ' <span style="font-size:9.5px;color:var(--ink-mute);font-weight:600">км</span></span></div>' +
+      '<div class="m"><span class="l">Ход за цикл</span><span class="v">' + fmt1(dl + de) + ' <span style="font-size:9.5px;color:var(--ink-mute);font-weight:600">км</span></span></div>' +
+      '<div class="m"><span class="l">Налипание</span><span class="v">' + fmt2(cbPct) + ' <span style="font-size:9.5px;color:var(--ink-mute);font-weight:600">% цикл.</span></span></div>';
+    var mx = Math.max(dl, de, 1);
+    el('distbars').innerHTML =
+      '<div class="sb"><span class="nm">Гружёный</span><span class="track"><span style="width:' + (dl / mx * 100).toFixed(0) + '%;background:var(--target)"></span></span><span class="vv">' + fmt1(dl) + ' км</span></div>' +
+      '<div class="sb"><span class="nm">Порожний</span><span class="track"><span style="width:' + (de / mx * 100).toFixed(0) + '%;background:var(--under)"></span></span><span class="vv">' + fmt1(de) + ' км</span></div>';
+  }
+
+  // per-truck ранжирование (общий помощник)
+  function truckAgg() {
+    var byTruck = {};
+    activeParts().forEach(function (p) {
+      var a = byTruck[p.t] || (byTruck[p.t] = { c: 0, sp: 0, ct: [0, 0, 0, 0, 0, 0] });
+      a.c += p.c; a.sp += p.sp;
+      for (var i = 0; i < 6; i++) a.ct[i] += p.ct[i];
+    });
+    return Object.keys(byTruck).map(function (t) {
+      var a = byTruck[t], cyc = a.ct.reduce(function (s, v) { return s + v; }, 0) / a.c / 60;
+      return { t: t, c: a.c, prod: cyc ? (a.sp / a.c) / (cyc / 60) : 0, queue: a.ct[3] / a.c / 60, cycle: cyc };
+    }).filter(function (r) { return r.c >= 200; });
+  }
+  function rankList(elId, rows, valFn, unit, colFn) {
+    var mx = rows.length ? Math.max.apply(null, rows.map(valFn)) : 1;
+    el(elId).innerHTML = rows.map(function (r) {
+      var v = valFn(r), col = colFn(r);
       return '<div class="r" data-t="' + r.t + '"><span class="id">№' + r.t + '</span>' +
-        '<span class="bar"><span style="width:' + (r.pct / mx * 100).toFixed(0) + '%;background:' + col + '"></span></span>' +
-        '<span class="v" style="color:' + col + '">' + fmt1(r.pct) + '%</span></div>';
+        '<span class="bar"><span style="width:' + (v / mx * 100).toFixed(0) + '%;background:' + col + '"></span></span>' +
+        '<span class="v" style="color:' + col + '">' + fmt1(v) + unit + '</span></div>';
     }).join('') || '<div style="font-size:11px;color:var(--ink-mute)">Нет бортов с достаточной выборкой</div>';
-    Array.prototype.forEach.call(el('toplist').querySelectorAll('.r'), function (row) {
+    Array.prototype.forEach.call(el(elId).querySelectorAll('.r'), function (row) {
       row.onclick = function () { state.selTrucks = new Set([row.dataset.t]); renderFilters(); renderAll(); };
     });
+  }
+  function renderPerfCompare() {
+    var rows = truckAgg();
+    rankList('prodtop', rows.slice().sort(function (a, b) { return b.prod - a.prod; }).slice(0, 7), function (r) { return r.prod; }, ' т/ч', function () { return 'var(--target)'; });
+    rankList('queuetop', rows.slice().sort(function (a, b) { return b.queue - a.queue; }).slice(0, 7), function (r) { return r.queue; }, ' мин', function (r) { return r.queue > 8 ? 'var(--bad)' : r.queue > 6 ? 'var(--accept)' : 'var(--ink-mute)'; });
   }
 
   // ---------- monthly trend ----------
@@ -365,8 +517,12 @@
     var sum = summarize(parts);
     if (sum.c === 0) { sum = summarize(state.partitions); }
     renderStatus();
-    renderKPIs(sum); renderHist(sum); renderPolicy(sum); renderDonut(sum); renderProd(sum);
-    renderTrend(); renderTop(); renderFoot();
+    // вкладка «Загрузка»
+    renderKPIs(sum); renderHist(sum); renderPolicy(sum); renderDonut(sum); renderTrend();
+    // вкладка «Производительность»
+    renderPerfKPIs(sum); renderCycleBar(sum); renderCycleTable(sum); renderUtilDonut(sum);
+    renderSpeeds(sum); renderTKPH(sum); renderHaul(sum); renderPerfCompare();
+    renderFoot();
   }
 
   // ---------- persistence ----------
