@@ -1,0 +1,763 @@
+<title>NTE200 · Весовой контроль парка</title>
+<style>
+  :root{
+    --bg:#f7f5ef;
+    --page-edge:#efece3;
+    --surface:#ffffff;
+    --surface-2:#f0eee5;
+    --surface-3:#e8e5d9;
+    --ink:#18150f;
+    --ink-2:#57514a;
+    --ink-mute:#8b8477;
+    --grid:#e2ddd0;
+    --border:rgba(24,21,15,0.12);
+    --accent:#b8480f;
+    --accent-soft:#f2ddc9;
+    --blue:#2a78d6;
+    --aqua:#1baf7a;
+    --yellow:#eda100;
+    --green:#008300;
+    --violet:#4a3aa7;
+    --red:#e34948;
+    --good:#0ca30c;
+    --warning:#a9720a;
+    --critical:#d03b3b;
+    --serious:#ec835a;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121110;
+      --page-edge:#0b0a09;
+      --surface:#1b1a17;
+      --surface-2:#232120;
+      --surface-3:#2c2a27;
+      --ink:#f6f4ef;
+      --ink-2:#c4bfb4;
+      --ink-mute:#8f897d;
+      --grid:#333029;
+      --border:rgba(255,255,255,0.10);
+      --accent:#f0793a;
+      --accent-soft:#3a2a1c;
+      --blue:#3987e5;
+      --aqua:#199e70;
+      --yellow:#c98500;
+      --green:#008300;
+      --violet:#9085e9;
+      --red:#e66767;
+      --good:#22b522;
+      --warning:#f0b64a;
+      --critical:#e66767;
+      --serious:#ec835a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121110; --page-edge:#0b0a09; --surface:#1b1a17; --surface-2:#232120; --surface-3:#2c2a27;
+    --ink:#f6f4ef; --ink-2:#c4bfb4; --ink-mute:#8f897d; --grid:#333029; --border:rgba(255,255,255,0.10);
+    --accent:#f0793a; --accent-soft:#3a2a1c; --blue:#3987e5; --aqua:#199e70; --yellow:#c98500; --green:#008300;
+    --violet:#9085e9; --red:#e66767; --good:#22b522; --warning:#f0b64a; --critical:#e66767; --serious:#ec835a;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"]{
+    --bg:#f7f5ef; --page-edge:#efece3; --surface:#ffffff; --surface-2:#f0eee5; --surface-3:#e8e5d9;
+    --ink:#18150f; --ink-2:#57514a; --ink-mute:#8b8477; --grid:#e2ddd0; --border:rgba(24,21,15,0.12);
+    --accent:#b8480f; --accent-soft:#f2ddc9; --blue:#2a78d6; --aqua:#1baf7a; --yellow:#eda100; --green:#008300;
+    --violet:#4a3aa7; --red:#e34948; --good:#0ca30c; --warning:#a9720a; --critical:#d03b3b; --serious:#ec835a;
+    color-scheme: light;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--page-edge);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    background:var(--bg);
+    min-height:100vh;
+    padding:28px 32px 64px;
+  }
+  @media (max-width:640px){ .wrap{padding:20px 14px 48px;} }
+
+  .eyebrow{
+    font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 6px;
+  }
+  h1{ font-size:26px; line-height:1.15; margin:0 0 8px; font-weight:800; letter-spacing:-0.01em; text-wrap:balance;}
+  .subtitle{ color:var(--ink-2); font-size:13.5px; line-height:1.6; max-width:760px; margin:0; }
+  .subtitle b{ color:var(--ink); font-weight:700; }
+
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;
+    padding-bottom:20px; margin-bottom:22px; border-bottom:1px solid var(--border);
+  }
+  .spec-chip{
+    display:inline-flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; padding:9px 14px; white-space:nowrap;
+  }
+  .spec-chip .num{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:15px; }
+  .spec-chip .lbl{ font-size:10.5px; color:var(--ink-mute); text-transform:uppercase; letter-spacing:.08em; }
+
+  section{ margin-bottom:34px; }
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  .section-title{ font-size:15px; font-weight:800; letter-spacing:-0.005em; }
+  .section-note{ font-size:12px; color:var(--ink-mute); }
+
+  /* KPI tiles */
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:900px){ .kpi-row{grid-template-columns:repeat(2,1fr) !important;} }
+  .kpi{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .kpi .lbl{ font-size:10.5px; color:var(--ink-mute); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
+  .kpi .digits{
+    font-family:var(--mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:22px;
+    color:var(--ink); display:flex; align-items:baseline; gap:4px;
+  }
+  .kpi .digits .unit{ font-size:12px; color:var(--ink-mute); font-family:var(--sans); font-weight:600;}
+  .kpi .sub{ font-size:11.5px; color:var(--ink-2); }
+  .kpi.led .digits{ color:var(--accent); }
+
+  /* cards / panels */
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px 20px; }
+  .two-up{ display:grid; grid-template-columns:1.5fr 1fr; gap:14px; align-items:stretch; }
+  @media (max-width:820px){ .two-up{grid-template-columns:1fr;} }
+
+  svg text{ font-family:var(--sans); }
+  .axis-label{ fill:var(--ink-mute); font-size:10.5px; }
+  .grid-line{ stroke:var(--grid); stroke-width:1; }
+  .nominal-line{ stroke:var(--ink-2); stroke-width:1.4; stroke-dasharray:4 3; }
+  .bar-hover{ cursor:pointer; }
+  .chart-caption{ font-size:11.5px; color:var(--ink-mute); margin-top:8px; line-height:1.5; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:12px; font-size:11.5px; color:var(--ink-2); margin-top:10px; }
+  .legend .item{ display:inline-flex; align-items:center; gap:6px; }
+  .legend .dot{ width:9px; height:9px; border-radius:2px; display:inline-block; flex:none; }
+
+  /* truck chip strip */
+  .chip-strip-wrap{ position:relative; }
+  .chip-strip-wrap::after{
+    content:''; position:absolute; top:0; right:0; bottom:12px; width:36px; pointer-events:none;
+    background:linear-gradient(to right, transparent, var(--bg));
+  }
+  .chip-strip{
+    display:flex; gap:8px; overflow-x:auto; padding:4px 2px 12px; scrollbar-width:thin;
+  }
+  .chip{
+    flex:none; display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:var(--surface); border:1.5px solid var(--border); border-radius:11px;
+    padding:9px 12px; cursor:pointer; min-width:64px; transition:border-color .15s, transform .1s;
+  }
+  .chip:hover{ transform:translateY(-1px); }
+  .chip.active{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .chip .tid{ font-family:var(--mono); font-weight:700; font-size:14px; }
+  .chip .status-dot{ width:8px; height:8px; border-radius:50%; }
+  .chip:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  /* risk badges */
+  .badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
+    padding:5px 10px 5px 8px; border-radius:100px; border:1px solid transparent;
+  }
+  .badge .dot{ width:7px; height:7px; border-radius:50%; }
+  .badge.critical{ background:color-mix(in srgb, var(--critical) 16%, transparent); color:var(--critical); }
+  .badge.critical .dot{ background:var(--critical); }
+  .badge.warning{ background:color-mix(in srgb, var(--warning) 18%, transparent); color:var(--warning); }
+  .badge.warning .dot{ background:var(--warning); }
+  .badge.good{ background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good); }
+  .badge.good .dot{ background:var(--good); }
+  .badge.muted{ background:var(--surface-3); color:var(--ink-2); }
+  .badge.muted .dot{ background:var(--ink-mute); }
+
+  /* table */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+  table{ border-collapse:collapse; width:100%; min-width:760px; font-size:12.5px; }
+  th,td{ padding:9px 12px; text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child{ text-align:left; }
+  thead th{
+    background:var(--surface-2); color:var(--ink-mute); font-weight:700; text-transform:uppercase;
+    font-size:10px; letter-spacing:.05em; cursor:pointer; user-select:none; position:sticky; top:0;
+  }
+  thead th:hover{ color:var(--ink); }
+  thead th.active{ color:var(--accent); }
+  tbody tr{ border-top:1px solid var(--border); cursor:pointer; }
+  tbody tr:hover{ background:var(--surface-2); }
+  tbody tr.selected{ background:var(--accent-soft); }
+  td{ font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+  td:first-child{ font-family:var(--sans); font-weight:700; }
+  td .pct-bar{ position:relative; }
+
+  /* tooltip */
+  #tooltip{
+    position:fixed; pointer-events:none; z-index:50; background:var(--ink); color:var(--bg);
+    font-size:11.5px; line-height:1.5; padding:8px 10px; border-radius:8px; max-width:240px;
+    opacity:0; transform:translateY(4px); transition:opacity .1s, transform .1s;
+    box-shadow:0 8px 20px rgba(0,0,0,0.25);
+  }
+  #tooltip.show{ opacity:1; transform:translateY(0); }
+  #tooltip b{ font-family:var(--mono); }
+
+  .risk-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:820px){ .risk-grid{grid-template-columns:1fr;} }
+  .risk-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+  .risk-card h4{ margin:0 0 8px; font-size:13px; display:flex; align-items:center; gap:8px; }
+  .risk-card ul{ margin:0; padding-left:18px; font-size:12.5px; color:var(--ink-2); line-height:1.7; }
+  .risk-card li b{ color:var(--ink); }
+
+  footer{ margin-top:36px; padding-top:16px; border-top:1px solid var(--border); font-size:11px; color:var(--ink-mute); line-height:1.7; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Весовой контроль · парк NTE200</p>
+      <h1>Загрузка и производительность самосвалов по данным весового устройства</h1>
+      <p class="subtitle">29 машин · <b>84&nbsp;856</b> циклов взвешивания · период <b>дек 2025 – июн 2026</b> (94% выборки — апрель–июнь 2026). Источник — бортовые весовые контроллеры (файлы «Весовая_№_дата.xlsx»), пофактовая запись каждого цикла погрузки.</p>
+    </div>
+    <div class="spec-chip">
+      <span class="lbl">Номинал</span>
+      <span class="num">178 т</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="kpi-row" id="fleet-kpis" style="grid-template-columns:repeat(3,1fr);"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">Распределение загрузки по всем циклам парка</div>
+      <div class="section-note">окраска столбцов — недогруз / целевой диапазон / перегруз относительно 178 т</div>
+    </div>
+    <div class="two-up">
+      <div class="panel">
+        <svg id="fleet-hist" width="100%" viewBox="0 0 640 300" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="chart-caption" id="fleet-hist-caption"></div>
+      </div>
+      <div class="panel" style="display:flex; flex-direction:column; gap:14px;">
+        <div>
+          <div class="section-title" style="font-size:12.5px; margin-bottom:6px;">Циклов в месяц</div>
+          <svg id="month-cycles" width="100%" viewBox="0 0 320 110" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div>
+          <div class="section-title" style="font-size:12.5px; margin-bottom:6px;">Средняя загрузка, % от номинала</div>
+          <svg id="month-load" width="100%" viewBox="0 0 320 110" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">Самосвал — детальная карточка</div>
+      <div class="section-note">выберите борт: чипом ниже или строкой в таблице рейтинга</div>
+    </div>
+    <div class="chip-strip-wrap">
+      <div class="chip-strip" id="chip-strip"></div>
+    </div>
+
+    <div class="panel" style="margin-top:4px;">
+      <div class="two-up" style="grid-template-columns:1.3fr 1fr;">
+        <div>
+          <div id="truck-title" style="font-weight:800; font-size:14px; margin-bottom:2px;"></div>
+          <div id="truck-period" style="font-size:11.5px; color:var(--ink-mute); margin-bottom:10px;"></div>
+          <svg id="truck-hist" width="100%" viewBox="0 0 560 260" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="chart-caption" id="truck-hist-caption"></div>
+          <div id="truck-badges" style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div class="kpi-row" id="truck-kpis" style="grid-template-columns:1fr 1fr;"></div>
+          <div>
+            <div class="section-title" style="font-size:12.5px; margin-bottom:8px;">Структура цикла, мин (порядок операций)</div>
+            <svg id="cycle-bar" width="100%" viewBox="0 0 460 46" preserveAspectRatio="xMidYMid meet"></svg>
+            <div class="legend" id="cycle-legend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">Рейтинг парка по загрузке и производительности</div>
+      <div class="section-note">клик по заголовку — сортировка, клик по строке — открыть карточку борта</div>
+    </div>
+    <div class="table-wrap">
+      <table id="rank-table">
+        <thead>
+          <tr>
+            <th data-key="truck">Борт</th>
+            <th data-key="cycles">Циклов</th>
+            <th data-key="avg_payload_t">Ср. масса, т</th>
+            <th data-key="avg_load_pct">Ср. загрузка, %</th>
+            <th data-key="overload_pct" class="active">Перегруз &gt;110%, %</th>
+            <th data-key="underload_pct">Недогруз &lt;90%, %</th>
+            <th data-key="rr_tkph">TKPH задн., ед.</th>
+            <th data-key="cycle_total">Цикл, мин</th>
+            <th data-key="productivity_tph">Произв., т/ч</th>
+          </tr>
+        </thead>
+        <tbody id="rank-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="section-title">Ключевые риски и наблюдения</div>
+    </div>
+    <div class="risk-grid" id="risk-grid"></div>
+  </section>
+
+  <footer>
+    <div><b style="color:var(--ink-2)">Методика.</b> Номинальная грузоподъёмность 178&nbsp;т определена медианой FinalPayload/LoadPercentage по всем 84&nbsp;856 циклам (устойчиво совпадает для всех 29 бортов — заводская уставка весовой системы). Целевой диапазон загрузки — 90–110% от номинала (обычная практика ОЕМ для тяжёлых самосвалов: недогруз снижает т/маш-ч, перегруз выше 110% ускоряет усталостный износ рамы, подвески и рост TKPH шин сверх температурного режима). Перегруз/недогруз и структура цикла — из бортовых полей LoadPercentage, StopLoadedTime, MovingLoadedTime, MovingEmptyTime, StopEmptyTime, LoadingTime, DumpingTime. Борт №74 — ограниченная выборка (381 цикл, 18–29.06.2026), показатели даны справочно.</div>
+  </footer>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const DATA = {"fleet":{"rated_t":178.0,"trucks_n":29,"cycles_total":84856,"tonnage_total":15592539.0,"load_hist":{"0":24,"10":1,"20":4,"30":4,"40":5,"50":2,"60":1,"70":2,"80":2,"90":3,"100":5,"110":5,"120":9,"130":17,"140":68,"150":716,"160":5248,"170":21340,"180":35435,"190":18955,"200":2944,"210":62,"220":4},"month_trend":[{"label":"дек 2025","cycles":741,"avg_load_pct":104.4},{"label":"янв 2026","cycles":1146,"avg_load_pct":105.0},{"label":"фев 2026","cycles":1079,"avg_load_pct":105.0},{"label":"мар 2026","cycles":1107,"avg_load_pct":104.9},{"label":"апр 2026","cycles":27108,"avg_load_pct":102.9},{"label":"май 2026","cycles":28079,"avg_load_pct":103.4},{"label":"июн 2026","cycles":25596,"avg_load_pct":103.2}]},"trucks":{"44":{"truck":"44","cycles":2787,"avg_payload_t":189.5,"avg_load_pct":106.4,"total_tonnage_t":528043.0,"overload_pct":19.2,"target_pct":80.7,"underload_pct":0.1,"hist":{"100":1,"140":1,"160":22,"170":298,"180":1127,"190":1077,"200":252,"210":9},"cycle_min":{"stop_loaded":0.65,"moving_loaded":17.39,"moving_empty":11.09,"stop_empty":6.51,"loading":2.39,"dumping":0.76,"total":38.79},"dist_loaded_km":4.34,"dist_empty_km":4.43,"ld_speed_kmh":29.7,"em_speed_kmh":35.7,"lr_tkph":125.4,"rr_tkph":162.0,"fuel_pct":65.1,"productivity_tph":293.1,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"45":{"truck":"45","cycles":3053,"avg_payload_t":183.6,"avg_load_pct":103.1,"total_tonnage_t":560402.0,"overload_pct":4.8,"target_pct":94.7,"underload_pct":0.5,"hist":{"140":2,"150":14,"160":124,"170":816,"180":1461,"190":585,"200":50,"210":1},"cycle_min":{"stop_loaded":0.52,"moving_loaded":17.72,"moving_empty":10.78,"stop_empty":6.62,"loading":2.41,"dumping":0.78,"total":38.83},"dist_loaded_km":4.42,"dist_empty_km":4.53,"ld_speed_kmh":31.4,"em_speed_kmh":36.7,"lr_tkph":122.6,"rr_tkph":158.8,"fuel_pct":63.9,"productivity_tph":283.6,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 26.06.2026"},"46":{"truck":"46","cycles":2538,"avg_payload_t":174.5,"avg_load_pct":98.0,"total_tonnage_t":442841.0,"overload_pct":0.6,"target_pct":95.9,"underload_pct":3.5,"hist":{"0":2,"120":1,"140":5,"150":95,"160":557,"170":1255,"180":561,"190":53,"200":8,"210":1},"cycle_min":{"stop_loaded":0.54,"moving_loaded":17.83,"moving_empty":11.23,"stop_empty":7.31,"loading":2.38,"dumping":0.72,"total":40.02},"dist_loaded_km":4.43,"dist_empty_km":4.58,"ld_speed_kmh":29.8,"em_speed_kmh":36.8,"lr_tkph":124.4,"rr_tkph":160.8,"fuel_pct":66.4,"productivity_tph":261.6,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"49":{"truck":"49","cycles":2709,"avg_payload_t":188.3,"avg_load_pct":105.8,"total_tonnage_t":510109.0,"overload_pct":15.6,"target_pct":84.1,"underload_pct":0.3,"hist":{"0":4,"100":1,"130":1,"150":2,"160":37,"170":353,"180":1116,"190":991,"200":200,"210":4},"cycle_min":{"stop_loaded":0.62,"moving_loaded":17.44,"moving_empty":11.27,"stop_empty":6.09,"loading":2.43,"dumping":0.77,"total":38.63},"dist_loaded_km":4.28,"dist_empty_km":4.41,"ld_speed_kmh":28.2,"em_speed_kmh":35.5,"lr_tkph":125.7,"rr_tkph":162.5,"fuel_pct":64.7,"productivity_tph":292.5,"months":["апр 2026","июн 2026","май 2026"],"period_str":"10.04.2026 – 27.06.2026"},"50":{"truck":"50","cycles":3076,"avg_payload_t":185.2,"avg_load_pct":104.0,"total_tonnage_t":569689.0,"overload_pct":7.4,"target_pct":92.4,"underload_pct":0.1,"hist":{"150":4,"160":88,"170":661,"180":1496,"190":739,"200":83,"210":4,"220":1},"cycle_min":{"stop_loaded":0.63,"moving_loaded":17.18,"moving_empty":10.97,"stop_empty":7.08,"loading":2.45,"dumping":0.76,"total":39.06},"dist_loaded_km":4.27,"dist_empty_km":4.4,"ld_speed_kmh":28.4,"em_speed_kmh":35.5,"lr_tkph":123.1,"rr_tkph":160.0,"fuel_pct":64.1,"productivity_tph":284.5,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 27.06.2026"},"51":{"truck":"51","cycles":2886,"avg_payload_t":182.5,"avg_load_pct":102.5,"total_tonnage_t":526621.0,"overload_pct":3.0,"target_pct":96.7,"underload_pct":0.2,"hist":{"110":1,"130":3,"150":5,"160":145,"170":892,"180":1367,"190":449,"200":24},"cycle_min":{"stop_loaded":0.61,"moving_loaded":17.81,"moving_empty":11.72,"stop_empty":6.8,"loading":2.42,"dumping":0.8,"total":40.16},"dist_loaded_km":4.32,"dist_empty_km":4.48,"ld_speed_kmh":28.1,"em_speed_kmh":34.9,"lr_tkph":122.4,"rr_tkph":158.9,"fuel_pct":67.1,"productivity_tph":272.7,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 26.06.2026"},"53":{"truck":"53","cycles":2014,"avg_payload_t":179.3,"avg_load_pct":100.7,"total_tonnage_t":361021.0,"overload_pct":1.6,"target_pct":97.3,"underload_pct":1.0,"hist":{"0":1,"150":24,"160":205,"170":807,"180":826,"190":139,"200":12},"cycle_min":{"stop_loaded":0.64,"moving_loaded":17.64,"moving_empty":11.21,"stop_empty":7.14,"loading":2.44,"dumping":0.75,"total":39.82},"dist_loaded_km":4.44,"dist_empty_km":4.56,"ld_speed_kmh":30.7,"em_speed_kmh":36.5,"lr_tkph":122.4,"rr_tkph":159.8,"fuel_pct":67.4,"productivity_tph":270.1,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 25.06.2026"},"54":{"truck":"54","cycles":2621,"avg_payload_t":179.2,"avg_load_pct":100.7,"total_tonnage_t":469709.0,"overload_pct":1.2,"target_pct":98.1,"underload_pct":0.8,"hist":{"30":1,"150":23,"160":297,"170":1060,"180":1022,"190":203,"200":15},"cycle_min":{"stop_loaded":0.65,"moving_loaded":17.53,"moving_empty":11.43,"stop_empty":7.39,"loading":2.42,"dumping":0.8,"total":40.22},"dist_loaded_km":4.4,"dist_empty_km":4.52,"ld_speed_kmh":29.9,"em_speed_kmh":34.3,"lr_tkph":121.9,"rr_tkph":158.3,"fuel_pct":66.0,"productivity_tph":267.4,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 28.06.2026"},"55":{"truck":"55","cycles":2547,"avg_payload_t":180.8,"avg_load_pct":101.6,"total_tonnage_t":460454.0,"overload_pct":2.3,"target_pct":96.1,"underload_pct":1.6,"hist":{"90":1,"100":2,"110":3,"120":6,"130":6,"140":7,"150":22,"160":168,"170":869,"180":1140,"190":308,"200":14,"220":1},"cycle_min":{"stop_loaded":0.7,"moving_loaded":17.53,"moving_empty":11.34,"stop_empty":6.63,"loading":2.44,"dumping":0.77,"total":39.42},"dist_loaded_km":4.32,"dist_empty_km":4.48,"ld_speed_kmh":30.1,"em_speed_kmh":36.6,"lr_tkph":121.1,"rr_tkph":156.1,"fuel_pct":66.7,"productivity_tph":275.2,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 29.06.2026"},"56":{"truck":"56","cycles":3098,"avg_payload_t":190.4,"avg_load_pct":107.0,"total_tonnage_t":589911.0,"overload_pct":24.5,"target_pct":75.4,"underload_pct":0.1,"hist":{"0":2,"150":2,"160":40,"170":281,"180":1081,"190":1294,"200":389,"210":9},"cycle_min":{"stop_loaded":0.7,"moving_loaded":16.58,"moving_empty":10.56,"stop_empty":6.9,"loading":2.39,"dumping":0.8,"total":37.93},"dist_loaded_km":4.2,"dist_empty_km":4.29,"ld_speed_kmh":29.8,"em_speed_kmh":36.1,"lr_tkph":126.5,"rr_tkph":163.8,"fuel_pct":66.3,"productivity_tph":301.2,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 24.06.2026"},"61":{"truck":"61","cycles":2983,"avg_payload_t":186.8,"avg_load_pct":104.9,"total_tonnage_t":557140.0,"overload_pct":11.5,"target_pct":88.0,"underload_pct":0.4,"hist":{"30":1,"40":3,"50":2,"130":1,"150":7,"160":67,"170":482,"180":1311,"190":950,"200":156,"210":1,"220":2},"cycle_min":{"stop_loaded":0.54,"moving_loaded":17.42,"moving_empty":10.89,"stop_empty":6.99,"loading":2.39,"dumping":0.76,"total":38.99},"dist_loaded_km":4.32,"dist_empty_km":4.46,"ld_speed_kmh":29.0,"em_speed_kmh":36.2,"lr_tkph":124.4,"rr_tkph":161.2,"fuel_pct":65.0,"productivity_tph":287.4,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 26.06.2026"},"63":{"truck":"63","cycles":3143,"avg_payload_t":184.6,"avg_load_pct":103.7,"total_tonnage_t":580146.0,"overload_pct":5.9,"target_pct":93.8,"underload_pct":0.3,"hist":{"40":1,"130":1,"140":1,"150":8,"160":88,"170":746,"180":1514,"190":715,"200":68,"210":1},"cycle_min":{"stop_loaded":0.62,"moving_loaded":17.29,"moving_empty":11.11,"stop_empty":6.94,"loading":2.44,"dumping":0.72,"total":39.11},"dist_loaded_km":4.34,"dist_empty_km":4.44,"ld_speed_kmh":29.1,"em_speed_kmh":34.8,"lr_tkph":123.9,"rr_tkph":160.8,"fuel_pct":67.1,"productivity_tph":283.2,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 29.06.2026"},"65":{"truck":"65","cycles":3045,"avg_payload_t":184.6,"avg_load_pct":103.7,"total_tonnage_t":562166.0,"overload_pct":6.5,"target_pct":93.2,"underload_pct":0.3,"hist":{"80":1,"100":1,"130":1,"140":1,"150":6,"160":102,"170":711,"180":1462,"190":693,"200":66,"210":1},"cycle_min":{"stop_loaded":0.66,"moving_loaded":17.55,"moving_empty":11.39,"stop_empty":6.82,"loading":2.41,"dumping":0.77,"total":39.6},"dist_loaded_km":4.36,"dist_empty_km":4.49,"ld_speed_kmh":28.6,"em_speed_kmh":35.0,"lr_tkph":122.1,"rr_tkph":158.9,"fuel_pct":67.2,"productivity_tph":279.7,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 29.06.2026"},"67":{"truck":"67","cycles":3174,"avg_payload_t":182.7,"avg_load_pct":102.6,"total_tonnage_t":579776.0,"overload_pct":3.6,"target_pct":96.3,"underload_pct":0.2,"hist":{"150":7,"160":166,"170":946,"180":1510,"190":508,"200":37},"cycle_min":{"stop_loaded":0.61,"moving_loaded":17.1,"moving_empty":11.14,"stop_empty":6.64,"loading":2.42,"dumping":0.84,"total":38.75},"dist_loaded_km":4.31,"dist_empty_km":4.4,"ld_speed_kmh":30.2,"em_speed_kmh":34.7,"lr_tkph":123.7,"rr_tkph":160.6,"fuel_pct":66.4,"productivity_tph":282.8,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 28.06.2026"},"68":{"truck":"68","cycles":2851,"avg_payload_t":183.9,"avg_load_pct":103.3,"total_tonnage_t":524300.0,"overload_pct":4.6,"target_pct":95.2,"underload_pct":0.2,"hist":{"60":1,"150":5,"160":88,"170":734,"180":1405,"190":580,"200":36,"210":2},"cycle_min":{"stop_loaded":0.77,"moving_loaded":17.6,"moving_empty":11.31,"stop_empty":6.66,"loading":2.42,"dumping":0.87,"total":39.63},"dist_loaded_km":4.35,"dist_empty_km":4.43,"ld_speed_kmh":29.4,"em_speed_kmh":34.4,"lr_tkph":122.8,"rr_tkph":159.1,"fuel_pct":67.9,"productivity_tph":278.4,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 24.06.2026"},"69":{"truck":"69","cycles":2605,"avg_payload_t":184.9,"avg_load_pct":103.9,"total_tonnage_t":481704.0,"overload_pct":5.7,"target_pct":93.9,"underload_pct":0.4,"hist":{"0":2,"130":1,"140":2,"150":5,"160":65,"170":558,"180":1253,"190":665,"200":54},"cycle_min":{"stop_loaded":0.71,"moving_loaded":17.34,"moving_empty":11.61,"stop_empty":7.0,"loading":2.38,"dumping":0.87,"total":39.91},"dist_loaded_km":4.32,"dist_empty_km":4.47,"ld_speed_kmh":29.3,"em_speed_kmh":35.6,"lr_tkph":123.5,"rr_tkph":160.5,"fuel_pct":67.5,"productivity_tph":278.0,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 28.06.2026"},"70":{"truck":"70","cycles":3138,"avg_payload_t":184.1,"avg_load_pct":103.4,"total_tonnage_t":577705.0,"overload_pct":5.5,"target_pct":94.1,"underload_pct":0.3,"hist":{"0":4,"90":2,"150":4,"160":109,"170":747,"180":1555,"190":663,"200":50,"210":4},"cycle_min":{"stop_loaded":0.6,"moving_loaded":17.24,"moving_empty":11.1,"stop_empty":5.98,"loading":2.45,"dumping":0.85,"total":38.22},"dist_loaded_km":4.26,"dist_empty_km":4.33,"ld_speed_kmh":28.3,"em_speed_kmh":34.6,"lr_tkph":124.0,"rr_tkph":160.7,"fuel_pct":67.3,"productivity_tph":289.0,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"71":{"truck":"71","cycles":3048,"avg_payload_t":184.4,"avg_load_pct":103.6,"total_tonnage_t":562097.0,"overload_pct":6.3,"target_pct":93.2,"underload_pct":0.4,"hist":{"0":2,"110":1,"140":2,"150":10,"160":111,"170":689,"180":1513,"190":647,"200":71,"210":2},"cycle_min":{"stop_loaded":0.64,"moving_loaded":17.27,"moving_empty":11.04,"stop_empty":6.24,"loading":2.42,"dumping":0.83,"total":38.44},"dist_loaded_km":4.34,"dist_empty_km":4.5,"ld_speed_kmh":30.2,"em_speed_kmh":36.6,"lr_tkph":123.6,"rr_tkph":160.6,"fuel_pct":66.1,"productivity_tph":287.9,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"72":{"truck":"72","cycles":2865,"avg_payload_t":179.1,"avg_load_pct":100.6,"total_tonnage_t":513186.0,"overload_pct":1.2,"target_pct":97.7,"underload_pct":1.1,"hist":{"20":2,"140":4,"150":30,"160":283,"170":1187,"180":1127,"190":223,"200":9},"cycle_min":{"stop_loaded":0.59,"moving_loaded":17.59,"moving_empty":11.25,"stop_empty":6.6,"loading":2.41,"dumping":0.86,"total":39.3},"dist_loaded_km":4.42,"dist_empty_km":4.53,"ld_speed_kmh":29.8,"em_speed_kmh":35.7,"lr_tkph":122.3,"rr_tkph":157.9,"fuel_pct":65.3,"productivity_tph":273.5,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"74":{"truck":"74","cycles":381,"avg_payload_t":188.9,"avg_load_pct":106.1,"total_tonnage_t":71964.0,"overload_pct":14.7,"target_pct":85.3,"underload_pct":0.0,"hist":{"160":6,"170":45,"180":143,"190":158,"200":29},"cycle_min":{"stop_loaded":0.31,"moving_loaded":17.84,"moving_empty":11.99,"stop_empty":7.62,"loading":2.24,"dumping":0.81,"total":40.81},"dist_loaded_km":4.48,"dist_empty_km":4.67,"ld_speed_kmh":27.5,"em_speed_kmh":33.8,"lr_tkph":130.4,"rr_tkph":165.0,"fuel_pct":67.6,"productivity_tph":277.7,"months":["июн 2026"],"period_str":"18.06.2026 – 29.06.2026"},"75":{"truck":"75","cycles":3032,"avg_payload_t":182.3,"avg_load_pct":102.4,"total_tonnage_t":552657.0,"overload_pct":3.5,"target_pct":96.0,"underload_pct":0.5,"hist":{"30":2,"70":1,"80":1,"140":1,"150":10,"160":154,"170":925,"180":1452,"190":449,"200":36,"210":1},"cycle_min":{"stop_loaded":0.55,"moving_loaded":17.62,"moving_empty":11.05,"stop_empty":7.24,"loading":2.42,"dumping":0.88,"total":39.76},"dist_loaded_km":4.34,"dist_empty_km":4.48,"ld_speed_kmh":29.0,"em_speed_kmh":36.1,"lr_tkph":121.8,"rr_tkph":157.7,"fuel_pct":67.1,"productivity_tph":275.0,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 27.06.2026"},"76":{"truck":"76","cycles":2573,"avg_payload_t":171.1,"avg_load_pct":96.1,"total_tonnage_t":440295.0,"overload_pct":0.6,"target_pct":91.7,"underload_pct":7.7,"hist":{"0":1,"140":20,"150":204,"160":879,"170":1119,"180":316,"190":29,"200":5},"cycle_min":{"stop_loaded":0.48,"moving_loaded":17.35,"moving_empty":11.2,"stop_empty":6.99,"loading":2.44,"dumping":0.88,"total":39.34},"dist_loaded_km":4.32,"dist_empty_km":4.46,"ld_speed_kmh":29.2,"em_speed_kmh":34.9,"lr_tkph":120.6,"rr_tkph":157.1,"fuel_pct":67.3,"productivity_tph":261.0,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 26.06.2026"},"80":{"truck":"80","cycles":7060,"avg_payload_t":187.0,"avg_load_pct":105.0,"total_tonnage_t":1320058.0,"overload_pct":12.5,"target_pct":87.1,"underload_pct":0.5,"hist":{"0":2,"20":2,"40":1,"120":2,"140":6,"150":21,"160":147,"170":1147,"180":3067,"190":2288,"200":372,"210":5},"cycle_min":{"stop_loaded":0.71,"moving_loaded":16.27,"moving_empty":10.8,"stop_empty":7.91,"loading":2.47,"dumping":0.72,"total":38.88},"dist_loaded_km":4.39,"dist_empty_km":4.49,"ld_speed_kmh":31.3,"em_speed_kmh":35.9,"lr_tkph":123.4,"rr_tkph":160.2,"fuel_pct":69.7,"productivity_tph":288.6,"months":["апр 2026","дек 2025","июн 2026","май 2026","мар 2026","фев 2026","янв 2026"],"period_str":"11.12.2025 – 29.06.2026"},"81":{"truck":"81","cycles":2660,"avg_payload_t":183.7,"avg_load_pct":103.2,"total_tonnage_t":488720.0,"overload_pct":4.5,"target_pct":95.2,"underload_pct":0.3,"hist":{"0":1,"150":6,"160":102,"170":702,"180":1287,"190":520,"200":42},"cycle_min":{"stop_loaded":0.61,"moving_loaded":17.29,"moving_empty":11.76,"stop_empty":6.87,"loading":2.39,"dumping":0.74,"total":39.66},"dist_loaded_km":4.35,"dist_empty_km":4.51,"ld_speed_kmh":28.6,"em_speed_kmh":33.0,"lr_tkph":124.9,"rr_tkph":161.7,"fuel_pct":67.2,"productivity_tph":278.0,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"83":{"truck":"83","cycles":2965,"avg_payload_t":187.1,"avg_load_pct":105.1,"total_tonnage_t":554877.0,"overload_pct":12.7,"target_pct":87.1,"underload_pct":0.2,"hist":{"10":1,"150":4,"160":62,"170":495,"180":1257,"190":987,"200":157,"210":2},"cycle_min":{"stop_loaded":0.57,"moving_loaded":17.48,"moving_empty":11.35,"stop_empty":7.04,"loading":2.38,"dumping":0.76,"total":39.58},"dist_loaded_km":4.36,"dist_empty_km":4.48,"ld_speed_kmh":28.4,"em_speed_kmh":33.2,"lr_tkph":126.2,"rr_tkph":162.8,"fuel_pct":66.5,"productivity_tph":283.7,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 29.06.2026"},"86":{"truck":"86","cycles":2868,"avg_payload_t":172.1,"avg_load_pct":96.7,"total_tonnage_t":493532.0,"overload_pct":0.5,"target_pct":93.9,"underload_pct":5.6,"hist":{"130":3,"140":15,"150":176,"160":920,"170":1293,"180":425,"190":29,"200":7},"cycle_min":{"stop_loaded":0.6,"moving_loaded":17.63,"moving_empty":11.39,"stop_empty":7.34,"loading":2.5,"dumping":0.8,"total":40.25},"dist_loaded_km":4.3,"dist_empty_km":4.49,"ld_speed_kmh":28.9,"em_speed_kmh":35.3,"lr_tkph":120.8,"rr_tkph":157.3,"fuel_pct":66.1,"productivity_tph":256.5,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 24.06.2026"},"87":{"truck":"87","cycles":3107,"avg_payload_t":182.9,"avg_load_pct":102.8,"total_tonnage_t":568398.0,"overload_pct":3.4,"target_pct":96.2,"underload_pct":0.4,"hist":{"150":16,"160":145,"170":906,"180":1472,"190":533,"200":34,"210":1},"cycle_min":{"stop_loaded":0.61,"moving_loaded":17.58,"moving_empty":11.27,"stop_empty":6.78,"loading":2.42,"dumping":0.78,"total":39.44},"dist_loaded_km":4.33,"dist_empty_km":4.45,"ld_speed_kmh":28.6,"em_speed_kmh":33.9,"lr_tkph":123.7,"rr_tkph":159.8,"fuel_pct":68.9,"productivity_tph":278.3,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 30.06.2026"},"88":{"truck":"88","cycles":2993,"avg_payload_t":190.0,"avg_load_pct":106.7,"total_tonnage_t":568541.0,"overload_pct":21.9,"target_pct":78.1,"underload_pct":0.0,"hist":{"0":1,"150":1,"160":29,"170":307,"180":1109,"190":1205,"200":332,"210":9},"cycle_min":{"stop_loaded":0.57,"moving_loaded":17.07,"moving_empty":11.38,"stop_empty":6.84,"loading":2.51,"dumping":0.77,"total":39.13},"dist_loaded_km":4.22,"dist_empty_km":4.4,"ld_speed_kmh":28.2,"em_speed_kmh":33.1,"lr_tkph":124.9,"rr_tkph":161.2,"fuel_pct":68.1,"productivity_tph":291.3,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 26.06.2026"},"89":{"truck":"89","cycles":3036,"avg_payload_t":189.9,"avg_load_pct":106.7,"total_tonnage_t":576477.0,"overload_pct":23.1,"target_pct":76.7,"underload_pct":0.3,"hist":{"0":2,"70":1,"140":1,"150":5,"160":42,"170":309,"180":1060,"190":1275,"200":336,"210":5},"cycle_min":{"stop_loaded":0.57,"moving_loaded":17.5,"moving_empty":11.48,"stop_empty":6.72,"loading":2.38,"dumping":0.81,"total":39.46},"dist_loaded_km":4.29,"dist_empty_km":4.48,"ld_speed_kmh":28.0,"em_speed_kmh":33.2,"lr_tkph":125.9,"rr_tkph":162.8,"fuel_pct":67.8,"productivity_tph":288.7,"months":["апр 2026","июн 2026","май 2026"],"period_str":"01.04.2026 – 29.06.2026"}}};
+
+const RATED = DATA.fleet.rated_t;
+const LOW = RATED * 0.9, HIGH = RATED * 1.1;
+const trucks = DATA.trucks;
+const truckIds = Object.keys(trucks).sort((a,b)=>+a-+b);
+
+const COLOR = {
+  underload: 'var(--warning)',
+  target: 'var(--good)',
+  overload: 'var(--critical)',
+  cycleSegs: ['var(--blue)','var(--aqua)','var(--yellow)','var(--green)','var(--violet)','var(--red)'],
+};
+const CYCLE_SEG_KEYS = ['loading','stop_loaded','moving_loaded','dumping','moving_empty','stop_empty'];
+const CYCLE_SEG_LABELS = ['Погрузка','Стоянка гружёный','Ход гружёный','Разгрузка','Ход порожний','Стоянка порожний (очередь)'];
+
+function cssv(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name.replace('var(--','').replace(')','')) || name;
+}
+function resolveColor(v){
+  if(v.startsWith('var(')){
+    const varName = v.slice(4,-1).trim();
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  }
+  return v;
+}
+
+const tooltip = document.getElementById('tooltip');
+function showTip(html, evt){
+  tooltip.innerHTML = html;
+  tooltip.classList.add('show');
+  moveTip(evt);
+}
+function moveTip(evt){
+  const pad = 14;
+  let x = evt.clientX + pad, y = evt.clientY + pad;
+  const tw = 240, th = 90;
+  if(x + tw > window.innerWidth) x = evt.clientX - tw - pad;
+  if(y + th > window.innerHeight) y = evt.clientY - th - pad;
+  tooltip.style.left = x+'px'; tooltip.style.top = y+'px';
+}
+function hideTip(){ tooltip.classList.remove('show'); }
+
+function fmtInt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+function fmt1(n){ return n.toLocaleString('ru-RU', {minimumFractionDigits:1, maximumFractionDigits:1}); }
+
+function niceStep(maxVal, targetTicks){
+  const raw = maxVal / targetTicks;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  let step;
+  if(norm < 1.5) step = 1;
+  else if(norm < 3) step = 2;
+  else if(norm < 7) step = 5;
+  else step = 10;
+  return step * mag;
+}
+
+function svgEl(tag, attrs){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ---------- Payload histogram (shared by fleet + truck) ---------- */
+function renderHistogram(svgId, captionId, hist, totalCycles, opts){
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const vb = svg.viewBox.baseVal;
+  const W = vb.width, H = vb.height;
+  const margin = {top:10, right:14, bottom:30, left:40};
+  const plotW = W - margin.left - margin.right;
+  const plotH = H - margin.top - margin.bottom;
+
+  const binWidth = 10;
+  let entries = Object.keys(hist).map(k=>[+k, hist[k]]).sort((a,b)=>a[0]-b[0]);
+  const threshold = Math.max(2, totalCycles*0.001);
+  let excluded = 0, excludedN = 0;
+  const shown = [];
+  entries.forEach(([bin,count])=>{
+    if(count < threshold){ excluded += count; excludedN++; }
+    else shown.push([bin,count]);
+  });
+
+  const maxCount = Math.max(...shown.map(d=>d[1]), 1);
+  const step = niceStep(maxCount, 4);
+  const yMax = Math.ceil(maxCount/step)*step;
+
+  const n = shown.length;
+  const barW = plotW / n;
+  const x = i => margin.left + i*barW;
+  const y = v => margin.top + plotH - (v/yMax)*plotH;
+
+  const g = svgEl('g',{});
+  svg.appendChild(g);
+
+  // gridlines + y labels
+  const ticks = 4;
+  for(let i=0;i<=ticks;i++){
+    const v = yMax*i/ticks;
+    const yy = y(v);
+    g.appendChild(svgEl('line',{x1:margin.left, x2:W-margin.right, y1:yy, y2:yy, class:'grid-line'}));
+    const t = svgEl('text',{x:margin.left-6, y:yy+3, class:'axis-label', 'text-anchor':'end'});
+    t.textContent = v>=1000? Math.round(v/1000)+'k' : Math.round(v);
+    g.appendChild(t);
+  }
+
+  // nominal line
+  const ratedIdx = (RATED - shown[0][0]) / binWidth;
+  if(ratedIdx >= -0.5 && ratedIdx <= n+0.5){
+    const rx = margin.left + ratedIdx*barW;
+    g.appendChild(svgEl('line',{x1:rx,x2:rx,y1:margin.top,y2:margin.top+plotH, class:'nominal-line'}));
+    const lbl = svgEl('text',{x:rx, y:margin.top-1, class:'axis-label','text-anchor':'middle','font-weight':'700'});
+    lbl.textContent = RATED+' т ном.';
+    g.appendChild(lbl);
+  }
+
+  shown.forEach(([bin,count],i)=>{
+    const center = bin + binWidth/2;
+    let band = 'target', color = COLOR.target;
+    if(center < LOW){ band='underload'; color = COLOR.underload; }
+    else if(center > HIGH){ band='overload'; color = COLOR.overload; }
+    const bx = x(i)+1.5;
+    const bw = barW-3;
+    const by = y(count);
+    const bh = margin.top+plotH - by;
+    const rect = svgEl('rect',{x:bx, y:by, width:bw, height:Math.max(bh,1.5), rx:3, ry:3, fill:resolveColor(color), class:'bar-hover'});
+    rect.addEventListener('mousemove', (e)=>{
+      showTip(`<b>${bin}–${bin+binWidth} т</b><br>${fmtInt(count)} циклов (${(100*count/totalCycles).toFixed(1)}% выборки)<br>${band==='target'?'в целевом диапазоне':band==='overload'?'перегруз &gt;110%':'недогруз &lt;90%'}`, e);
+    });
+    rect.addEventListener('mouseleave', hideTip);
+    rect.addEventListener('mousemove', moveTip);
+    g.appendChild(rect);
+    if(n<=24 && (i%Math.ceil(n/12||1)===0)){
+      const t = svgEl('text',{x:x(i)+barW/2, y:margin.top+plotH+14, class:'axis-label','text-anchor':'middle'});
+      t.textContent = bin;
+      g.appendChild(t);
+    }
+  });
+  g.appendChild(svgEl('line',{x1:margin.left,x2:W-margin.right,y1:margin.top+plotH,y2:margin.top+plotH,class:'grid-line'}));
+
+  const cap = document.getElementById(captionId);
+  if(cap){
+    cap.innerHTML = `Ось X — масса груза, т (шаг 10 т). ${excludedN? `Не показано на графике: ${fmtInt(excluded)} циклов (${(100*excluded/totalCycles).toFixed(2)}%) в разреженных бинах &lt;${shown[0]?shown[0][0]:130} т — технические/неполные циклы.`:''}`;
+  }
+}
+
+/* ---------- Month trend charts ---------- */
+function renderBarChart(svgId, data, valueKey, color, fmt){
+  const svg = document.getElementById(svgId);
+  svg.innerHTML='';
+  const vb = svg.viewBox.baseVal;
+  const W=vb.width, H=vb.height;
+  const margin={top:6,right:6,bottom:18,left:6};
+  const plotW=W-margin.left-margin.right, plotH=H-margin.top-margin.bottom;
+  const maxV = Math.max(...data.map(d=>d[valueKey]));
+  const barW = plotW/data.length;
+  const g = svgEl('g',{});
+  svg.appendChild(g);
+  data.forEach((d,i)=>{
+    const h = (d[valueKey]/maxV)*plotH;
+    const bx = margin.left + i*barW + barW*0.18;
+    const bw = barW*0.64;
+    const by = margin.top+plotH-h;
+    const rect = svgEl('rect',{x:bx,y:by,width:bw,height:Math.max(h,1.5),rx:2.5,ry:2.5,fill:resolveColor(color)});
+    rect.addEventListener('mousemove',(e)=>showTip(`<b>${d.label}</b><br>${fmt(d[valueKey])}`,e));
+    rect.addEventListener('mouseleave',hideTip);
+    rect.addEventListener('mousemove',moveTip);
+    g.appendChild(rect);
+    const t = svgEl('text',{x:bx+bw/2,y:H-4,class:'axis-label','text-anchor':'middle'});
+    t.textContent = d.label.split(' ')[0];
+    g.appendChild(t);
+  });
+}
+function renderLineChart(svgId, data, valueKey, color, fmt, baseline){
+  const svg = document.getElementById(svgId);
+  svg.innerHTML='';
+  const vb = svg.viewBox.baseVal;
+  const W=vb.width, H=vb.height;
+  const margin={top:10,right:6,bottom:18,left:6};
+  const plotW=W-margin.left-margin.right, plotH=H-margin.top-margin.bottom;
+  const vals = data.map(d=>d[valueKey]);
+  const minV = Math.min(...vals, baseline!=null?baseline:Infinity)-1;
+  const maxV = Math.max(...vals, baseline!=null?baseline:-Infinity)+1;
+  const xStep = plotW/(data.length-1);
+  const xy = (i)=> [margin.left+i*xStep, margin.top+plotH-((data[i][valueKey]-minV)/(maxV-minV))*plotH];
+  const g = svgEl('g',{});
+  svg.appendChild(g);
+  if(baseline!=null){
+    const by = margin.top+plotH-((baseline-minV)/(maxV-minV))*plotH;
+    g.appendChild(svgEl('line',{x1:margin.left,x2:W-margin.right,y1:by,y2:by,class:'nominal-line'}));
+  }
+  let path = '';
+  data.forEach((d,i)=>{ const [px,py]=xy(i); path += (i===0?'M':'L')+px+','+py+' '; });
+  g.appendChild(svgEl('path',{d:path, fill:'none', stroke:resolveColor(color), 'stroke-width':2, 'stroke-linejoin':'round','stroke-linecap':'round'}));
+  data.forEach((d,i)=>{
+    const [px,py]=xy(i);
+    const c = svgEl('circle',{cx:px,cy:py,r:4.5,fill:resolveColor(color), stroke:resolveColor('var(--surface)'), 'stroke-width':2});
+    c.addEventListener('mousemove',(e)=>showTip(`<b>${d.label}</b><br>${fmt(d[valueKey])}`,e));
+    c.addEventListener('mouseleave',hideTip);
+    c.addEventListener('mousemove',moveTip);
+    g.appendChild(c);
+    const t = svgEl('text',{x:px,y:H-4,class:'axis-label','text-anchor':'middle'});
+    t.textContent = d.label.split(' ')[0];
+    g.appendChild(t);
+  });
+}
+
+/* ---------- Cycle composition bar ---------- */
+function renderCycleBar(svgId, legendId, cycleMin){
+  const svg = document.getElementById(svgId);
+  svg.innerHTML='';
+  const vb = svg.viewBox.baseVal;
+  const W=vb.width, H=vb.height;
+  const margin={top:4,right:4,bottom:4,left:4};
+  const plotW=W-margin.left-margin.right;
+  const total = cycleMin.total;
+  let cx = margin.left;
+  const barH = 30;
+  const g = svgEl('g',{});
+  svg.appendChild(g);
+  CYCLE_SEG_KEYS.forEach((k,i)=>{
+    const v = cycleMin[k];
+    const w = (v/total)*plotW;
+    const rect = svgEl('rect',{x:cx, y:margin.top, width:Math.max(w-1.5,0), height:barH, rx:2.5, ry:2.5, fill:resolveColor(COLOR.cycleSegs[i])});
+    rect.addEventListener('mousemove',(e)=>showTip(`<b>${CYCLE_SEG_LABELS[i]}</b><br>${fmt1(v)} мин (${(100*v/total).toFixed(0)}% цикла)`,e));
+    rect.addEventListener('mouseleave',hideTip);
+    rect.addEventListener('mousemove',moveTip);
+    g.appendChild(rect);
+    cx += w;
+  });
+  const legend = document.getElementById(legendId);
+  legend.innerHTML = CYCLE_SEG_KEYS.map((k,i)=>
+    `<span class="item"><span class="dot" style="background:${resolveColor(COLOR.cycleSegs[i])}"></span>${CYCLE_SEG_LABELS[i]} · ${fmt1(cycleMin[k])} мин</span>`
+  ).join('') + `<span class="item"><b style="color:var(--ink)">Итого цикл: ${fmt1(total)} мин</b></span>`;
+}
+
+/* ---------- Fleet KPIs ---------- */
+function renderFleetKPIs(){
+  const f = DATA.fleet;
+  const cyclesArr = Object.values(trucks);
+  const wAvgPayload = cyclesArr.reduce((s,t)=>s+t.avg_payload_t*t.cycles,0)/f.cycles_total;
+  const wAvgLoad = cyclesArr.reduce((s,t)=>s+t.avg_load_pct*t.cycles,0)/f.cycles_total;
+  const wOverload = cyclesArr.reduce((s,t)=>s+t.overload_pct*t.cycles,0)/f.cycles_total;
+  const wUnderload = cyclesArr.reduce((s,t)=>s+t.underload_pct*t.cycles,0)/f.cycles_total;
+  const wCycle = cyclesArr.reduce((s,t)=>s+t.cycle_min.total*t.cycles,0)/f.cycles_total;
+  const wProd = cyclesArr.reduce((s,t)=>s+t.productivity_tph*t.cycles,0)/f.cycles_total;
+
+  const tiles = [
+    {lbl:'Самосвалов в анализе', val: f.trucks_n, unit:'ед.', sub:`${fmtInt(f.cycles_total)} циклов взвешивания`, led:true},
+    {lbl:'Перевезено', val: (f.tonnage_total/1e6).toFixed(2), unit:'млн т', sub:`за период наблюдения`, led:true},
+    {lbl:'Средняя загрузка', val: fmt1(wAvgLoad), unit:'%', sub:`${fmt1(wAvgPayload)} т при номинале 178 т`},
+    {lbl:'В целевом диапазоне 90–110%', val: fmt1(100-wOverload-wUnderload), unit:'%', sub:`перегруз ${fmt1(wOverload)}% · недогруз ${fmt1(wUnderload)}%`},
+    {lbl:'Средний цикл', val: fmt1(wCycle), unit:'мин', sub:`ход гружёный + порожний ≈ 28 мин`},
+    {lbl:'Производительность', val: fmt1(wProd), unit:'т/ч', sub:`средняя по борту за цикл`},
+  ];
+  const el = document.getElementById('fleet-kpis');
+  el.innerHTML = tiles.map(t=>`
+    <div class="kpi ${t.led?'led':''}">
+      <div class="lbl">${t.lbl}</div>
+      <div class="digits">${t.val}<span class="unit">${t.unit}</span></div>
+      <div class="sub">${t.sub}</div>
+    </div>`).join('');
+}
+
+/* ---------- Chip strip ---------- */
+let currentTruck = null;
+function statusOf(t){
+  if(t.overload_pct >= 15) return 'critical';
+  if(t.underload_pct >= 5) return 'warning';
+  return 'good';
+}
+function renderChips(){
+  const el = document.getElementById('chip-strip');
+  el.innerHTML = truckIds.map(id=>{
+    const t = trucks[id];
+    const st = statusOf(t);
+    const color = st==='critical'?'var(--critical)': st==='warning'?'var(--warning)':'var(--good)';
+    return `<div class="chip" data-id="${id}" tabindex="0" role="button" aria-label="Борт ${id}">
+      <span class="status-dot" style="background:${resolveColor(color)}"></span>
+      <span class="tid">${id}</span>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>selectTruck(chip.dataset.id));
+    chip.addEventListener('keydown', (e)=>{ if(e.key==='Enter') selectTruck(chip.dataset.id); });
+  });
+}
+
+function riskBadges(t){
+  const badges = [];
+  if(t.overload_pct >= 15) badges.push(['critical', `Перегруз ${fmt1(t.overload_pct)}% циклов &gt;110%`]);
+  else if(t.overload_pct >= 8) badges.push(['warning', `Повышенный перегруз ${fmt1(t.overload_pct)}%`]);
+  if(t.underload_pct >= 5) badges.push(['warning', `Недогруз ${fmt1(t.underload_pct)}% циклов &lt;90%`]);
+  if(t.rr_tkph >= 162) badges.push(['critical', `Задний TKPH ${fmt1(t.rr_tkph)} — риск перегрева шины`]);
+  if(t.cycles < 1000) badges.push(['muted', `Ограниченная выборка: ${t.cycles} циклов`]);
+  if(badges.length===0) badges.push(['good', 'Загрузка в норме']);
+  return badges;
+}
+
+function selectTruck(id){
+  currentTruck = id;
+  const t = trucks[id];
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active', c.dataset.id===id));
+  document.querySelectorAll('#rank-tbody tr').forEach(r=>r.classList.toggle('selected', r.dataset.id===id));
+
+  document.getElementById('truck-title').textContent = `Самосвал №${id} — все циклы (${fmtInt(t.cycles)})`;
+  document.getElementById('truck-period').textContent = `Период данных: ${t.period_str}`;
+  renderHistogram('truck-hist','truck-hist-caption', t.hist, t.cycles);
+
+  const kpis = [
+    {lbl:'Ср. масса груза', val: fmt1(t.avg_payload_t), unit:'т'},
+    {lbl:'Ср. загрузка', val: fmt1(t.avg_load_pct), unit:'%'},
+    {lbl:'Производительность', val: fmt1(t.productivity_tph), unit:'т/ч'},
+    {lbl:'Расстояние гр./пор.', val: `${fmt1(t.dist_loaded_km)}/${fmt1(t.dist_empty_km)}`, unit:'км'},
+    {lbl:'Vmax гр./пор.', val: `${fmt1(t.ld_speed_kmh)}/${fmt1(t.em_speed_kmh)}`, unit:'км/ч'},
+    {lbl:'TKPH задняя ось', val: fmt1(t.rr_tkph), unit:'ед.'},
+    {lbl:'Топливо (ср.)', val: fmt1(t.fuel_pct), unit:'%'},
+    {lbl:'Перегруз / недогруз', val: `${fmt1(t.overload_pct)}/${fmt1(t.underload_pct)}`, unit:'%'},
+  ];
+  document.getElementById('truck-kpis').innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="lbl">${k.lbl}</div>
+      <div class="digits">${k.val}<span class="unit">${k.unit}</span></div>
+    </div>`).join('');
+
+  renderCycleBar('cycle-bar','cycle-legend', t.cycle_min);
+
+  document.getElementById('truck-badges').innerHTML = riskBadges(t).map(([kind,text])=>
+    `<span class="badge ${kind}"><span class="dot"></span>${text}</span>`
+  ).join('');
+}
+
+/* ---------- Ranking table ---------- */
+let sortKey = 'overload_pct', sortDir = -1;
+function tableValue(t, key){
+  if(key==='truck') return +t.truck;
+  if(key==='cycle_total') return t.cycle_min.total;
+  return t[key];
+}
+function renderTable(){
+  const rows = truckIds.map(id=>trucks[id]).slice().sort((a,b)=>(tableValue(a,sortKey)-tableValue(b,sortKey))*sortDir);
+  const tbody = document.getElementById('rank-tbody');
+  tbody.innerHTML = rows.map(t=>`
+    <tr data-id="${t.truck}">
+      <td>№${t.truck}</td>
+      <td>${fmtInt(t.cycles)}</td>
+      <td>${fmt1(t.avg_payload_t)}</td>
+      <td>${fmt1(t.avg_load_pct)}</td>
+      <td style="color:${t.overload_pct>=15?resolveColor('var(--critical)'):t.overload_pct>=8?resolveColor('var(--warning)'):'inherit'}">${fmt1(t.overload_pct)}</td>
+      <td style="color:${t.underload_pct>=5?resolveColor('var(--warning)'):'inherit'}">${fmt1(t.underload_pct)}</td>
+      <td>${fmt1(t.rr_tkph)}</td>
+      <td>${fmt1(t.cycle_min.total)}</td>
+      <td>${fmt1(t.productivity_tph)}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr').forEach(r=>r.addEventListener('click', ()=>selectTruck(r.dataset.id)));
+  document.querySelectorAll('#rank-table thead th').forEach(th=>th.classList.toggle('active', th.dataset.key===sortKey));
+}
+document.querySelectorAll('#rank-table thead th').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(sortKey===key) sortDir *= -1; else { sortKey=key; sortDir = -1; }
+    renderTable();
+  });
+});
+
+/* ---------- Risk panel ---------- */
+function renderRiskPanel(){
+  const arr = truckIds.map(id=>trucks[id]);
+  const topOverload = arr.slice().sort((a,b)=>b.overload_pct-a.overload_pct).slice(0,5);
+  const topUnderload = arr.slice().sort((a,b)=>b.underload_pct-a.underload_pct).slice(0,4).filter(t=>t.underload_pct>1);
+  const topTkph = arr.slice().sort((a,b)=>b.rr_tkph-a.rr_tkph).slice(0,4);
+
+  const el = document.getElementById('risk-grid');
+  el.innerHTML = `
+    <div class="risk-card">
+      <h4><span class="badge critical"><span class="dot"></span>Систематический перегруз</span></h4>
+      <ul>
+        ${topOverload.map(t=>`<li>Борт <b>№${t.truck}</b> — <b>${fmt1(t.overload_pct)}%</b> циклов выше 110% (ср. загрузка ${fmt1(t.avg_load_pct)}%, задний TKPH ${fmt1(t.rr_tkph)})</li>`).join('')}
+        <li>Регулярный перегруз выше 195 т (110% от 178 т) ускоряет усталостный износ рамы и подвески и выводит TKPH задней оси за паспортный режим шины — рекомендован контроль экскаваторной погрузки (число ковшей) на этих бортах.</li>
+      </ul>
+    </div>
+    <div class="risk-card">
+      <h4><span class="badge warning"><span class="dot"></span>Недогруз — потери производительности</span></h4>
+      <ul>
+        ${topUnderload.map(t=>`<li>Борт <b>№${t.truck}</b> — <b>${fmt1(t.underload_pct)}%</b> циклов ниже 90% (ср. загрузка ${fmt1(t.avg_load_pct)}%, ${fmt1(t.productivity_tph)} т/ч)</li>`).join('')}
+        <li>Недогруженный цикл занимает то же время и топливо, что полный: у борта-лидера недогруза средняя масса на ${fmt1(topUnderload.length? RATED-topUnderload[0].avg_payload_t : 0)} т ниже номинала — это прямая потеря тоннажа при той же занятости машины и экскаватора.</li>
+      </ul>
+    </div>
+    <div class="risk-card">
+      <h4><span class="badge critical"><span class="dot"></span>Нагрузка на шины (TKPH)</span></h4>
+      <ul>
+        ${topTkph.map(t=>`<li>Борт <b>№${t.truck}</b> — TKPH задней оси <b>${fmt1(t.rr_tkph)}</b> ед., загрузка ${fmt1(t.avg_load_pct)}%${t.cycles<1000?' (малая выборка)':''}</li>`).join('')}
+        <li>Задняя ось стабильно нагружена выше передней (TKPH ≈ 1.3× от передней оси по всему парку) — ожидаемо для самосвала данной компоновки, но у бортов-лидеров перегруза разница усиливается.</li>
+      </ul>
+    </div>
+    <div class="risk-card">
+      <h4><span class="badge muted"><span class="dot"></span>Структура цикла и простои</span></h4>
+      <ul>
+        <li>Из ${fmt1(cyclesArr_total_avg())} мин среднего цикла на ожидание приходится «стоянка порожний» (очередь перед погрузкой) — крупнейший непроизводительный интервал, устойчиво больше времени активной разгрузки в 8–10 раз.</li>
+        <li>Ход гружёный/порожний (≈28 мин) занимает основную часть цикла — расстояние груж./пор. в среднем 4.3–4.5 км по парку, разброс между бортами минимален.</li>
+        <li>Борт №74 — только 381 цикл за 18–29.06.2026, включён в рейтинг справочно, не для сравнения трендов.</li>
+      </ul>
+    </div>
+  `;
+}
+function cyclesArr_total_avg(){
+  const arr = truckIds.map(id=>trucks[id]);
+  return (arr.reduce((s,t)=>s+t.cycle_min.total,0)/arr.length).toFixed(1);
+}
+
+/* ---------- init ---------- */
+function renderAll(){
+  renderFleetKPIs();
+  renderHistogram('fleet-hist','fleet-hist-caption', DATA.fleet.load_hist, DATA.fleet.cycles_total);
+  renderBarChart('month-cycles', DATA.fleet.month_trend, 'cycles', 'var(--blue)', v=>fmtInt(v)+' циклов');
+  renderLineChart('month-load', DATA.fleet.month_trend, 'avg_load_pct', 'var(--good)', v=>fmt1(v)+'%', 100);
+  renderChips();
+  renderTable();
+  renderRiskPanel();
+  const worst = truckIds.map(id=>trucks[id]).sort((a,b)=>b.overload_pct-a.overload_pct)[0];
+  selectTruck(worst.truck);
+}
+renderAll();
+
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{ if(currentTruck) selectTruck(currentTruck); renderHistogram('fleet-hist','fleet-hist-caption', DATA.fleet.load_hist, DATA.fleet.cycles_total); }, 150);
+});
+
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener('change', ()=> renderAll());
+const mo = new MutationObserver(()=> renderAll());
+mo.observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+</script>
