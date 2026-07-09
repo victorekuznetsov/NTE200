@@ -4678,7 +4678,7 @@ function saveDashboard(){
         if(si>-1){
           const ei=html.indexOf('<div class="sb-section" id="date-section"',si);
           if(ei>-1){
-            html=html.substring(0,si+marker.length)+listDiv.innerHTML+'\n  '+html.substring(ei);
+            html=html.substring(0,si+marker.length)+listDiv.innerHTML+'</div>\n  '+html.substring(ei);
           }
         }
       }

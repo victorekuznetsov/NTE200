@@ -1079,7 +1079,11 @@ function saveDashboard(){
         if(si>-1){
           const ei=html.indexOf('<div class="sb-section" id="date-section"',si);
           if(ei>-1){
-            html=html.substring(0,si+marker.length)+listDiv.innerHTML+'\n  '+html.substring(ei);
+            // NOTE: the removed span includes the original closing </div> of
+            // .truck-list, so we must re-add it here — otherwise .truck-list is
+            // left unclosed and swallows the rest of the sidebar (and .main),
+            // collapsing the whole layout when the saved file is reopened.
+            html=html.substring(0,si+marker.length)+listDiv.innerHTML+'</div>\n  '+html.substring(ei);
           }
         }
       }
