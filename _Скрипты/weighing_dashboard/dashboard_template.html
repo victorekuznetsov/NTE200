@@ -239,7 +239,7 @@
       </svg>
       <div>
         <h1>Весовой контроль · NTE200</h1>
-        <div class="sub">Загрузка и производительность · политика 10/10/20 · номинал 180 т</div>
+        <div class="sub">Загрузка и производительность · политика 10/10/20 · номинал 173,5 т</div>
       </div>
     </div>
     <div class="toolbar">
@@ -292,7 +292,7 @@
     <div class="grid">
       <div class="panel">
         <h2>Гистограмма распределения загрузки</h2>
-        <p class="cap" id="hist-cap">Зоны по политике 10/10/20 от номинала 180 т · кривая нормального распределения</p>
+        <p class="cap" id="hist-cap">Зоны по политике 10/10/20 от номинала 173,5 т · кривая нормального распределения</p>
         <svg id="hist" width="100%" viewBox="0 0 720 340" preserveAspectRatio="xMidYMid meet"></svg>
         <div class="zonegrid" id="hist-legend" style="margin-top:6px;"></div>
       </div>
@@ -363,7 +363,7 @@
     <div class="perf-grid">
       <div class="panel">
         <h2>Нагрузка на шины · TKPH по колёсам</h2>
-        <p class="cap">тонно-км/ч на колесо · выше нагрузка → выше нагрев шины (лучшая практика — контроль по паспорту шины)</p>
+        <p class="cap">среднее т·км/ч на колесо · красным — превышение предела шины (1000, предварительно)</p>
         <div class="tkph-grid" id="tkph-grid"></div>
         <div class="callout" id="tkph-callout"></div>
       </div>
@@ -373,6 +373,27 @@
         <div class="metricline" id="haul-metrics"></div>
         <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mute);margin:14px 0 6px;">Плечо гружёный / порожний</div>
         <div class="speedbars" id="distbars"></div>
+      </div>
+    </div>
+
+    <div class="perf-grid">
+      <div class="panel">
+        <h2>Средняя нагрузка на шину (ТКВЧ) по месяцам</h2>
+        <p class="cap">т·км/ч по осям · пунктир — предел шины (предварительно 1000)</p>
+        <svg id="tkph-trend" width="100%" viewBox="0 0 560 210" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="legend" style="flex-direction:row;gap:14px;margin-top:6px;">
+          <span class="item"><span class="sw" style="background:var(--crit)"></span><span class="nm">задняя ось</span></span>
+          <span class="item"><span class="sw" style="background:var(--under)"></span><span class="nm">передняя ось</span></span>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>Распределение ТКВЧ (переднее правое)</h2>
+        <p class="cap" id="tkph-dist-cap">распределение нагрузки на шину · красная max-зона у предела</p>
+        <svg id="tkph-dist" width="100%" viewBox="0 0 560 210" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="legend" style="flex-direction:row;gap:14px;margin-top:6px;">
+          <span class="item"><span class="sw" style="background:var(--target)"></span><span class="nm">OK</span></span>
+          <span class="item"><span class="sw" style="background:var(--crit)"></span><span class="nm">max-зона (&gt;950)</span></span>
+        </div>
       </div>
     </div>
 

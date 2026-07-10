@@ -3,11 +3,12 @@
    поэтому загруженные .xlsx обрабатываются той же логикой, что и встроенные данные. */
 (function () {
   'use strict';
-  var NOMINAL = 180, P110 = 198, P120 = 216;
+  var NOMINAL = 173.5, P110 = 190.85, P120 = 208.2;
+  var TIRE_TKPH = 1000, TIRE_MAXZONE = 950; // предел ТКВЧ шины (предварительно) и порог max-зоны
   var MONTHS_RU = { '01':'янв','02':'фев','03':'мар','04':'апр','05':'май','06':'июн','07':'июл','08':'авг','09':'сен','10':'окт','11':'ноя','12':'дек' };
   var LS_KEY = 'nte200_weighing_v1';
   var Z_COLORS = ['var(--under)','var(--target)','var(--accept)','var(--crit)'];
-  var Z_NAMES = ['Недогруз (<180 т)','Целевая (180–198 т)','Перегруз доп. (198–216 т)','Перегруз крит. (>216 т)'];
+  var Z_NAMES = ['Недогруз (<173,5 т)','Целевая (173,5–190,9 т)','Перегруз доп. (190,9–208,2 т)','Перегруз крит. (>208,2 т)'];
 
   var EMBEDDED = JSON.parse(document.getElementById('embedded-data').textContent);
 
@@ -63,7 +64,7 @@
   // сложение партиций -> сводка
   function summarize(parts) {
     var c = 0, sp = 0, z = [0, 0, 0, 0], h = {}, ct = [0, 0, 0, 0, 0, 0],
-        dl = 0, de = 0, ls = 0, es = 0, lf = 0, rf = 0, lr = 0, rr = 0, cb = 0, f = 0, tk = 0, bk = 0;
+        dl = 0, de = 0, ls = 0, es = 0, lf = 0, rf = 0, lr = 0, rr = 0, cb = 0, f = 0, tk = 0, bk = 0, thr = {};
     parts.forEach(function (p) {
       c += p.c; sp += p.sp;
       for (var i = 0; i < 4; i++) z[i] += p.z[i];
@@ -72,8 +73,9 @@
       dl += p.dl; de += p.de; ls += p.ls; es += p.es;
       lf += (p.lf || 0); rf += (p.rf || 0); lr += p.lr; rr += p.rr; cb += (p.cb || 0); f += p.f;
       tk += (p.tk || 0); bk += (p.bk || 0);
+      if (p.thr) for (var tb in p.thr) thr[tb] = (thr[tb] || 0) + p.thr[tb];
     });
-    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lf: lf, rf: rf, lr: lr, rr: rr, cb: cb, f: f, tk: tk, bk: bk };
+    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lf: lf, rf: rf, lr: lr, rr: rr, cb: cb, f: f, tk: tk, bk: bk, thr: thr };
   }
 
   function allTrucks() {
@@ -131,7 +133,7 @@
     var s = el('hist'); s.innerHTML = '';
     var W = 720, H = 340, m = { t: 26, r: 12, b: 40, l: 44 };
     var pw = W - m.l - m.r, ph = H - m.t - m.b;
-    var BIN = 2, LO = 150, HI = 224;
+    var BIN = 1, LO = 145, HI = 224;
     var bins = [];
     for (var x = LO; x < HI; x += BIN) bins.push(x);
     var counts = bins.map(function () { return 0; });
@@ -158,8 +160,8 @@
       g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' }));
       var tl = svg('text', { x: m.l - 6, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(pv) + '%'; g.appendChild(tl);
     }
-    // zone boundary lines (180,198,216)
-    [[NOMINAL, 'ном. 180'], [P110, '110% · 198'], [P120, '120% · 216']].forEach(function (zb) {
+    // zone boundary lines (173.5 / 190.85 / 208.2)
+    [[NOMINAL, 'ном. 173,5'], [P110, '110% · 190,9'], [P120, '120% · 208,2']].forEach(function (zb) {
       if (zb[0] < LO || zb[0] > HI) return;
       var zx = xOf(zb[0]);
       var ln = svg('line', { x1: zx, x2: zx, y1: m.t, y2: m.t + ph, class: 'zline', stroke: 'var(--ink-mute)' }); g.appendChild(ln);
@@ -212,9 +214,9 @@
     var over110 = (sum.z[2] + sum.z[3]) / sum.c * 100;
     var over120 = sum.z[3] / sum.c * 100;
     var checks = [
-      { ok: mean <= NOMINAL, t1: 'Средняя загрузка ≤ номинала', t2: 'среднее по распределению ≤ 180 т', num: fmt1(mean) + ' т' },
-      { ok: over110 <= 10, t1: 'Не более 10% загрузок > 110%', t2: 'доля циклов свыше 198 т', num: fmt1(over110) + ' %' },
-      { ok: over120 === 0, t1: 'Ни одной загрузки > 120%', t2: 'доля циклов свыше 216 т (' + fmtInt(sum.z[3]) + ' шт.)', num: fmt2(over120) + ' %' }
+      { ok: mean <= NOMINAL, t1: 'Средняя загрузка ≤ номинала', t2: 'среднее по распределению ≤ 173,5 т', num: fmt1(mean) + ' т' },
+      { ok: over110 <= 10, t1: 'Не более 10% загрузок > 110%', t2: 'доля циклов свыше 190,9 т', num: fmt1(over110) + ' %' },
+      { ok: over120 === 0, t1: 'Ни одной загрузки > 120%', t2: 'доля циклов свыше 208,2 т (' + fmtInt(sum.z[3]) + ' шт.)', num: fmt2(over120) + ' %' }
     ];
     var passN = checks.filter(function (c) { return c.ok; }).length;
     var allBadge = el('policy-all');
@@ -393,21 +395,94 @@
     }).join('');
   }
 
-  // TKPH по 4 колёсам
+  // TKPH (ТКВЧ) по 4 колёсам — сырые значения, тонно-км/ч
   function renderTKPH(sum) {
     var c = sum.c;
     var vals = { 'Лев. перед.': sum.lf / c, 'Прав. перед.': sum.rf / c, 'Лев. задн.': sum.lr / c, 'Прав. задн.': sum.rr / c };
     var arr = Object.keys(vals).map(function (k) { return { k: k, v: vals[k] }; });
     var mxv = Math.max.apply(null, arr.map(function (a) { return a.v; }));
     el('tkph-grid').innerHTML = arr.map(function (a) {
-      var cls = a.v === mxv ? 'max' : a.v > mxv * 0.9 ? 'hot' : '';
-      return '<div class="tkph-cell ' + cls + '"><span class="pos">' + a.k + '</span><span class="v">' + fmt1(a.v) + '</span></div>';
+      var cls = a.v > TIRE_TKPH ? 'max' : a.v > TIRE_MAXZONE ? 'hot' : '';
+      return '<div class="tkph-cell ' + cls + '"><span class="pos">' + a.k + '</span><span class="v">' + fmtInt(a.v) + '</span></div>';
     }).join('');
     var rear = (vals['Лев. задн.'] + vals['Прав. задн.']) / 2, front = (vals['Лев. перед.'] + vals['Прав. перед.']) / 2;
     var ratio = front > 0 ? rear / front : 0;
+    var overRear = rear > TIRE_TKPH;
     el('tkph-callout').innerHTML =
       '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>' +
-      '<div>Задняя ось нагружена в <b>' + fmt1(ratio) + '×</b> сильнее передней — норма для самосвала (груз над задней осью). Наибольший TKPH — <b>' + fmt1(mxv) + '</b> (правое заднее колесо): именно оно ближе всего к температурному пределу шины, контролировать в первую очередь.</div>';
+      '<div>Средняя нагрузка задней оси <b>' + fmtInt(rear) + '</b> т·км/ч — в <b>' + fmt1(ratio) + '×</b> выше передней. ' +
+      (overRear ? 'Это <b style="color:var(--bad)">выше предела шины ' + TIRE_TKPH + '</b> — задние шины работают в зоне перегрева, контроль в первую очередь.' :
+        'Предел шины ' + TIRE_TKPH + ' т·км/ч.') +
+      ' <span style="color:var(--ink-mute)">Предел ТКВЧ 1000 задан предварительно — уточнить по паспорту шины NTE200.</span></div>';
+  }
+
+  // Средняя нагрузка на шину (ТКВЧ) по месяцам, с пределом шины
+  function renderTkphTrend() {
+    var s = el('tkph-trend'); if (!s) return; s.innerHTML = '';
+    var byM = {};
+    activeParts().forEach(function (p) {
+      var a = byM[p.m] || (byM[p.m] = { c: 0, lf: 0, rf: 0, lr: 0, rr: 0 });
+      a.c += p.c; a.lf += p.lf; a.rf += p.rf; a.lr += p.lr; a.rr += p.rr;
+    });
+    var data = Object.keys(byM).sort().map(function (ym) {
+      var a = byM[ym];
+      return { ym: ym, front: (a.lf + a.rf) / 2 / a.c, rear: (a.lr + a.rr) / 2 / a.c };
+    });
+    if (!data.length) return;
+    var W = 560, H = 210, m = { t: 16, r: 12, b: 24, l: 40 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var vmax = Math.max(TIRE_TKPH * 1.15, Math.max.apply(null, data.map(function (d) { return Math.max(d.front, d.rear); })) * 1.1);
+    var g = svg('g', {}); s.appendChild(g);
+    for (var i = 0; i <= 4; i++) { var yy = m.t + ph - i / 4 * ph, val = vmax * i / 4; g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' })); var tl = svg('text', { x: m.l - 5, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(val); g.appendChild(tl); }
+    var xC = function (i) { return m.l + (data.length === 1 ? pw / 2 : i / (data.length - 1) * pw); };
+    var yV = function (v) { return m.t + ph - v / vmax * ph; };
+    // предел шины
+    var yl = yV(TIRE_TKPH);
+    g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yl, y2: yl, stroke: 'var(--crit)', 'stroke-width': 1.4, 'stroke-dasharray': '5 3' }));
+    var ll = svg('text', { x: W - m.r, y: yl - 4, 'text-anchor': 'end', class: 'axb', fill: 'var(--crit)' }); ll.textContent = 'предел шины ' + TIRE_TKPH; g.appendChild(ll);
+    [['rear', 'var(--crit)', 'задняя ось'], ['front', 'var(--under)', 'передняя ось']].forEach(function (ser) {
+      var path = ''; data.forEach(function (d, i) { path += (i === 0 ? 'M' : 'L') + xC(i).toFixed(1) + ',' + yV(d[ser[0]]).toFixed(1) + ' '; });
+      g.appendChild(svg('path', { d: path, fill: 'none', stroke: ser[1], 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+      data.forEach(function (d, i) {
+        var cc = svg('circle', { cx: xC(i), cy: yV(d[ser[0]]), r: 2.8, fill: ser[1], stroke: 'var(--surface)', 'stroke-width': 1.2 });
+        cc.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>' + ser[2] + ': ' + fmtInt(d[ser[0]]) + ' т·км/ч', e); });
+        cc.addEventListener('mouseleave', hideTip); g.appendChild(cc);
+      });
+    });
+    data.forEach(function (d, i) { if (i % Math.ceil(data.length / 10 || 1) === 0) { var tx = svg('text', { x: xC(i), y: H - 6, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = MONTHS_RU[d.ym.split('-')[1]]; g.appendChild(tx); } });
+  }
+
+  // Распределение ТКВЧ переднего правого колеса, с max-зоной
+  function renderTkphDist(sum) {
+    var s = el('tkph-dist'); if (!s) return; s.innerHTML = '';
+    var thr = sum.thr || {};
+    var keys = Object.keys(thr).map(Number).sort(function (a, b) { return a - b; });
+    if (!keys.length) return;
+    var total = keys.reduce(function (t, k) { return t + thr[k]; }, 0);
+    var W = 560, H = 210, m = { t: 14, r: 12, b: 26, l: 34 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var LO = 0, HI = Math.max(1250, keys[keys.length - 1] + 50);
+    var maxPct = Math.max.apply(null, keys.map(function (k) { return thr[k] / total * 100; }));
+    var yMax = Math.ceil(maxPct / 2) * 2 || 2;
+    var xOf = function (v) { return m.l + (v - LO) / (HI - LO) * pw; };
+    var yOf = function (pct) { return m.t + ph - pct / yMax * ph; };
+    var barW = pw / ((HI - LO) / 50);
+    var g = svg('g', {}); s.appendChild(g);
+    for (var i = 0; i <= 2; i++) { var yy = yOf(yMax * i / 2); g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' })); var tl = svg('text', { x: m.l - 5, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(yMax * i / 2) + '%'; g.appendChild(tl); }
+    var over = 0;
+    keys.forEach(function (k) {
+      var pct = thr[k] / total * 100, hh = m.t + ph - yOf(pct);
+      var isMax = k >= TIRE_MAXZONE; if (isMax) over += thr[k];
+      var r = svg('rect', { x: xOf(k) + 0.5, y: yOf(pct), width: Math.max(barW - 1, 1), height: Math.max(hh, 0.5), rx: 1.5, fill: isMax ? 'var(--crit)' : 'var(--target)' });
+      r.addEventListener('mousemove', function (e) { showTip('<b>' + k + '–' + (k + 50) + ' т·км/ч</b><br>' + fmt1(pct) + '% · ' + fmtInt(thr[k]) + ' циклов' + (isMax ? '<br>max-зона (>' + TIRE_MAXZONE + ')' : ''), e); });
+      r.addEventListener('mouseleave', hideTip); g.appendChild(r);
+    });
+    // предел шины
+    var lx = xOf(TIRE_TKPH);
+    g.appendChild(svg('line', { x1: lx, x2: lx, y1: m.t, y2: m.t + ph, stroke: 'var(--crit)', 'stroke-width': 1.3, 'stroke-dasharray': '4 3' }));
+    var lb = svg('text', { x: lx, y: m.t + 8, 'text-anchor': 'middle', class: 'axb', fill: 'var(--crit)' }); lb.textContent = '' + TIRE_TKPH; g.appendChild(lb);
+    for (var xv = 0; xv <= HI; xv += 250) { var tx = svg('text', { x: xOf(xv), y: H - 6, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = xv; g.appendChild(tx); }
+    var cap = el('tkph-dist-cap'); if (cap) cap.innerHTML = 'переднее правое колесо · в max-зоне (>' + TIRE_MAXZONE + ' т·км/ч): <b>' + fmt1(over / total * 100) + '%</b> циклов';
   }
 
   function renderHaul(sum) {
@@ -682,8 +757,8 @@
 
   // ---------- foot ----------
   function renderFoot() {
-    el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (180 т); не более 10% загрузок превышают 110% номинала (198 т); ни одна загрузка не превышает 120% (216 т). ' +
-      'Номинал 180 т. Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
+    el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (173,5 т); не более 10% загрузок превышают 110% номинала (190,9 т); ни одна загрузка не превышает 120% (208,2 т). ' +
+      'Номинал 173,5 т. ТКВЧ — сырые значения поля весовой (т·км/ч), предел шины 1000 задан предварительно (уточнить по паспорту шины NTE200). Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
       'Все показатели — из бортовых весовых файлов. Разделы отчёта Северстали по <b>моточасам (наработка), топливу (л, г/т·км), blowby и кодам ошибок</b> здесь не показаны — они требуют выгрузки VHMS/сервис-метра машины, которой нет в весовых данных. ' +
       'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере; «Сохранить» выгружает набор в JSON; данные автосохраняются локально.';
   }
@@ -698,7 +773,7 @@
     renderKPIs(sum); renderHist(sum); renderPolicy(sum); renderDonut(sum); renderTrend();
     // вкладка «Производительность»
     renderPerfKPIs(sum); renderCycleBar(sum); renderCycleTable(sum); renderUtilDonut(sum);
-    renderSpeeds(sum); renderTKPH(sum); renderHaul(sum); renderPerfCompare();
+    renderSpeeds(sum); renderTKPH(sum); renderTkphTrend(); renderTkphDist(sum); renderHaul(sum); renderPerfCompare();
     // вкладка «Грузооборот и скорости»
     renderFlowKPIs(sum); renderFlowTrend(); renderSpeedTrend(); renderFlowCompare();
     // вкладка «Сводная по бортам»
@@ -754,11 +829,23 @@
   }
 
   function saveJSON() {
-    var blob = new Blob([JSON.stringify({ nominal: NOMINAL, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions })], { type: 'application/json' });
+    var text = JSON.stringify({ nominal: NOMINAL, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
+    var fname = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
+    var blob = new Blob([text], { type: 'application/json' });
+    // iOS Safari / WKWebView: navigator.share с файлом — самый надёжный путь «сохранить в Файлы»
+    try {
+      if (navigator.canShare && window.File) {
+        var file = new File([blob], fname, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: fname }).catch(function () { }); return; }
+      }
+    } catch (e) { }
+    // обычная загрузка: ссылка ДОЛЖНА быть в DOM, иначе Safari игнорирует click()
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
-    a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    a.href = url; a.download = fname; a.rel = 'noopener'; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
   }
   function openJSON(file) {
     var reader = new FileReader();

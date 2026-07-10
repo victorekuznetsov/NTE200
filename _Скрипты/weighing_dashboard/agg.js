@@ -8,9 +8,9 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = factory();
   else root.AGG = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
-  var NOMINAL = 180;
-  var P110 = NOMINAL * 1.10; // 198
-  var P120 = NOMINAL * 1.20; // 216
+  var NOMINAL = 173.5;
+  var P110 = NOMINAL * 1.10; // 190.85
+  var P120 = NOMINAL * 1.20; // 208.2
 
   function makeStore() {
     return { keys: Object.create(null), partitions: Object.create(null), n: 0 };
@@ -57,7 +57,7 @@
           ct: [0, 0, 0, 0, 0, 0],
           dl: 0, de: 0, ls: 0, es: 0,
           lf: 0, rf: 0, lr: 0, rr: 0, cb: 0, f: 0,
-          tk: 0, bk: 0
+          tk: 0, bk: 0, thr: {}
         };
       }
       var pt = fp / 10; // тонны
@@ -79,10 +79,13 @@
       p.de += num(row[idx.DistanceEmpty]);
       p.ls += num(row[idx.LdMaxSpeed]) / 1000;
       p.es += num(row[idx.EmMaxSpeed]) / 1000;
-      p.lf += num(row[idx.LF_TKPH]) / 10;
-      p.rf += num(row[idx.RF_TKPH]) / 10;
-      p.lr += num(row[idx.LR_TKPH]) / 10;
-      p.rr += num(row[idx.RR_TKPH]) / 10;
+      p.lf += num(row[idx.LF_TKPH]); // TKPH (тонно-км/ч), сырое значение поля
+      var rfv = num(row[idx.RF_TKPH]);
+      p.rf += rfv;
+      p.lr += num(row[idx.LR_TKPH]);
+      p.rr += num(row[idx.RR_TKPH]);
+      var tbin = Math.floor(rfv / 50) * 50; // распределение TKPH переднего правого колеса (как на образце «пер. правая»)
+      p.thr[tbin] = (p.thr[tbin] || 0) + 1;
       if (num(row[idx.Carryback]) > 0) p.cb++;
       p.f += num(row[idx.FuelLevel]);
       p.tk += pt * (num(row[idx.DistanceLoaded]) / 1000); // тонно-км (грузооборот)
@@ -102,8 +105,8 @@
       for (var i = 0; i < p.ct.length; i++) p.ct[i] = Math.round(p.ct[i]);
       p.dl = Math.round(p.dl); p.de = Math.round(p.de);
       p.ls = round(p.ls, 1); p.es = round(p.es, 1);
-      p.lf = round(p.lf, 1); p.rf = round(p.rf, 1);
-      p.lr = round(p.lr, 1); p.rr = round(p.rr, 1); p.f = round(p.f, 1);
+      p.lf = Math.round(p.lf); p.rf = Math.round(p.rf);
+      p.lr = Math.round(p.lr); p.rr = Math.round(p.rr); p.f = round(p.f, 1);
       p.tk = Math.round(p.tk); p.bk = Math.round(p.bk);
     });
     out.sort(function (a, b) {
