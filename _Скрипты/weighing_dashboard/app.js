@@ -3,12 +3,29 @@
    поэтому загруженные .xlsx обрабатываются той же логикой, что и встроенные данные. */
 (function () {
   'use strict';
-  var NOMINAL = 173.5, P110 = 190.85, P120 = 208.2;
-  var TIRE_TKPH = 1000, TIRE_MAXZONE = 950; // предел ТКВЧ шины (предварительно) и порог max-зоны
+  var DEF_NOMINAL = 173.5, DEF_TIRE = 1000;
+  var NOMINAL = DEF_NOMINAL, P110 = NOMINAL * 1.1, P120 = NOMINAL * 1.2;
+  var TIRE_TKPH = DEF_TIRE, TIRE_MAXZONE = Math.round(DEF_TIRE * 0.95); // предел ТКВЧ шины и порог max-зоны
   var MONTHS_RU = { '01':'янв','02':'фев','03':'мар','04':'апр','05':'май','06':'июн','07':'июл','08':'авг','09':'сен','10':'окт','11':'ноя','12':'дек' };
   var LS_KEY = 'nte200_weighing_v1';
+  var LS_CFG = 'nte200_weighing_cfg';
   var Z_COLORS = ['var(--under)','var(--target)','var(--accept)','var(--crit)'];
-  var Z_NAMES = ['Недогруз (<173,5 т)','Целевая (173,5–190,9 т)','Перегруз доп. (190,9–208,2 т)','Перегруз крит. (>208,2 т)'];
+  function ru1(n){ return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  function zNames(){
+    return ['Недогруз (<' + ru1(NOMINAL) + ' т)', 'Целевая (' + ru1(NOMINAL) + '–' + ru1(P110) + ' т)',
+      'Перегруз доп. (' + ru1(P110) + '–' + ru1(P120) + ' т)', 'Перегруз крит. (>' + ru1(P120) + ' т)'];
+  }
+  var Z_NAMES = zNames();
+
+  // зоны из 1-т гистограммы при текущем номинале (позволяет менять номинал без пересбора данных)
+  function zonesFromHist(h) {
+    var z = [0, 0, 0, 0];
+    for (var b in h) { var t = +b + 0.5, cnt = h[b];
+      if (t < NOMINAL) z[0] += cnt; else if (t <= P110) z[1] += cnt; else if (t <= P120) z[2] += cnt; else z[3] += cnt; }
+    return z;
+  }
+  function reclassifyZones() { NOMINAL = +NOMINAL; P110 = NOMINAL * 1.1; P120 = NOMINAL * 1.2; Z_NAMES = zNames();
+    state.partitions.forEach(function (p) { p.z = zonesFromHist(p.h); }); }
 
   var EMBEDDED = JSON.parse(document.getElementById('embedded-data').textContent);
 
@@ -31,6 +48,15 @@
         state.source = obj.source || 'Сохранённые данные';
         state.files = obj.files || [];
       }
+    }
+  } catch (e) {}
+  // ---- восстановление параметров (номинал, предел ТКВЧ) ----
+  try {
+    var cfg = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+    if (cfg) {
+      if (cfg.nominal > 0) NOMINAL = +cfg.nominal;
+      if (cfg.tire > 0) { TIRE_TKPH = +cfg.tire; TIRE_MAXZONE = Math.round(TIRE_TKPH * 0.95); }
+      P110 = NOMINAL * 1.1; P120 = NOMINAL * 1.2; Z_NAMES = zNames();
     }
   } catch (e) {}
 
@@ -160,8 +186,8 @@
       g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' }));
       var tl = svg('text', { x: m.l - 6, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(pv) + '%'; g.appendChild(tl);
     }
-    // zone boundary lines (173.5 / 190.85 / 208.2)
-    [[NOMINAL, 'ном. 173,5'], [P110, '110% · 190,9'], [P120, '120% · 208,2']].forEach(function (zb) {
+    // zone boundary lines (номинал / 110% / 120%)
+    [[NOMINAL, 'ном. ' + ru1(NOMINAL)], [P110, '110% · ' + ru1(P110)], [P120, '120% · ' + ru1(P120)]].forEach(function (zb) {
       if (zb[0] < LO || zb[0] > HI) return;
       var zx = xOf(zb[0]);
       var ln = svg('line', { x1: zx, x2: zx, y1: m.t, y2: m.t + ph, class: 'zline', stroke: 'var(--ink-mute)' }); g.appendChild(ln);
@@ -214,9 +240,9 @@
     var over110 = (sum.z[2] + sum.z[3]) / sum.c * 100;
     var over120 = sum.z[3] / sum.c * 100;
     var checks = [
-      { ok: mean <= NOMINAL, t1: 'Средняя загрузка ≤ номинала', t2: 'среднее по распределению ≤ 173,5 т', num: fmt1(mean) + ' т' },
-      { ok: over110 <= 10, t1: 'Не более 10% загрузок > 110%', t2: 'доля циклов свыше 190,9 т', num: fmt1(over110) + ' %' },
-      { ok: over120 === 0, t1: 'Ни одной загрузки > 120%', t2: 'доля циклов свыше 208,2 т (' + fmtInt(sum.z[3]) + ' шт.)', num: fmt2(over120) + ' %' }
+      { ok: mean <= NOMINAL, t1: 'Средняя загрузка ≤ номинала', t2: 'среднее по распределению ≤ ' + ru1(NOMINAL) + ' т', num: fmt1(mean) + ' т' },
+      { ok: over110 <= 10, t1: 'Не более 10% загрузок > 110%', t2: 'доля циклов свыше ' + ru1(P110) + ' т', num: fmt1(over110) + ' %' },
+      { ok: over120 === 0, t1: 'Ни одной загрузки > 120%', t2: 'доля циклов свыше ' + ru1(P120) + ' т (' + fmtInt(sum.z[3]) + ' шт.)', num: fmt2(over120) + ' %' }
     ];
     var passN = checks.filter(function (c) { return c.ok; }).length;
     var allBadge = el('policy-all');
@@ -757,8 +783,8 @@
 
   // ---------- foot ----------
   function renderFoot() {
-    el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (173,5 т); не более 10% загрузок превышают 110% номинала (190,9 т); ни одна загрузка не превышает 120% (208,2 т). ' +
-      'Номинал 173,5 т. ТКВЧ — сырые значения поля весовой (т·км/ч), предел шины 1000 задан предварительно (уточнить по паспорту шины NTE200). Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
+    el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (' + ru1(NOMINAL) + ' т); не более 10% загрузок превышают 110% номинала (' + ru1(P110) + ' т); ни одна загрузка не превышает 120% (' + ru1(P120) + ' т). ' +
+      'Номинал ' + ru1(NOMINAL) + ' т и предел ТКВЧ ' + fmtInt(TIRE_TKPH) + ' т·км/ч задаются вручную вверху страницы. ТКВЧ — сырые значения поля весовой (т·км/ч). Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
       'Все показатели — из бортовых весовых файлов. Разделы отчёта Северстали по <b>моточасам (наработка), топливу (л, г/т·км), blowby и кодам ошибок</b> здесь не показаны — они требуют выгрузки VHMS/сервис-метра машины, которой нет в весовых данных. ' +
       'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере; «Сохранить» выгружает набор в JSON; данные автосохраняются локально.';
   }
@@ -820,6 +846,7 @@
   }
   function finishIngest(added) {
     state.partitions = AGG.finalize(state.store);
+    reclassifyZones();
     state.source = 'Загружено: ' + state.files.length + ' файл(ов)';
     state.selMonths = null; state.selTrucks = null;
     persist();
@@ -854,6 +881,7 @@
         var obj = JSON.parse(ev.target.result);
         if (!obj.partitions || !obj.partitions.length) throw new Error('нет партиций');
         state.partitions = obj.partitions; state.store = null; state.files = obj.files || [];
+        reclassifyZones();
         state.source = obj.source || 'Открыт файл данных';
         state.selMonths = null; state.selTrucks = null;
         persist(); renderFilters(); renderAll();
@@ -863,10 +891,33 @@
   }
   function resetData() {
     state.partitions = EMBEDDED.partitions; state.store = null; state.files = [];
+    reclassifyZones();
     state.source = 'Демо-данные парка'; state.selMonths = null; state.selTrucks = null;
     try { localStorage.removeItem(LS_KEY); } catch (e) {}
     renderFilters(); renderAll();
   }
+
+  // ---------- параметры (номинал, предел ТКВЧ) ----------
+  function persistCfg() { try { localStorage.setItem(LS_CFG, JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH })); } catch (e) {} }
+  function applyNominal(v) {
+    v = parseFloat(String(v).replace(',', '.'));
+    if (!(v > 0)) { el('in-nominal').value = ru1(NOMINAL); return; }
+    v = Math.min(300, Math.max(50, v));
+    NOMINAL = v; reclassifyZones(); persistCfg();
+    setInput('in-nominal', NOMINAL);   // number input требует точку, не запятую
+    renderAll();
+  }
+  function applyTire(v) {
+    v = parseFloat(String(v).replace(',', '.'));
+    if (!(v > 0)) { el('in-tire').value = Math.round(TIRE_TKPH); return; }
+    v = Math.min(5000, Math.max(100, Math.round(v)));
+    TIRE_TKPH = v; TIRE_MAXZONE = Math.round(v * 0.95); persistCfg();
+    setInput('in-tire', TIRE_TKPH);
+    renderAll();
+  }
+  function setInput(id, val) { var e = el(id); if (!e) return; e.value = val; e.setAttribute('value', val); } // атрибут — чтобы значение «запеклось» в HTML для просмотра без JS
+  function syncCfgInputs() { setInput('in-nominal', NOMINAL); setInput('in-tire', Math.round(TIRE_TKPH)); }
+  function resetCfg() { NOMINAL = DEF_NOMINAL; TIRE_TKPH = DEF_TIRE; TIRE_MAXZONE = Math.round(DEF_TIRE * 0.95); reclassifyZones(); persistCfg(); syncCfgInputs(); renderAll(); }
 
   // ---------- theme ----------
   function toggleTheme() {
@@ -880,6 +931,8 @@
 
   // ---------- РЕНДЕР ПЕРВЫМ (чтобы сбой навешивания слушателей не оставлял пустой экран) ----------
   try {
+    reclassifyZones();   // применить восстановленный/дефолтный номинал к зонам
+    syncCfgInputs();
     renderFilters();
     renderAll();
   } catch (err) {
@@ -896,6 +949,9 @@
     on('file-json', 'change', function (e) { if (e.target.files[0]) openJSON(e.target.files[0]); e.target.value = ''; });
     on('btn-reset', 'click', resetData);
     on('btn-theme', 'click', toggleTheme);
+    on('in-nominal', 'change', function (e) { applyNominal(e.target.value); });
+    on('in-tire', 'change', function (e) { applyTire(e.target.value); });
+    on('settings-reset', 'click', resetCfg);
     on('month-all', 'click', function () { state.selMonths = null; renderFilters(); renderAll(); });
     on('truck-all', 'click', function () { state.selTrucks = null; renderFilters(); renderAll(); });
 

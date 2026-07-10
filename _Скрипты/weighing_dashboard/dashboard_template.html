@@ -70,6 +70,19 @@
   .status .src{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-weight:700;}
   .status .src .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);}
 
+  /* settings */
+  .settings{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:9px 14px;}
+  .sfield{display:flex;flex-direction:column;gap:4px;}
+  .sfield label{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);}
+  .sinput{display:inline-flex;align-items:center;gap:6px;}
+  .sinput input{width:88px;font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;
+    padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink);}
+  .sinput input:focus{outline:none;border-color:var(--gold);background:var(--surface);}
+  .sinput span{font-size:11px;color:var(--ink-mute);font-weight:600;}
+  .settings .fmini{align-self:flex-end;margin-bottom:5px;}
+  .shint{font-size:10.5px;color:var(--ink-mute);flex:1 1 200px;line-height:1.4;min-width:0;}
+  @media (max-width:680px){ .shint{flex-basis:100%;} }
+
   /* filters */
   .filters{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:11px 14px;}
   .fgroup{display:flex;flex-direction:column;gap:6px;min-width:0;}
@@ -262,6 +275,19 @@
   </header>
 
   <div class="status" id="status"></div>
+
+  <div class="settings">
+    <div class="sfield">
+      <label for="in-nominal">Номинальная загрузка</label>
+      <div class="sinput"><input type="number" id="in-nominal" step="0.5" min="50" max="300" inputmode="decimal"><span>т</span></div>
+    </div>
+    <div class="sfield">
+      <label for="in-tire">Предел ТКВЧ (шина)</label>
+      <div class="sinput"><input type="number" id="in-tire" step="10" min="100" max="5000" inputmode="numeric"><span>т·км/ч</span></div>
+    </div>
+    <button class="fmini" id="settings-reset">Сброс параметров</button>
+    <span class="shint">пороги 110%/120% и зоны считаются от номинала; предел ТКВЧ — линия и max-зона на графиках шин</span>
+  </div>
 
   <div class="filters">
     <div class="fgroup" style="flex:1 1 340px;">
