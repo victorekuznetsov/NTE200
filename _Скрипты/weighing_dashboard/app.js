@@ -855,25 +855,47 @@
     if (!added) alert('В выбранных файлах не найдено новых уникальных циклов (возможно, эти данные уже загружены).');
   }
 
+  var saveText = '', saveName = '';
   function saveJSON() {
-    var text = JSON.stringify({ nominal: NOMINAL, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
-    var fname = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
-    var blob = new Blob([text], { type: 'application/json' });
-    // iOS Safari / WKWebView: navigator.share с файлом — самый надёжный путь «сохранить в Файлы»
-    try {
-      if (navigator.canShare && window.File) {
-        var file = new File([blob], fname, { type: 'application/json' });
-        if (navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: fname }).catch(function () { }); return; }
-      }
-    } catch (e) { }
-    // обычная загрузка: ссылка ДОЛЖНА быть в DOM, иначе Safari игнорирует click()
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = fname; a.rel = 'noopener'; a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+    saveText = JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
+    saveName = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
+    var inIframe = false; try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
+    if (!inIframe) { doDownload(); }        // обычная вкладка браузера — сразу скачиваем
+    openSaveModal();                        // и всегда показываем окно (надёжный запасной путь: копирование/ручное сохранение)
   }
+  function doDownload() {
+    try {
+      var blob = new Blob([saveText], { type: 'application/json' });
+      // iOS Safari: navigator.share с файлом → «Сохранить в Файлы»
+      if (navigator.canShare && window.File) {
+        try { var f = new File([blob], saveName, { type: 'application/json' }); if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: saveName }).then(function () { setStatus('Отправлено'); }).catch(function () { }); } } catch (e) { }
+      }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = saveName; a.rel = 'noopener'; a.style.display = 'none';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { document.body.removeChild(a); } catch (e) { } URL.revokeObjectURL(url); }, 4000);
+      setStatus('Скачивание запущено');
+    } catch (e) { setStatus('Не удалось — скопируйте текст'); }
+  }
+  function doCopy() {
+    var ta = el('save-text');
+    var done = function () { setStatus('Скопировано ✓'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(saveText).then(done).catch(function () { legacyCopy(ta, done); });
+    } else legacyCopy(ta, done);
+  }
+  function legacyCopy(ta, done) {
+    try { ta.focus(); ta.select(); ta.setSelectionRange(0, saveText.length); var ok = document.execCommand('copy'); setStatus(ok ? 'Скопировано ✓' : 'Выделите текст и Ctrl+C'); } catch (e) { setStatus('Выделите текст и Ctrl+C'); }
+  }
+  function setStatus(t) { var s = el('save-status'); if (s) s.textContent = t; }
+  function openSaveModal() {
+    var ta = el('save-text'); if (ta) ta.value = saveText;
+    setStatus('');
+    var mod = el('save-modal'); if (mod) mod.hidden = false;
+    setTimeout(function () { if (ta) { ta.focus(); ta.select && ta.select(); } }, 30);
+  }
+  function closeSaveModal() { var mod = el('save-modal'); if (mod) mod.hidden = true; }
   function openJSON(file) {
     var reader = new FileReader();
     reader.onload = function (ev) {
@@ -945,6 +967,10 @@
     on('btn-load', 'click', function () { el('file-xlsx').click(); });
     on('file-xlsx', 'change', function (e) { ingestFiles(e.target.files); e.target.value = ''; });
     on('btn-save', 'click', saveJSON);
+    on('save-dl', 'click', doDownload);
+    on('save-copy', 'click', doCopy);
+    on('save-close', 'click', closeSaveModal);
+    on('save-modal', 'click', function (e) { if (e.target === el('save-modal')) closeSaveModal(); });
     on('btn-open', 'click', function () { el('file-json').click(); });
     on('file-json', 'change', function (e) { if (e.target.files[0]) openJSON(e.target.files[0]); e.target.value = ''; });
     on('btn-reset', 'click', resetData);
