@@ -161,12 +161,14 @@
   #tab-load:checked ~ .tabbar label[for="tab-load"],
   #tab-perf:checked ~ .tabbar label[for="tab-perf"],
   #tab-flow:checked ~ .tabbar label[for="tab-flow"],
-  #tab-table:checked ~ .tabbar label[for="tab-table"]{color:var(--ink);border-bottom-color:var(--gold);}
+  #tab-table:checked ~ .tabbar label[for="tab-table"],
+  #tab-dev:checked ~ .tabbar label[for="tab-dev"]{color:var(--ink);border-bottom-color:var(--gold);}
   .tabpane{display:none;}
   #tab-load:checked ~ #pane-load,
   #tab-perf:checked ~ #pane-perf,
   #tab-flow:checked ~ #pane-flow,
-  #tab-table:checked ~ #pane-table{display:flex;flex-direction:column;gap:12px;}
+  #tab-table:checked ~ #pane-table,
+  #tab-dev:checked ~ #pane-dev{display:flex;flex-direction:column;gap:12px;}
 
   /* performance tab */
   .perf-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;}
@@ -250,9 +252,28 @@
   .save-status{font-size:11.5px;color:var(--good);font-weight:700;}
   #save-text{width:100%;height:120px;resize:vertical;font-family:var(--mono);font-size:10px;line-height:1.35;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink-2);white-space:pre;overflow:auto;}
   .modal-hint{font-size:10.5px;color:var(--ink-mute);margin:0;line-height:1.5;}
+
+  /* контактная полоса + вкладка развития */
+  .contact-strip{text-align:center;font-size:11px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:6px 12px;}
+  .contact-strip b{color:var(--gold-deep);font-weight:800;}
+  .dev-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:820px){ .dev-grid{grid-template-columns:1fr;} }
+  .dev-list{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:7px;}
+  .dev-list li{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:start;font-size:12px;color:var(--ink-2);line-height:1.45;}
+  .dev-list li .m{font-weight:800;line-height:1.2;}
+  .dev-list.done li .m{color:var(--good);}
+  .dev-list.plan li .m{color:var(--accept);}
+  .dev-list li b{color:var(--ink);font-weight:700;}
+  .verchip{font-family:var(--mono);font-size:11px;font-weight:700;background:var(--gold-soft);color:var(--gold-deep);border:1px solid var(--border);border-radius:100px;padding:3px 10px;}
+  .contact-card{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+  .contact-card .who{display:flex;flex-direction:column;gap:2px;}
+  .contact-card .who .nm{font-size:15px;font-weight:800;}
+  .contact-card .who .rl{font-size:11.5px;color:var(--ink-mute);}
+  .contact-card .msg{font-size:12px;color:var(--ink-2);line-height:1.5;flex:1 1 240px;min-width:0;}
 </style>
 
 <div class="app">
+  <div class="contact-strip">По вопросам улучшения отчёта, ошибок и замечаний обращаться к <b>Кузнецову&nbsp;В.Е.</b></div>
   <header class="top">
     <div class="brand">
       <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
@@ -320,11 +341,13 @@
   <input type="radio" name="tab" id="tab-perf" class="tabradio">
   <input type="radio" name="tab" id="tab-flow" class="tabradio">
   <input type="radio" name="tab" id="tab-table" class="tabradio">
+  <input type="radio" name="tab" id="tab-dev" class="tabradio">
   <div class="tabbar" role="tablist">
     <label for="tab-load" tabindex="0" role="tab">Загрузка · 10/10/20</label>
     <label for="tab-perf" tabindex="0" role="tab">Производительность и цикл</label>
     <label for="tab-flow" tabindex="0" role="tab">Грузооборот и скорости</label>
     <label for="tab-table" tabindex="0" role="tab">Сводная по бортам</label>
+    <label for="tab-dev" tabindex="0" role="tab">Развитие</label>
   </div>
 
   <!-- ВКЛАДКА 1: ЗАГРУЗКА -->
@@ -492,6 +515,52 @@
           <tfoot id="fleet-tfoot"></tfoot>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- ВКЛАДКА 5: РАЗВИТИЕ -->
+  <div class="tabpane" id="pane-dev">
+    <div class="panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <h2 style="margin:0;">Развитие дашборда</h2>
+        <span class="verchip">v2.1 · 10.07.2026</span>
+      </div>
+      <p class="cap">дорожная карта отчёта весового контроля NTE200 · источник данных — бортовые весовые устройства</p>
+      <div class="dev-grid">
+        <div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--good);margin-bottom:2px;">Реализовано</div>
+          <ul class="dev-list done">
+            <li><span class="m">✓</span><span><b>Политика 10/10/20</b> с настраиваемым вручную номиналом и пределом ТКВЧ</span></li>
+            <li><span class="m">✓</span><span><b>Распределение загрузки</b> (шаг 1 т) с зонами и кривой нормального распределения</span></li>
+            <li><span class="m">✓</span><span><b>Анализ цикла</b>: фазы, продуктивное время против ожидания, очередь у экскаватора</span></li>
+            <li><span class="m">✓</span><span><b>ТКВЧ по осям</b> и распределение с пределом шины и max-зоной</span></li>
+            <li><span class="m">✓</span><span><b>Грузооборот</b> (т·км), Ton·km/ч, ковшей на погрузку, скорости гружёный/порожний</span></li>
+            <li><span class="m">✓</span><span><b>Сводная таблица по бортам</b> (стиль «Main Data») с сортировкой и итогами</span></li>
+            <li><span class="m">✓</span><span><b>Загрузка новых .xlsx</b> в браузере с дедупликацией циклов, сохранение/открытие данных</span></li>
+            <li><span class="m">✓</span><span>Работа <b>офлайн</b>, адаптив под телефон, светлая/тёмная тема, просмотр без скриптов</span></li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:2px;">В планах · требует данных VHMS</div>
+          <ul class="dev-list plan">
+            <li><span class="m">→</span><span><b>Наработка (моточасы, SMR)</b>: прогресс и месячная; производительность т/ч по фактическим моточасам</span></li>
+            <li><span class="m">→</span><span><b>Топливо</b>: расход л/ч, литр/тонна, удельный расход г/т·км, накопленный расход к капремонту</span></li>
+            <li><span class="m">→</span><span><b>Двигатель</b>: blowby, boost pressure, коды ошибок (Error code)</span></li>
+            <li><span class="m">→</span><span>Уточнение <b>предела ТКВЧ</b> по паспорту шины NTE200 (сейчас 1000 — предварительно)</span></li>
+            <li><span class="m">→</span><span>Опция: распределение ТКВЧ по <b>заднему правому колесу</b> (самое нагруженное)</span></li>
+            <li><span class="m">→</span><span>Фильтр по <b>карьеру</b> (Западный / Северный / Центральный / Южный) — при наличии привязки в данных</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="contact-card">
+      <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><g fill="var(--gold)"><path d="M50 4 L61 33 L50 50 L39 33 Z"/><path d="M96 50 L67 61 L50 50 L67 39 Z"/><path d="M50 96 L39 67 L50 50 L61 67 Z"/><path d="M4 50 L33 39 L50 50 L33 61 Z"/></g><circle cx="50" cy="50" r="7" fill="var(--gold-deep)"/></svg>
+      <div class="who">
+        <span class="nm">Кузнецов В.Е.</span>
+        <span class="rl">эксплуатация и надёжность горных самосвалов NTE200</span>
+      </div>
+      <div class="msg">По вопросам <b>улучшения отчёта, ошибок и замечаний</b>, а также для подключения данных VHMS (моточасы, топливо) — обращаться к ответственному.</div>
     </div>
   </div>
 
