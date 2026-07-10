@@ -63,7 +63,7 @@
   // сложение партиций -> сводка
   function summarize(parts) {
     var c = 0, sp = 0, z = [0, 0, 0, 0], h = {}, ct = [0, 0, 0, 0, 0, 0],
-        dl = 0, de = 0, ls = 0, es = 0, lf = 0, rf = 0, lr = 0, rr = 0, cb = 0, f = 0;
+        dl = 0, de = 0, ls = 0, es = 0, lf = 0, rf = 0, lr = 0, rr = 0, cb = 0, f = 0, tk = 0, bk = 0;
     parts.forEach(function (p) {
       c += p.c; sp += p.sp;
       for (var i = 0; i < 4; i++) z[i] += p.z[i];
@@ -71,8 +71,9 @@
       for (var j = 0; j < 6; j++) ct[j] += p.ct[j];
       dl += p.dl; de += p.de; ls += p.ls; es += p.es;
       lf += (p.lf || 0); rf += (p.rf || 0); lr += p.lr; rr += p.rr; cb += (p.cb || 0); f += p.f;
+      tk += (p.tk || 0); bk += (p.bk || 0);
     });
-    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lf: lf, rf: rf, lr: lr, rr: rr, cb: cb, f: f };
+    return { c: c, sp: sp, z: z, h: h, ct: ct, dl: dl, de: de, ls: ls, es: es, lf: lf, rf: rf, lr: lr, rr: rr, cb: cb, f: f, tk: tk, bk: bk };
   }
 
   function allTrucks() {
@@ -457,6 +458,181 @@
     rankList('queuetop', rows.slice().sort(function (a, b) { return b.queue - a.queue; }).slice(0, 7), function (r) { return r.queue; }, ' мин', function (r) { return r.queue > 8 ? 'var(--bad)' : r.queue > 6 ? 'var(--accept)' : 'var(--ink-mute)'; });
   }
 
+  // ---------- ВКЛАДКА 3: ГРУЗООБОРОТ И СКОРОСТИ ----------
+  function renderFlowKPIs(sum) {
+    var c = sum.c;
+    var cycH = sum.ct.reduce(function (s, v) { return s + v; }, 0) / 3600; // всего цикло-часов
+    var tkmH = cycH ? sum.tk / cycH : 0;
+    var tiles = [
+      { l: 'Грузооборот', v: fmt1(sum.tk / 1e6), u: 'млн т·км', big: true },
+      { l: 'Ton·km/ч', v: fmtInt(tkmH), u: 'т·км/ч', big: true },
+      { l: 'Ковшей на погрузку', v: fmt1(sum.bk / c), u: 'ковш.' },
+      { l: 'Ср. время погрузки', v: fmt1(sum.ct[4] / c / 60), u: 'мин' },
+      { l: 'Ср. скорость гружёным', v: fmt1(sum.ct[1] > 0 ? sum.dl / sum.ct[1] * 3.6 : 0), u: 'км/ч' }
+    ];
+    el('flow-kpis').innerHTML = tiles.map(function (t) {
+      return '<div class="kpi"><div class="lbl">' + t.l + '</div><div class="val' + (t.big ? ' big' : '') + '">' + t.v + '<span class="u">' + t.u + '</span></div></div>';
+    }).join('');
+  }
+
+  function monthAgg() {
+    var byM = {};
+    activeParts().forEach(function (p) {
+      var a = byM[p.m] || (byM[p.m] = { c: 0, sp: 0, tk: 0, dl: 0, de: 0, ct: [0, 0, 0, 0, 0, 0], z: [0, 0, 0, 0] });
+      a.c += p.c; a.sp += p.sp; a.tk += (p.tk || 0); a.dl += p.dl; a.de += p.de;
+      for (var i = 0; i < 6; i++) a.ct[i] += p.ct[i];
+      for (var j = 0; j < 4; j++) a.z[j] += p.z[j];
+    });
+    return Object.keys(byM).sort().map(function (ym) { var a = byM[ym]; a.ym = ym; return a; });
+  }
+
+  // грузооборот по месяцам (bars) + погрузок (line)
+  function renderFlowTrend() {
+    var s = el('flow-trend'); s.innerHTML = '';
+    var data = monthAgg(); if (!data.length) return;
+    var W = 640, H = 220, m = { t: 22, r: 40, b: 34, l: 46 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var maxTk = Math.max.apply(null, data.map(function (d) { return d.tk; })) || 1;
+    var maxC = Math.max.apply(null, data.map(function (d) { return d.c; })) || 1;
+    var bw = pw / data.length, g = svg('g', {}); s.appendChild(g);
+    // y grid (тыс. т·км)
+    for (var i = 0; i <= 3; i++) {
+      var yy = m.t + ph - i / 3 * ph, val = maxTk * i / 3 / 1000;
+      g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' }));
+      var tl = svg('text', { x: m.l - 5, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(val); g.appendChild(tl);
+    }
+    var ytl = svg('text', { x: m.l - 5, y: m.t - 8, 'text-anchor': 'end', class: 'ax' }); ytl.textContent = 'тыс.т·км'; g.appendChild(ytl);
+    data.forEach(function (d, i) {
+      var hh = d.tk / maxTk * ph, bx = m.l + i * bw + bw * 0.18, by = m.t + ph - hh;
+      var r = svg('rect', { x: bx, y: by, width: bw * 0.64, height: Math.max(hh, 1), rx: 2, fill: 'var(--gold)', 'fill-opacity': .55 });
+      r.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>' + fmtInt(d.tk / 1000) + ' тыс. т·км<br>' + fmtInt(d.c) + ' погрузок', e); });
+      r.addEventListener('mouseleave', hideTip); g.appendChild(r);
+    });
+    var xC = function (i) { return m.l + i * bw + bw / 2; };
+    var yR = function (v) { return m.t + ph - v / maxC * ph * 0.92; };
+    var path = ''; data.forEach(function (d, i) { path += (i === 0 ? 'M' : 'L') + xC(i) + ',' + yR(d.c) + ' '; });
+    g.appendChild(svg('path', { d: path, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.8, 'stroke-opacity': .6, 'stroke-linejoin': 'round' }));
+    data.forEach(function (d, i) {
+      g.appendChild(svg('circle', { cx: xC(i), cy: yR(d.c), r: 2.6, fill: 'var(--ink)', 'fill-opacity': .6 }));
+      if (i % Math.ceil(data.length / 12 || 1) === 0) { var tx = svg('text', { x: xC(i), y: H - 6, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = MONTHS_RU[d.ym.split('-')[1]]; g.appendChild(tx); }
+    });
+  }
+
+  // средняя скорость (гружёный/порожний) по месяцам
+  function renderSpeedTrend() {
+    var s = el('speed-trend'); s.innerHTML = '';
+    var data = monthAgg(); if (!data.length) return;
+    var W = 480, H = 220, m = { t: 14, r: 12, b: 34, l: 34 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var series = data.map(function (d) { return { ym: d.ym, ld: d.ct[1] > 0 ? d.dl / d.ct[1] * 3.6 : 0, em: d.ct[2] > 0 ? d.de / d.ct[2] * 3.6 : 0 }; });
+    var vmax = 0, vmin = 99; series.forEach(function (d) { vmax = Math.max(vmax, d.ld, d.em); vmin = Math.min(vmin, d.ld, d.em); });
+    vmin = Math.floor(vmin - 2); vmax = Math.ceil(vmax + 2);
+    var bw = pw / series.length, g = svg('g', {}); s.appendChild(g);
+    for (var i = 0; i <= 3; i++) { var yy = m.t + ph - i / 3 * ph, val = vmin + (vmax - vmin) * i / 3; g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' })); var tl = svg('text', { x: m.l - 5, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = Math.round(val); g.appendChild(tl); }
+    var xC = function (i) { return m.l + i * bw + bw / 2; };
+    var yV = function (v) { return m.t + ph - (v - vmin) / (vmax - vmin) * ph; };
+    [['ld', 'var(--target)'], ['em', 'var(--under)']].forEach(function (ser) {
+      var path = ''; series.forEach(function (d, i) { path += (i === 0 ? 'M' : 'L') + xC(i) + ',' + yV(d[ser[0]]) + ' '; });
+      g.appendChild(svg('path', { d: path, fill: 'none', stroke: ser[1], 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+      series.forEach(function (d, i) {
+        var c = svg('circle', { cx: xC(i), cy: yV(d[ser[0]]), r: 3, fill: ser[1], stroke: 'var(--surface)', 'stroke-width': 1.3 });
+        c.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>' + (ser[0] === 'ld' ? 'гружёный' : 'порожний') + ' ' + fmt1(d[ser[0]]) + ' км/ч', e); });
+        c.addEventListener('mouseleave', hideTip); g.appendChild(c);
+      });
+    });
+    series.forEach(function (d, i) { if (i % Math.ceil(series.length / 10 || 1) === 0) { var tx = svg('text', { x: xC(i), y: H - 6, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = MONTHS_RU[d.ym.split('-')[1]]; g.appendChild(tx); } });
+  }
+
+  function renderFlowCompare() {
+    var byTruck = {};
+    activeParts().forEach(function (p) {
+      var a = byTruck[p.t] || (byTruck[p.t] = { c: 0, dl: 0, tk: 0, ct1: 0 });
+      a.c += p.c; a.dl += p.dl; a.tk += (p.tk || 0); a.ct1 += p.ct[1];
+    });
+    var rows = Object.keys(byTruck).map(function (t) { var a = byTruck[t]; return { t: t, c: a.c, spd: a.ct1 > 0 ? a.dl / a.ct1 * 3.6 : 0, tk: a.tk }; }).filter(function (r) { return r.c >= 200; });
+    rankList('speedtop', rows.slice().sort(function (a, b) { return b.spd - a.spd; }).slice(0, 7), function (r) { return r.spd; }, ' км/ч', function () { return 'var(--target)'; });
+    rankList('flowtop', rows.slice().sort(function (a, b) { return b.tk - a.tk; }).slice(0, 7), function (r) { return r.tk / 1e6; }, ' млн', function () { return 'var(--gold-deep)'; });
+  }
+
+  // ---------- ВКЛАДКА 4: СВОДНАЯ ТАБЛИЦА ----------
+  var TCOLS = [
+    { k: 't', n: 'Борт', num: false },
+    { k: 'c', n: 'Циклы' },
+    { k: 'mean', n: 'Ср.загр,т' },
+    { k: 'tot', n: 'Перевезено,тыс.т' },
+    { k: 'dist', n: 'Плечо,км' },
+    { k: 'tk', n: 'Грузооб,тыс.т·км' },
+    { k: 'prod', n: 'Произв,т/ч' },
+    { k: 'tkmh', n: 'т·км/ч' },
+    { k: 'bk', n: 'Ковш/погр' },
+    { k: 'cyc', n: 'Цикл,мин' },
+    { k: 'queue', n: 'Очередь,мин' },
+    { k: 'rr', n: 'TKPH зад' },
+    { k: 'ov110', n: '>110%,%' },
+    { k: 'ov120', n: '>120%,%' }
+  ];
+  var tSortKey = 'tk', tSortDir = -1;
+  function fleetTableRows() {
+    var byTruck = {};
+    activeParts().forEach(function (p) {
+      var a = byTruck[p.t] || (byTruck[p.t] = { c: 0, sp: 0, tk: 0, bk: 0, dl: 0, rr: 0, z: [0, 0, 0, 0], ct: [0, 0, 0, 0, 0, 0] });
+      a.c += p.c; a.sp += p.sp; a.tk += (p.tk || 0); a.bk += (p.bk || 0); a.dl += p.dl; a.rr += p.rr;
+      for (var i = 0; i < 4; i++) a.z[i] += p.z[i];
+      for (var j = 0; j < 6; j++) a.ct[j] += p.ct[j];
+    });
+    return Object.keys(byTruck).map(function (t) {
+      var a = byTruck[t], cyc = a.ct.reduce(function (s, v) { return s + v; }, 0) / a.c / 60;
+      var cycH = a.ct.reduce(function (s, v) { return s + v; }, 0) / 3600;
+      return {
+        t: t, c: a.c, mean: a.sp / a.c, tot: a.sp / 1000, dist: a.dl / a.c / 1000,
+        tk: a.tk / 1000, prod: cyc ? (a.sp / a.c) / (cyc / 60) : 0, tkmh: cycH ? a.tk / cycH : 0,
+        bk: a.bk / a.c, cyc: cyc, queue: a.ct[3] / a.c / 60, rr: a.rr / a.c,
+        ov110: (a.z[2] + a.z[3]) / a.c * 100, ov120: a.z[3] / a.c * 100
+      };
+    });
+  }
+  function renderFleetTable() {
+    var rows = fleetTableRows();
+    el('fleet-thead').innerHTML = TCOLS.map(function (c) {
+      return '<th data-k="' + c.k + '" class="' + (c.k === tSortKey ? 'act' : '') + '">' + c.n + '</th>';
+    }).join('');
+    rows.sort(function (a, b) { var av = a[tSortKey], bv = b[tSortKey]; if (tSortKey === 't') { av = +a.t; bv = +b.t; } return (av - bv) * tSortDir; });
+    function cell(v, k) {
+      if (k === 't') return '№' + v;
+      if (k === 'c') return fmtInt(v);
+      if (k === 'tot' || k === 'tk') return fmtInt(v);
+      if (k === 'tkmh') return fmtInt(v);
+      if (k === 'ov110' || k === 'ov120') return fmt1(v);
+      return fmt1(v);
+    }
+    el('fleet-tbody').innerHTML = rows.map(function (r) {
+      return '<tr data-t="' + r.t + '">' + TCOLS.map(function (c) {
+        var col = '';
+        if (c.k === 'ov110' && r.ov110 > 10) col = 'color:var(--bad)';
+        else if (c.k === 'ov110' && r.ov110 > 6) col = 'color:var(--accept)';
+        if (c.k === 'ov120' && r.ov120 > 0) col = 'color:var(--bad)';
+        return '<td style="' + col + '">' + cell(r[c.k], c.k) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    // footer totals / weighted means
+    var sum = summarize(activeParts()), C = sum.c;
+    var cyc = sum.ct.reduce(function (s, v) { return s + v; }, 0) / C / 60;
+    var cycH = sum.ct.reduce(function (s, v) { return s + v; }, 0) / 3600;
+    var foot = {
+      t: 'Парк', c: C, mean: sum.sp / C, tot: sum.sp / 1000, dist: sum.dl / C / 1000, tk: sum.tk / 1000,
+      prod: cyc ? (sum.sp / C) / (cyc / 60) : 0, tkmh: cycH ? sum.tk / cycH : 0, bk: sum.bk / C, cyc: cyc,
+      queue: sum.ct[3] / C / 60, rr: sum.rr / C, ov110: (sum.z[2] + sum.z[3]) / C * 100, ov120: sum.z[3] / C * 100
+    };
+    el('fleet-tfoot').innerHTML = '<tr>' + TCOLS.map(function (c) { return '<td>' + cell(foot[c.k], c.k) + '</td>'; }).join('') + '</tr>';
+    Array.prototype.forEach.call(el('fleet-thead').querySelectorAll('th'), function (th) {
+      th.onclick = function () { var k = th.dataset.k; if (tSortKey === k) tSortDir *= -1; else { tSortKey = k; tSortDir = k === 't' ? 1 : -1; } renderFleetTable(); };
+    });
+    Array.prototype.forEach.call(el('fleet-tbody').querySelectorAll('tr'), function (tr) {
+      tr.onclick = function () { state.selTrucks = new Set([tr.dataset.t]); renderFilters(); renderAll(); };
+      tr.classList.toggle('sel', state.selTrucks && state.selTrucks.size === 1 && state.selTrucks.has(tr.dataset.t));
+    });
+  }
+
   // ---------- monthly trend ----------
   function renderTrend() {
     var s = el('trend'); s.innerHTML = '';
@@ -507,8 +683,9 @@
   // ---------- foot ----------
   function renderFoot() {
     el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (180 т); не более 10% загрузок превышают 110% номинала (198 т); ни одна загрузка не превышает 120% (216 т). ' +
-      'Номинал 180 т. Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
-      'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере из выбранных весовых файлов; «Сохранить» выгружает обработанный набор в JSON; данные автосохраняются локально в этом браузере.';
+      'Номинал 180 т. Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
+      'Все показатели — из бортовых весовых файлов. Разделы отчёта Северстали по <b>моточасам (наработка), топливу (л, г/т·км), blowby и кодам ошибок</b> здесь не показаны — они требуют выгрузки VHMS/сервис-метра машины, которой нет в весовых данных. ' +
+      'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере; «Сохранить» выгружает набор в JSON; данные автосохраняются локально.';
   }
 
   // ---------- master render ----------
@@ -522,6 +699,10 @@
     // вкладка «Производительность»
     renderPerfKPIs(sum); renderCycleBar(sum); renderCycleTable(sum); renderUtilDonut(sum);
     renderSpeeds(sum); renderTKPH(sum); renderHaul(sum); renderPerfCompare();
+    // вкладка «Грузооборот и скорости»
+    renderFlowKPIs(sum); renderFlowTrend(); renderSpeedTrend(); renderFlowCompare();
+    // вкладка «Сводная по бортам»
+    renderFleetTable();
     renderFoot();
   }
 

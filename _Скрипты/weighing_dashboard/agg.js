@@ -56,7 +56,8 @@
           z: [0, 0, 0, 0], h: {},
           ct: [0, 0, 0, 0, 0, 0],
           dl: 0, de: 0, ls: 0, es: 0,
-          lf: 0, rf: 0, lr: 0, rr: 0, cb: 0, f: 0
+          lf: 0, rf: 0, lr: 0, rr: 0, cb: 0, f: 0,
+          tk: 0, bk: 0
         };
       }
       var pt = fp / 10; // тонны
@@ -84,6 +85,8 @@
       p.rr += num(row[idx.RR_TKPH]) / 10;
       if (num(row[idx.Carryback]) > 0) p.cb++;
       p.f += num(row[idx.FuelLevel]);
+      p.tk += pt * (num(row[idx.DistanceLoaded]) / 1000); // тонно-км (грузооборот)
+      p.bk += num(row[idx.BucketCount]);                  // ковшей на погрузку
     }
     return added;
   }
@@ -101,6 +104,7 @@
       p.ls = round(p.ls, 1); p.es = round(p.es, 1);
       p.lf = round(p.lf, 1); p.rf = round(p.rf, 1);
       p.lr = round(p.lr, 1); p.rr = round(p.rr, 1); p.f = round(p.f, 1);
+      p.tk = Math.round(p.tk); p.bk = Math.round(p.bk);
     });
     out.sort(function (a, b) {
       if (a.t !== b.t) return Number(a.t) - Number(b.t);
