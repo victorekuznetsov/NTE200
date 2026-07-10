@@ -855,13 +855,19 @@
     if (!added) alert('В выбранных файлах не найдено новых уникальных циклов (возможно, эти данные уже загружены).');
   }
 
-  var saveText = '', saveName = '';
+  var saveText = '', saveName = '', toastTimer = null;
+  function showToast(msg) {
+    var t = el('toast'); if (!t) return;
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3500);
+  }
   function saveJSON() {
     saveText = JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
     saveName = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
     var inIframe = false; try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
-    if (!inIframe) { doDownload(); }        // обычная вкладка браузера — сразу скачиваем
-    openSaveModal();                        // и всегда показываем окно (надёжный запасной путь: копирование/ручное сохранение)
+    if (inIframe) { openSaveModal(); return; }       // в песочнице (артефакт) скачивание заблокировано → окно с копированием
+    doDownload();                                     // обычная вкладка браузера — просто скачиваем файл
+    showToast('Файл сохранён — папка «Загрузки» (' + saveName + ')');
   }
   function doDownload() {
     try {

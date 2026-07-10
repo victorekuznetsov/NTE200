@@ -253,6 +253,10 @@
   .save-status{font-size:11.5px;color:var(--good);font-weight:700;}
   #save-text{width:100%;height:120px;resize:vertical;font-family:var(--mono);font-size:10px;line-height:1.35;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--ink-2);white-space:pre;overflow:auto;}
   .modal-hint{font-size:10.5px;color:var(--ink-mute);margin:0;line-height:1.5;}
+  .modal-actions .fmini{background:none;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:95;background:var(--ink);color:var(--bg);
+    font-size:12.5px;font-weight:600;padding:10px 16px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:88vw;text-align:center;}
+  .toast[hidden]{display:none;}
 
   /* контактная полоса + вкладка развития */
   .contact-strip{text-align:center;font-size:11px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:6px 12px;}
@@ -270,11 +274,15 @@
   .contact-card .who{display:flex;flex-direction:column;gap:2px;}
   .contact-card .who .nm{font-size:15px;font-weight:800;}
   .contact-card .who .rl{font-size:11.5px;color:var(--ink-mute);}
+  .mailto{color:var(--gold-deep);font-weight:700;text-decoration:none;font-family:var(--mono);font-size:12px;}
+  .mailto:hover{text-decoration:underline;}
+  .contact-card .who .mailto{margin-top:3px;}
+  .dev-logo{flex:none;}
   .contact-card .msg{font-size:12px;color:var(--ink-2);line-height:1.5;flex:1 1 240px;min-width:0;}
 </style>
 
 </head><body><div class="app">
-  <div class="contact-strip">По вопросам улучшения отчёта, ошибок и замечаний обращаться к <b>Кузнецову&nbsp;В.Е.</b></div>
+  <div class="contact-strip">По вопросам улучшения отчёта, ошибок и замечаний обращаться к <b>Кузнецову&nbsp;В.Е.</b> · <a class="mailto" href="mailto:KuznetsovVE@industrialservice.ru">KuznetsovVE@industrialservice.ru</a></div>
   <header class="top">
     <div class="brand">
       <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
@@ -523,7 +531,15 @@
   <div class="tabpane" id="pane-dev">
     <div class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-        <h2 style="margin:0;">Развитие дашборда</h2>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg class="dev-logo" viewBox="0 0 100 100" width="30" height="30" aria-hidden="true">
+            <g fill="none" stroke="var(--gold)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 84 V62"></path><path d="M42 84 V46"></path><path d="M67 84 V30"></path>
+              <path d="M14 40 L40 54 L86 20"></path><path d="M64 18 H88 V42"></path>
+            </g>
+          </svg>
+          <h2 style="margin:0;">Развитие дашборда</h2>
+        </div>
         <span class="verchip">v2.1 · 10.07.2026</span>
       </div>
       <p class="cap">дорожная карта отчёта весового контроля NTE200 · источник данных — бортовые весовые устройства</p>
@@ -556,10 +572,16 @@
     </div>
 
     <div class="contact-card">
-      <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><g fill="var(--gold)"><path d="M50 4 L61 33 L50 50 L39 33 Z"></path><path d="M96 50 L67 61 L50 50 L67 39 Z"></path><path d="M50 96 L39 67 L50 50 L61 67 Z"></path><path d="M4 50 L33 39 L50 50 L33 61 Z"></path></g><circle cx="50" cy="50" r="7" fill="var(--gold-deep)"></circle></svg>
+      <svg class="dev-logo" width="38" height="38" viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="var(--gold)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 84 V62"></path><path d="M42 84 V46"></path><path d="M67 84 V30"></path>
+          <path d="M14 40 L40 54 L86 20"></path><path d="M64 18 H88 V42"></path>
+        </g>
+      </svg>
       <div class="who">
         <span class="nm">Кузнецов В.Е.</span>
         <span class="rl">эксплуатация и надёжность горных самосвалов NTE200</span>
+        <a class="mailto" href="mailto:KuznetsovVE@industrialservice.ru">KuznetsovVE@industrialservice.ru</a>
       </div>
       <div class="msg">По вопросам <b>улучшения отчёта, ошибок и замечаний</b>, а также для подключения данных VHMS (моточасы, топливо) — обращаться к ответственному.</div>
     </div>
@@ -570,6 +592,7 @@
 
 <div id="tip"></div>
 <div class="busy" id="busy">Обработка файлов…</div>
+<div class="toast" id="toast" hidden=""></div>
 
 <div class="modal" id="save-modal" hidden="">
   <div class="modal-card">
@@ -1579,13 +1602,19 @@ break;case"<bookViews":;case"<bookViews>":;case"</bookViews>":break;case"<workbo
     if (!added) alert('В выбранных файлах не найдено новых уникальных циклов (возможно, эти данные уже загружены).');
   }
 
-  var saveText = '', saveName = '';
+  var saveText = '', saveName = '', toastTimer = null;
+  function showToast(msg) {
+    var t = el('toast'); if (!t) return;
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3500);
+  }
   function saveJSON() {
     saveText = JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
     saveName = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
     var inIframe = false; try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
-    if (!inIframe) { doDownload(); }        // обычная вкладка браузера — сразу скачиваем
-    openSaveModal();                        // и всегда показываем окно (надёжный запасной путь: копирование/ручное сохранение)
+    if (inIframe) { openSaveModal(); return; }       // в песочнице (артефакт) скачивание заблокировано → окно с копированием
+    doDownload();                                     // обычная вкладка браузера — просто скачиваем файл
+    showToast('Файл сохранён — папка «Загрузки» (' + saveName + ')');
   }
   function doDownload() {
     try {
