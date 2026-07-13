@@ -31,7 +31,7 @@
 
   var state = {
     partitions: EMBEDDED.partitions,   // активный набор
-    source: 'Демо-данные парка',
+    source: EMBEDDED.source || 'Демо-данные парка',
     store: null,                        // AGG store при загрузке .xlsx (для дедупликации между файлами)
     files: [],                          // имена загруженных файлов
     selMonths: null,                    // Set выбранных ym; null = все
@@ -53,6 +53,7 @@
   // ---- восстановление параметров (номинал, предел ТКВЧ) ----
   try {
     var cfg = JSON.parse(localStorage.getItem(LS_CFG) || 'null');
+    if (!cfg && EMBEDDED && (EMBEDDED.nominal || EMBEDDED.tire)) cfg = { nominal: EMBEDDED.nominal, tire: EMBEDDED.tire };
     if (cfg) {
       if (cfg.nominal > 0) NOMINAL = +cfg.nominal;
       if (cfg.tire > 0) { TIRE_TKPH = +cfg.tire; TIRE_MAXZONE = Math.round(TIRE_TKPH * 0.95); }
@@ -786,7 +787,7 @@
     el('foot').innerHTML = '<b>Политика 10/10/20 (Caterpillar):</b> средняя загрузка не выше номинала (' + ru1(NOMINAL) + ' т); не более 10% загрузок превышают 110% номинала (' + ru1(P110) + ' т); ни одна загрузка не превышает 120% (' + ru1(P120) + ' т). ' +
       'Номинал ' + ru1(NOMINAL) + ' т и предел ТКВЧ ' + fmtInt(TIRE_TKPH) + ' т·км/ч задаются вручную вверху страницы. ТКВЧ — сырые значения поля весовой (т·км/ч). Грузооборот = загрузка × плечо гружёного; т/ч и т·км/ч считаются по времени цикла (не по моточасам). Циклы дедуплицированы по ключу «борт + дата/время + № цикла». ' +
       'Все показатели — из бортовых весовых файлов. Разделы отчёта Северстали по <b>моточасам (наработка), топливу (л, г/т·км), blowby и кодам ошибок</b> здесь не показаны — они требуют выгрузки VHMS/сервис-метра машины, которой нет в весовых данных. ' +
-      'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере; «Сохранить» выгружает набор в JSON; данные автосохраняются локально.';
+      'Кнопка «Загрузить .xlsx» пересчитывает всё в браузере; «Сохранить» выгружает весь дашборд с текущими данными в один автономный HTML-файл (открывается сразу с этими данными, интернет не нужен).';
   }
 
   // ---------- master render ----------
@@ -861,28 +862,40 @@
     t.textContent = msg; t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3500);
   }
-  function saveJSON() {
-    saveText = JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH, generated: new Date().toISOString().slice(0, 10), source: state.source, files: state.files, partitions: state.partitions });
-    saveName = 'weighing_dashboard_' + new Date().toISOString().slice(0, 10) + '.json';
-    var inIframe = false; try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
-    if (inIframe) { openSaveModal(); return; }       // в песочнице (артефакт) скачивание заблокировано → окно с копированием
-    doDownload();                                     // обычная вкладка браузера — просто скачиваем файл
-    showToast('Файл сохранён — папка «Загрузки» (' + saveName + ')');
+  function downloadBlob(content, fname, mime) {
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = fname; a.rel = 'noopener'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { try { document.body.removeChild(a); } catch (e) { } URL.revokeObjectURL(url); }, 4000);
   }
-  function doDownload() {
-    try {
-      var blob = new Blob([saveText], { type: 'application/json' });
-      // iOS Safari: navigator.share с файлом → «Сохранить в Файлы»
-      if (navigator.canShare && window.File) {
-        try { var f = new File([blob], saveName, { type: 'application/json' }); if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: saveName }).then(function () { setStatus('Отправлено'); }).catch(function () { }); } } catch (e) { }
-      }
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url; a.download = saveName; a.rel = 'noopener'; a.style.display = 'none';
-      document.body.appendChild(a); a.click();
-      setTimeout(function () { try { document.body.removeChild(a); } catch (e) { } URL.revokeObjectURL(url); }, 4000);
-      setStatus('Скачивание запущено');
-    } catch (e) { setStatus('Не удалось — скопируйте текст'); }
+  // «Сохранить» = автономный HTML с текущими данными внутри (открывается сразу с этими данными)
+  function saveJSON() {
+    var inIframe = false; try { inIframe = window.self !== window.top; } catch (e) { inIframe = true; }
+    if (inIframe) { showToast('Сохранение доступно в браузере, не в предпросмотре — откройте файл в Safari/Chrome'); return; }
+    // на время сериализации показываем весь парк
+    var sm = state.selMonths, st = state.selTrucks;
+    state.selMonths = null; state.selTrucks = null; renderFilters(); renderAll();
+    var node = document.getElementById('embedded-data');
+    var prev = node.textContent;
+    node.textContent = JSON.stringify({
+      nominal: NOMINAL, tire: TIRE_TKPH, generated: new Date().toISOString().slice(0, 10),
+      source: state.source, partitions: state.partitions
+    });
+    var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    node.textContent = prev;                         // вернуть демо-скрипт в текущем DOM
+    state.selMonths = sm; state.selTrucks = st; renderFilters(); renderAll();
+    var d = new Date().toISOString().slice(0, 10);
+    downloadBlob(html, 'Дашборд весового контроля NTE200 (' + d + ').html', 'text/html;charset=utf-8');
+    showToast('Дашборд с данными сохранён — папка «Загрузки». Открывайте этот HTML — данные внутри.');
+  }
+  // экспорт данных в компактный JSON (запасной вариант, кнопка в окне)
+  function saveJSONFile() {
+    var d = new Date().toISOString().slice(0, 10);
+    downloadBlob(JSON.stringify({ nominal: NOMINAL, tire: TIRE_TKPH, generated: d, source: state.source, partitions: state.partitions }),
+      'weighing_data_' + d + '.json', 'application/json');
+    showToast('JSON с данными сохранён — папка «Загрузки»');
   }
   function doCopy() {
     var ta = el('save-text');
@@ -973,8 +986,8 @@
     on('btn-load', 'click', function () { el('file-xlsx').click(); });
     on('file-xlsx', 'change', function (e) { ingestFiles(e.target.files); e.target.value = ''; });
     on('btn-save', 'click', saveJSON);
-    on('save-dl', 'click', doDownload);
-    on('save-copy', 'click', doCopy);
+    on('save-dl', 'click', saveJSONFile);
+    on('save-copy', 'click', function () { saveJSON(); });
     on('save-close', 'click', closeSaveModal);
     on('save-modal', 'click', function (e) { if (e.target === el('save-modal')) closeSaveModal(); });
     on('btn-open', 'click', function () { el('file-json').click(); });
