@@ -395,9 +395,13 @@
     </div>
 
     <div class="panel">
-      <h2>Динамика по месяцам</h2>
-      <p class="cap">циклы (столбцы) и средняя загрузка, % номинала (линия · пунктир = 100%)</p>
-      <svg id="trend" width="100%" viewBox="0 0 640 150" preserveAspectRatio="xMidYMid meet"></svg>
+      <h2>Средняя и максимальная загрузка по месяцам</h2>
+      <p class="cap">средняя загрузка, т (столбцы) и максимальная загрузка, т (линия)</p>
+      <svg id="trend" width="100%" viewBox="0 0 640 200" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend" style="flex-direction:row;gap:14px;margin-top:6px;">
+        <span class="item"><span class="sw" style="background:var(--target)"></span><span class="nm">средняя, т</span></span>
+        <span class="item"><span class="sw" style="background:var(--ink)"></span><span class="nm">максимум, т</span></span>
+      </div>
     </div>
   </div>
 

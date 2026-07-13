@@ -736,49 +736,53 @@
   }
 
   // ---------- monthly trend ----------
+  // Средняя загрузка (столбцы) и максимальная загрузка (линия) по месяцам, тонны
   function renderTrend() {
     var s = el('trend'); s.innerHTML = '';
-    var W = 640, H = 150, m = { t: 12, r: 30, b: 20, l: 30 };
+    var W = 640, H = 200, m = { t: 24, r: 12, b: 22, l: 34 };
     var pw = W - m.l - m.r, ph = H - m.t - m.b;
     var byM = {};
     activeParts().forEach(function (p) {
-      var a = byM[p.m] || (byM[p.m] = { c: 0, sp: 0 }); a.c += p.c; a.sp += p.sp;
+      var a = byM[p.m] || (byM[p.m] = { c: 0, sp: 0, max: 0 });
+      a.c += p.c; a.sp += p.sp;
+      for (var b in p.h) { if (p.h[b] > 0) { var t = +b + 1; if (t > a.max) a.max = t; } } // верхняя граница макс. бина
     });
     var months = Object.keys(byM).sort();
     if (!months.length) return;
-    var data = months.map(function (ym) { return { ym: ym, c: byM[ym].c, load: byM[ym].sp / byM[ym].c / NOMINAL * 100 }; });
-    var maxC = Math.max.apply(null, data.map(function (d) { return d.c; }));
-    var loadMin = 95, loadMax = 115;
-    data.forEach(function (d) { loadMin = Math.min(loadMin, d.load); loadMax = Math.max(loadMax, d.load); });
-    loadMin = Math.floor(loadMin - 1); loadMax = Math.ceil(loadMax + 1);
+    var data = months.map(function (ym) { return { ym: ym, avg: byM[ym].sp / byM[ym].c, max: byM[ym].max, c: byM[ym].c }; });
+    var vmax = Math.max.apply(null, data.map(function (d) { return d.max; })) * 1.12;
     var g = svg('g', {}); s.appendChild(g);
     var bw = pw / data.length;
-    // bars (cycles)
+    var yV = function (v) { return m.t + ph - v / vmax * ph; };
+    // ось Y (тонны)
+    var step = vmax > 250 ? 100 : 50;
+    for (var gv = 0; gv <= vmax; gv += step) {
+      var yy = yV(gv);
+      g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, class: 'gl' }));
+      var tl = svg('text', { x: m.l - 5, y: yy + 3, 'text-anchor': 'end', class: 'ax' }); tl.textContent = gv; g.appendChild(tl);
+    }
+    var few = data.length <= 14;
+    // столбцы — средняя загрузка
     data.forEach(function (d, i) {
-      var hh = d.c / maxC * ph * 0.9;
-      var bx = m.l + i * bw + bw * 0.2, by = m.t + ph - hh;
-      var rect = svg('rect', { x: bx, y: by, width: bw * 0.6, height: Math.max(hh, 1), rx: 2, fill: 'var(--gold)', 'fill-opacity': .5 });
-      rect.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>' + fmtInt(d.c) + ' циклов · загрузка ' + fmt1(d.load) + '%', e); });
+      var by = yV(d.avg), hh = m.t + ph - by;
+      var bx = m.l + i * bw + bw * 0.16;
+      var rect = svg('rect', { x: bx, y: by, width: bw * 0.68, height: Math.max(hh, 1), rx: 2, fill: 'var(--target)' });
+      rect.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>средняя ' + fmt1(d.avg) + ' т · максимум ' + fmtInt(d.max) + ' т<br>' + fmtInt(d.c) + ' циклов', e); });
       rect.addEventListener('mouseleave', hideTip);
       g.appendChild(rect);
+      if (few) { var lab = svg('text', { x: bx + bw * 0.34, y: by + 11, 'text-anchor': 'middle', 'font-size': '8.5', 'font-weight': '700', fill: '#ffffff' }); lab.textContent = fmt1(d.avg); g.appendChild(lab); }
     });
-    // 100% baseline
-    var y100 = m.t + ph - (100 - loadMin) / (loadMax - loadMin) * ph;
-    g.appendChild(svg('line', { x1: m.l, x2: W - m.r, y1: y100, y2: y100, class: 'zline', stroke: 'var(--ink-mute)' }));
-    // load line
+    // линия — максимальная загрузка
     var xC = function (i) { return m.l + i * bw + bw / 2; };
-    var yL = function (v) { return m.t + ph - (v - loadMin) / (loadMax - loadMin) * ph; };
-    var path = '';
-    data.forEach(function (d, i) { path += (i === 0 ? 'M' : 'L') + xC(i) + ',' + yL(d.load) + ' '; });
-    g.appendChild(svg('path', { d: path, fill: 'none', stroke: 'var(--target)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    var path = ''; data.forEach(function (d, i) { path += (i === 0 ? 'M' : 'L') + xC(i).toFixed(1) + ',' + yV(d.max).toFixed(1) + ' '; });
+    g.appendChild(svg('path', { d: path, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.8, 'stroke-opacity': .75, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
     data.forEach(function (d, i) {
-      var c = svg('circle', { cx: xC(i), cy: yL(d.load), r: 3.5, fill: 'var(--target)', stroke: 'var(--surface)', 'stroke-width': 1.5 });
-      c.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>средняя загрузка ' + fmt1(d.load) + '% · ' + fmtInt(d.c) + ' циклов', e); });
-      c.addEventListener('mouseleave', hideTip);
-      g.appendChild(c);
-      if (data.length <= 12) {
-        var tx = svg('text', { x: xC(i), y: H - 5, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = MONTHS_RU[d.ym.split('-')[1]]; g.appendChild(tx);
-      }
+      var cy = yV(d.max);
+      var c = svg('circle', { cx: xC(i), cy: cy, r: 3, fill: 'var(--ink)', 'fill-opacity': .75, stroke: 'var(--surface)', 'stroke-width': 1.3 });
+      c.addEventListener('mousemove', function (e) { showTip('<b>' + ymLabel(d.ym) + '</b><br>максимум ' + fmtInt(d.max) + ' т · средняя ' + fmt1(d.avg) + ' т', e); });
+      c.addEventListener('mouseleave', hideTip); g.appendChild(c);
+      if (few) { var lm = svg('text', { x: xC(i), y: cy - 6, 'text-anchor': 'middle', 'font-size': '8.5', 'font-weight': '700', fill: 'var(--ink)' }); lm.textContent = fmtInt(d.max); g.appendChild(lm); }
+      if (i % Math.ceil(data.length / 12 || 1) === 0) { var tx = svg('text', { x: xC(i), y: H - 6, 'text-anchor': 'middle', class: 'ax' }); tx.textContent = MONTHS_RU[d.ym.split('-')[1]]; g.appendChild(tx); }
     });
   }
 
